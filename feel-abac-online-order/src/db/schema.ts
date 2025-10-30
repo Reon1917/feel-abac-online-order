@@ -59,3 +59,9 @@ export const verifications = pgTable("verifications", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+export const userProfiles = pgTable("user_profiles", {
+  id: text("id").primaryKey().notNull(), // matches users.id (1:1)
+  phoneNumber: text("phone_number").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
