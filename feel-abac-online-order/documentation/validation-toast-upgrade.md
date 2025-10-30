@@ -77,10 +77,12 @@ Enhanced the entire auth flow with comprehensive Zod validation, Sonner toast no
 - Letters, spaces, hyphens, apostrophes only
 - Errors: "Name must be at least 2 characters", "Name can only contain letters, spaces, hyphens, and apostrophes"
 
-### Phone Number
-- 8-20 characters
-- Regex: `/^[+]?[\d\s()-]+$/` (international format)
-- Errors: "Phone number must be at least 8 digits", "Enter a valid phone number"
+### Phone Number (Thai Format)
+- **Format 1**: `0812345678` (10 digits, starts with 0)
+- **Format 2**: `+66812345678` (country code + 9 digits)
+- Regex: `/^(\+66[0-9]{9}|0[0-9]{9})$/`
+- No spaces, dashes, or parentheses allowed
+- Errors: "Phone number is required", "Enter a valid Thai phone number (e.g., 0812345678 or +66812345678)"
 
 ## Error Handling Edge Cases
 

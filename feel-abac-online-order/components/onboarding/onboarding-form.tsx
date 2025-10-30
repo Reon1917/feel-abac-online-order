@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { toast } from "sonner";
 import { completeOnboarding } from "@/app/onboarding/actions";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ export function OnboardingForm({
 }: {
   defaultPhone?: string | null;
 }) {
-  const [state, action] = useFormState(completeOnboarding, null);
+  const [state, action] = useActionState(completeOnboarding, null);
 
   useEffect(() => {
     if (state?.error) {
@@ -39,7 +39,7 @@ export function OnboardingForm({
           type="tel"
           name="phoneNumber"
           defaultValue={defaultPhone ?? ""}
-          placeholder="+66 8X-XXX-XXXX"
+          placeholder="0812345678 or +66812345678"
           className={`rounded-md border bg-white px-3 py-2 text-slate-900 shadow-inner focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${
             state?.error
               ? "border-red-500 focus:border-red-500 focus:ring-red-200"

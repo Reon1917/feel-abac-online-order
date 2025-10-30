@@ -19,12 +19,14 @@ export const nameSchema = z
   .max(100, "Name is too long")
   .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes");
 
-// Phone validation - international format support
+// Phone validation - Thai phone number format
 export const phoneSchema = z
   .string()
-  .min(8, "Phone number must be at least 8 digits")
-  .max(20, "Phone number is too long")
-  .regex(/^[+]?[\d\s()-]+$/, "Enter a valid phone number");
+  .min(1, "Phone number is required")
+  .regex(
+    /^(\+66[0-9]{9}|0[0-9]{9})$/,
+    "Enter a valid Thai phone number (e.g., 0812345678 or +66812345678)"
+  );
 
 // Sign up schema
 export const signUpSchema = z.object({
