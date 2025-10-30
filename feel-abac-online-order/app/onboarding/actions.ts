@@ -3,26 +3,19 @@
 import { Buffer } from "node:buffer";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 import { db } from "@/src/db/client";
 import { userProfiles } from "@/src/db/schema";
-
-const phoneSchema = z.object({
-  phoneNumber: z
-    .string()
-    .min(8, "Enter a valid phone number")
-    .max(20, "Phone number is too long"),
-});
+import { onboardingSchema } from "@/lib/validations";
 
 export async function completeOnboarding(prevState: { error?: string } | null, formData: FormData) {
-  const parsed = phoneSchema.safeParse({
+  const parsed = onboardingSchema.safeParse({
     phoneNumber: formData.get("phoneNumber"),
   });
 
   if (!parsed.success) {
     return {
-      error: parsed.error.errors[0]?.message ?? "Invalid phone number",
+      error: parsed.error.issues[0]?.message ?? "Invalid phone number",
     };
   }
 

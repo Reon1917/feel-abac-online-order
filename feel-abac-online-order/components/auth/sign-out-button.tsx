@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export function SignOutButton({
   variant = "ghost",
@@ -13,32 +15,35 @@ export function SignOutButton({
 
   const handleSignOut = () => {
     startTransition(async () => {
-      await fetch("/api/sign-out", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      router.push("/");
-      router.refresh();
+      try {
+        await fetch("/api/sign-out", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        toast.success("Signed out successfully");
+        router.push("/");
+        router.refresh();
+      } catch (error) {
+        console.error("Sign out failed", error);
+        toast.error("Failed to sign out. Please try again.");
+      }
     });
   };
 
-  const baseClasses =
-    "rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed";
-  const variantClasses =
-    variant === "solid"
-      ? "bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-400"
-      : "text-emerald-900 hover:bg-emerald-50";
-
   return (
-    <button
-      type="button"
+    <Button
       onClick={handleSignOut}
       disabled={isPending}
-      className={`${baseClasses} ${variantClasses}`}
+      variant={variant === "solid" ? "default" : "ghost"}
+      className={
+        variant === "solid"
+          ? "bg-emerald-600 text-white hover:bg-emerald-700"
+          : "text-emerald-900 hover:bg-emerald-50"
+      }
     >
       {isPending ? "Signing out..." : "Sign out"}
-    </button>
+    </Button>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFormState } from "react-dom";
+import { toast } from "sonner";
 import { completeOnboarding } from "@/app/onboarding/actions";
+import { Button } from "@/components/ui/button";
 
 export function OnboardingForm({
   defaultPhone,
@@ -9,6 +12,12 @@ export function OnboardingForm({
   defaultPhone?: string | null;
 }) {
   const [state, action] = useFormState(completeOnboarding, null);
+
+  useEffect(() => {
+    if (state?.error) {
+      toast.error(state.error);
+    }
+  }, [state?.error]);
 
   return (
     <form
@@ -27,23 +36,26 @@ export function OnboardingForm({
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-800">Phone number</span>
         <input
-          required
           type="tel"
           name="phoneNumber"
           defaultValue={defaultPhone ?? ""}
           placeholder="+66 8X-XXX-XXXX"
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-inner focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+          className={`rounded-md border bg-white px-3 py-2 text-slate-900 shadow-inner focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${
+            state?.error
+              ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+              : "border-slate-200"
+          }`}
         />
+        {state?.error && (
+          <span className="text-xs text-red-600">{state.error}</span>
+        )}
       </label>
-      {state?.error ? (
-        <p className="text-sm font-medium text-red-600">{state.error}</p>
-      ) : null}
-      <button
+      <Button
         type="submit"
-        className="inline-flex w-full items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-700"
+        className="w-full bg-emerald-600 text-white shadow hover:bg-emerald-700"
       >
         Save and continue
-      </button>
+      </Button>
     </form>
   );
 }
