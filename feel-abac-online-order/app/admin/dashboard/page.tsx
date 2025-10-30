@@ -4,8 +4,7 @@ import { getAdminByUserId } from "@/lib/admin";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { AdminManagement } from "@/components/admin/admin-management";
-import { AdminList } from "@/components/admin/admin-list";
+import { AdminWorkspace } from "@/components/admin/admin-workspace";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 
@@ -35,46 +34,31 @@ export default async function AdminDashboard() {
     .orderBy(admins.createdAt);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
-            <p className="text-slate-600">
-              Welcome, {sessionData.session.user.name}
+    <div className="min-h-screen bg-white px-6 py-10 text-slate-900">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              Admin workspace
+            </span>
+            <h1 className="text-3xl font-semibold">Welcome back, {sessionData.session.user.name}</h1>
+            <p className="text-sm text-slate-600">
+              Choose a focus area below to reveal the tools—you see details only when you need them.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild variant="outline">
-              <Link href="/menu">View Menu as Customer</Link>
+              <Link href="/menu">View customer side</Link>
             </Button>
             <SignOutButton variant="ghost" />
           </div>
         </header>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Orders</h2>
-            <p className="text-sm text-slate-600">Manage incoming orders</p>
-          </div>
-          <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Menu</h2>
-            <p className="text-sm text-slate-600">Update menu items</p>
-          </div>
-          <div className="rounded-lg border bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Settings</h2>
-            <p className="text-sm text-slate-600">Configure system</p>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <AdminManagement isSuperAdmin={isSuperAdmin} />
-          <AdminList 
-            initialAdmins={adminList} 
-            currentUserId={sessionData.session.user.id}
-            isSuperAdmin={isSuperAdmin}
-          />
-        </div>
+        <AdminWorkspace
+          adminList={adminList}
+          currentUserId={sessionData.session.user.id}
+          isSuperAdmin={isSuperAdmin ?? false}
+        />
       </div>
     </div>
   );
