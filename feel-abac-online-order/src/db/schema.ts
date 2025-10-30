@@ -61,7 +61,13 @@ export const verifications = pgTable("verifications", {
 });
 
 export const userProfiles = pgTable("user_profiles", {
-  id: text("id").primaryKey().notNull(), // matches users.id (1:1)
+  id: text("id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
   phoneNumber: text("phone_number").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
 });
