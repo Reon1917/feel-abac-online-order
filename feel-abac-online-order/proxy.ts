@@ -5,8 +5,9 @@ import { eq } from "drizzle-orm";
 import { auth } from "./lib/auth";
 import { db } from "./src/db/client";
 import { userProfiles } from "./src/db/schema";
+import { getAdminByUserId } from "./lib/admin";
 
-const AUTH_REQUIRED_PATHS = ["/menu", "/onboarding"];
+const AUTH_REQUIRED_PATHS = ["/menu", "/onboarding", "/admin"];
 
 async function resolveSession(request: NextRequest) {
   try {
@@ -55,20 +56,39 @@ export async function proxy(request: NextRequest) {
   }
 
   let onboarded = false;
+  let isAdmin = false;
+
   if (isAuthenticated) {
     onboarded = await hasCompletedOnboarding(session.user.id);
+    const admin = await getAdminByUserId(session.user.id);
+    isAdmin = !!admin?.isActive;
 
-    if (!onboarded && pathname !== "/onboarding") {
+    // Block non-admins from /admin routes
+    if (pathname.startsWith("/admin") && !isAdmin) {
+      return NextResponse.json(
+        { error: "Access forbidden" },
+        { status: 403 }
+      );
+    }
+
+    // Auto-redirect admins to dashboard (unless on customer pages)
+    if (isAdmin && onboarded && pathname === "/") {
+      const url = new URL("/admin/dashboard", request.url);
+      return NextResponse.redirect(url);
+    }
+
+    // Regular user onboarding flow
+    if (!onboarded && pathname !== "/onboarding" && pathname !== "/admin/dashboard") {
       const url = new URL("/onboarding", request.url);
       return NextResponse.redirect(url);
     }
 
     if (onboarded && pathname === "/onboarding") {
-      const url = new URL("/menu", request.url);
+      const url = new URL(isAdmin ? "/admin/dashboard" : "/menu", request.url);
       return NextResponse.redirect(url);
     }
 
-    if (onboarded && pathname === "/") {
+    if (onboarded && pathname === "/" && !isAdmin) {
       const url = new URL("/menu", request.url);
       return NextResponse.redirect(url);
     }
@@ -80,6 +100,7 @@ export async function proxy(request: NextRequest) {
       JSON.stringify({
         session,
         onboarded,
+        isAdmin,
       })
     ).toString("base64url");
     requestHeaders.set("x-feel-session", payload);

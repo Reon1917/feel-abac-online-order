@@ -1,7 +1,8 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { getCurrentSession } from "@/lib/session";
+import { AdminBar } from "@/components/admin/admin-bar";
+import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
 
 const sampleMenu = [
@@ -31,22 +32,24 @@ const sampleMenu = [
 export default async function MenuPage() {
   noStore();
 
-  const session = await getCurrentSession();
-  if (!session?.user) {
+  const sessionData = await getSession();
+  if (!sessionData?.session?.user) {
     redirect("/");
   }
 
-  const profile = await getUserProfile(session.user.id);
+  const profile = await getUserProfile(sessionData.session.user.id);
   if (!profile) {
     redirect("/onboarding");
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-16">
+    <>
+      {sessionData.isAdmin && <AdminBar />}
+      <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-16">
       <header className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-            Welcome back, {session.user.name || "guest"} 👋
+            Welcome back, {sessionData.session.user.name || "guest"} 👋
           </h1>
           <p className="text-sm text-slate-600">
             Contact number on file:{" "}
@@ -100,5 +103,6 @@ export default async function MenuPage() {
         </ul>
       </section>
     </main>
+    </>
   );
 }
