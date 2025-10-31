@@ -1,4 +1,12 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  uuid,
+  integer,
+  numeric,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -82,6 +90,79 @@ export const admins = pgTable("admins", {
   name: text("name").notNull(),
   role: text("role").notNull().default("admin"),
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const menuCategories = pgTable("menu_categories", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  nameEn: text("name_en").notNull(),
+  nameMm: text("name_mm"),
+  displayOrder: integer("display_order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const menuItems = pgTable("menu_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  categoryId: uuid("category_id")
+    .notNull()
+    .references(() => menuCategories.id, { onDelete: "cascade" }),
+  nameEn: text("name_en").notNull(),
+  nameMm: text("name_mm"),
+  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  imageUrl: text("image_url"),
+  hasImage: boolean("has_image").default(false).notNull(),
+  placeholderIcon: text("placeholder_icon"),
+  descriptionEn: text("description_en"),
+  descriptionMm: text("description_mm"),
+  isAvailable: boolean("is_available").default(true).notNull(),
+  allowUserNotes: boolean("allow_user_notes").default(false).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const menuChoiceGroups = pgTable("menu_choice_groups", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  menuItemId: uuid("menu_item_id")
+    .notNull()
+    .references(() => menuItems.id, { onDelete: "cascade" }),
+  titleEn: text("title_en").notNull(),
+  titleMm: text("title_mm"),
+  minSelect: integer("min_select").default(0).notNull(),
+  maxSelect: integer("max_select").default(1).notNull(),
+  isRequired: boolean("is_required").default(false).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const menuChoiceOptions = pgTable("menu_choice_options", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  choiceGroupId: uuid("choice_group_id")
+    .notNull()
+    .references(() => menuChoiceGroups.id, { onDelete: "cascade" }),
+  nameEn: text("name_en").notNull(),
+  nameMm: text("name_mm"),
+  extraPrice: numeric("extra_price", { precision: 10, scale: 2 })
+    .default("0")
+    .notNull(),
+  isAvailable: boolean("is_available").default(true).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

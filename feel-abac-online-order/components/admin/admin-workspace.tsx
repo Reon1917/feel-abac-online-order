@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminList } from "./admin-list";
 import { AdminManagement } from "./admin-management";
@@ -45,6 +46,7 @@ export function AdminWorkspace({
   currentUserId,
   isSuperAdmin,
 }: AdminWorkspaceProps) {
+  const router = useRouter();
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   const currentPanel = panels.find((panel) => panel.id === activePanel);
@@ -56,7 +58,13 @@ export function AdminWorkspace({
           <button
             key={panel.id}
             type="button"
-            onClick={() => setActivePanel(panel.id)}
+            onClick={() => {
+              if (panel.id === "menu") {
+                router.push("/admin/menu");
+                return;
+              }
+              setActivePanel(panel.id);
+            }}
             className={clsx(
               "flex h-full flex-col justify-between gap-4 rounded-lg border p-5 text-left transition",
               activePanel === panel.id
@@ -102,17 +110,17 @@ export function AdminWorkspace({
                 />
               </div>
             ) : activePanel === "menu" ? (
-              <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-                <p className="text-base font-semibold text-slate-900">Menu publisher (mock)</p>
-                <p>
-                  Build future daypart menus, attach prep notes, and preview the customer layout across
-                  screen sizes before publishing.
+              <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+                <p className="text-base font-semibold text-slate-900">
+                  Menu builder
                 </p>
-                <ul className="list-disc space-y-2 pl-5">
-                  <li>Drag sections to reprioritize hero dishes.</li>
-                  <li>Flag allergens and availability windows.</li>
-                  <li>Schedule publish times tied to campus events.</li>
-                </ul>
+                <p>
+                  We built a dedicated full-screen experience for managing menu categories, items, images,
+                  and choice groups. Launch it with the button below.
+                </p>
+                <Button onClick={() => router.push("/admin/menu")} size="sm">
+                  Open menu builder
+                </Button>
               </div>
             ) : (
               <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
@@ -134,5 +142,3 @@ export function AdminWorkspace({
     </div>
   );
 }
-
-
