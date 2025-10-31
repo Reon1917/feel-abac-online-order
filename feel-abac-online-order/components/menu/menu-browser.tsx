@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import clsx from "clsx";
 import {
   PublicMenuCategory,
@@ -22,16 +22,32 @@ function formatPrice(value: number) {
 export function MenuBrowser({ categories }: MenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+   const [locale, setLocale] = useState<"en" | "mm">("en");
+
+  const localize = useCallback(
+    (en: string | null | undefined, mm?: string | null) => {
+      if (locale === "mm" && mm && mm.trim().length > 0) {
+        return mm;
+      }
+      return en ?? "";
+    },
+    [locale]
+  );
 
   const filteredItems = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
     return categories.flatMap((category) => {
       if (activeCategory !== "all" && category.id !== activeCategory) {
-        return [] as Array<PublicMenuItem & { categoryId: string; categoryName: string }>;
+        return [] as Array<{
+          item: PublicMenuItem;
+          categoryId: string;
+          categoryNameEn: string;
+          categoryNameMm: string | null;
+        }>;
       }
 
-      const items = category.items
+      return category.items
         .filter((item) => {
           if (!query) return true;
           const haystack = [
@@ -45,19 +61,24 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
           return haystack.includes(query);
         })
         .map((item) => ({
-          ...item,
+          item,
           categoryId: category.id,
-          categoryName: category.name,
+          categoryNameEn: category.name,
+          categoryNameMm: category.nameMm ?? null,
         }));
-
-      return items;
     });
   }, [activeCategory, categories, searchTerm]);
 
-  const categoryTabs = useMemo(
-    () => [{ id: "all", name: "All" }, ...categories.map(({ id, name }) => ({ id, name }))],
-    [categories]
-  );
+  const categoryTabs = useMemo(() => {
+    const allLabel = locale === "mm" ? "အားလုံး" : "All";
+    return [
+      { id: "all", name: allLabel },
+      ...categories.map(({ id, name, nameMm }) => ({
+        id,
+        name: localize(name, nameMm),
+      })),
+    ];
+  }, [categories, locale, localize]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,7 +90,7 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
           </p>
         </header>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <label className="flex w-full items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-2 focus-within:border-emerald-300">
             <span className="text-base">🔍</span>
             <input
@@ -79,7 +100,33 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
               className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
             />
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white p-1 text-xs font-semibold text-slate-600">
+              <button
+                type="button"
+                onClick={() => setLocale("en")}
+                className={clsx(
+                  "rounded-sm px-3 py-1 transition",
+                  locale === "en"
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-600 hover:text-emerald-600"
+                )}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("mm")}
+                className={clsx(
+                  "rounded-sm px-3 py-1 transition",
+                  locale === "mm"
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-600 hover:text-emerald-600"
+                )}
+              >
+                Burmese
+              </button>
+            </div>
             {categoryTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -105,8 +152,14 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
             Nothing matches your search yet. Try a different term or category.
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <MenuItemCard key={item.id} item={item} categoryName={item.categoryName} />
+          filteredItems.map(({ item, categoryNameEn, categoryNameMm }) => (
+            <MenuItemCard
+              key={item.id}
+              item={item}
+              categoryNameEn={categoryNameEn}
+              categoryNameMm={categoryNameMm}
+              locale={locale}
+            />
           ))
         )}
       </div>
@@ -116,10 +169,14 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
 
 function MenuItemCard({
   item,
-  categoryName,
+  categoryNameEn,
+  categoryNameMm,
+  locale,
 }: {
   item: PublicMenuItem;
-  categoryName: string;
+  categoryNameEn: string;
+  categoryNameMm: string | null;
+  locale: "en" | "mm";
 }) {
   const [notes, setNotes] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>(() => {
@@ -149,6 +206,24 @@ function MenuItemCard({
     }, 0);
     return base + extraTotal;
   }, [item.price, optionPriceMap, selectedOptions]);
+
+  const categoryLabel =
+    locale === "mm"
+      ? categoryNameMm ?? categoryNameEn
+      : categoryNameEn;
+  const displayName =
+    locale === "mm" ? item.nameMm ?? item.name : item.name;
+  const description =
+    locale === "mm"
+      ? item.descriptionMm ?? item.description ?? "—"
+      : item.description ?? item.descriptionMm ?? "—";
+  const baseLabel = locale === "mm" ? "အခြေခံ" : "Base";
+  const notesLabel = locale === "mm" ? "အထူးမှတ်ချက်" : "Special notes";
+  const notesPlaceholder =
+    locale === "mm"
+      ? "ဥပမာ - ဆီနည်း၊ အစပ်နည်း"
+      : "Let us know if you prefer less spicy, extra sauce, etc.";
+  const addButtonLabel = locale === "mm" ? "အော်ဒါထည့်ရန်" : "Add to tray";
 
   const handleSelect = (
     group: PublicMenuChoiceGroup,
@@ -192,21 +267,19 @@ function MenuItemCard({
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <span className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-              {categoryName}
+              {categoryLabel}
             </span>
             <h2 className="text-lg font-semibold text-slate-900">
-              {item.nameMm ?? item.name}
+              {displayName}
             </h2>
-            <p className="text-sm text-slate-600">
-              {item.descriptionMm ?? item.description ?? "—"}
-            </p>
+            <p className="text-sm text-slate-600">{description}</p>
           </div>
           <div className="size-16 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
             {item.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.imageUrl}
-                alt={item.name}
+                alt={displayName}
                 className="size-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -223,7 +296,7 @@ function MenuItemCard({
             ฿{formatPrice(totalPrice)}
           </span>
           <span className="text-xs text-slate-500">
-            Base ฿{formatPrice(item.price)}
+            {baseLabel} ฿{formatPrice(item.price)}
           </span>
         </div>
       </div>
@@ -233,7 +306,9 @@ function MenuItemCard({
           {item.choiceGroups.map((group) => (
             <fieldset key={group.id} className="space-y-3">
               <legend className="text-sm font-semibold text-slate-900">
-                {group.titleMm ?? group.title}
+                {locale === "mm"
+                  ? group.titleMm ?? group.title
+                  : group.title}
               </legend>
               <p className="text-xs text-slate-500">
                 {group.isRequired ? "Required" : "Optional"} · choose{" "}
@@ -267,7 +342,11 @@ function MenuItemCard({
                             }
                             className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
                           />
-                          <span>{option.nameMm ?? option.name}</span>
+                          <span>
+                            {locale === "mm"
+                              ? option.nameMm ?? option.name
+                              : option.name}
+                          </span>
                         </div>
                         <span className="text-xs text-slate-500">
                           {option.extraPrice > 0
@@ -299,7 +378,11 @@ function MenuItemCard({
                           }
                           className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                         />
-                        <span>{option.nameMm ?? option.name}</span>
+                        <span>
+                          {locale === "mm"
+                            ? option.nameMm ?? option.name
+                            : option.name}
+                        </span>
                       </div>
                       <span className="text-xs text-slate-500">
                         {option.extraPrice > 0
@@ -317,14 +400,14 @@ function MenuItemCard({
 
       {item.allowUserNotes && (
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-900">
-            Special notes
-          </label>
+            <label className="text-sm font-semibold text-slate-900">
+              {notesLabel}
+            </label>
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             rows={3}
-            placeholder="Let us know if you prefer less spicy, extra sauce, etc."
+            placeholder={notesPlaceholder}
             className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>
@@ -334,7 +417,7 @@ function MenuItemCard({
         type="button"
         className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
       >
-        <span>+</span> Add to tray
+        <span>+</span> {addButtonLabel}
       </button>
     </article>
   );

@@ -35,10 +35,10 @@ async function hasCompletedOnboarding(userId: string) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const isApiRoute = pathname.startsWith("/api");
   const isStatic =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/api") ||
     pathname.startsWith("/static");
   if (isStatic) {
     return NextResponse.next();
@@ -47,14 +47,6 @@ export async function proxy(request: NextRequest) {
   const session = await resolveSession(request);
   const isAuthenticated = !!session?.user;
 
-  if (
-    !isAuthenticated &&
-    AUTH_REQUIRED_PATHS.some((path) => pathname.startsWith(path))
-  ) {
-    const url = new URL("/", request.url);
-    return NextResponse.redirect(url);
-  }
-
   let onboarded = false;
   let isAdmin = false;
 
@@ -62,8 +54,17 @@ export async function proxy(request: NextRequest) {
     onboarded = await hasCompletedOnboarding(session.user.id);
     const admin = await getAdminByUserId(session.user.id);
     isAdmin = !!admin?.isActive;
+  }
 
-    // Block non-admins from /admin routes
+  if (!isApiRoute) {
+    if (
+      !isAuthenticated &&
+      AUTH_REQUIRED_PATHS.some((path) => pathname.startsWith(path))
+    ) {
+      const url = new URL("/", request.url);
+      return NextResponse.redirect(url);
+    }
+
     if (pathname.startsWith("/admin") && !isAdmin) {
       return NextResponse.json(
         { error: "Access forbidden" },
@@ -71,26 +72,26 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    // Auto-redirect admins to dashboard (unless on customer pages)
-    if (isAdmin && onboarded && pathname === "/") {
-      const url = new URL("/admin/dashboard", request.url);
-      return NextResponse.redirect(url);
-    }
+    if (isAuthenticated) {
+      if (isAdmin && onboarded && pathname === "/") {
+        const url = new URL("/admin/dashboard", request.url);
+        return NextResponse.redirect(url);
+      }
 
-    // Regular user onboarding flow
-    if (!onboarded && pathname !== "/onboarding" && pathname !== "/admin/dashboard") {
-      const url = new URL("/onboarding", request.url);
-      return NextResponse.redirect(url);
-    }
+      if (!onboarded && pathname !== "/onboarding" && pathname !== "/admin/dashboard") {
+        const url = new URL("/onboarding", request.url);
+        return NextResponse.redirect(url);
+      }
 
-    if (onboarded && pathname === "/onboarding") {
-      const url = new URL(isAdmin ? "/admin/dashboard" : "/menu", request.url);
-      return NextResponse.redirect(url);
-    }
+      if (onboarded && pathname === "/onboarding") {
+        const url = new URL(isAdmin ? "/admin/dashboard" : "/menu", request.url);
+        return NextResponse.redirect(url);
+      }
 
-    if (onboarded && pathname === "/" && !isAdmin) {
-      const url = new URL("/menu", request.url);
-      return NextResponse.redirect(url);
+      if (onboarded && pathname === "/" && !isAdmin) {
+        const url = new URL("/menu", request.url);
+        return NextResponse.redirect(url);
+      }
     }
   }
 

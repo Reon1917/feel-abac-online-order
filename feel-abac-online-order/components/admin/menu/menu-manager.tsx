@@ -9,80 +9,41 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import { ChevronRightIcon, ImageIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MenuCategoryRecord, MenuItemRecord } from "@/lib/menu/types";
+import {
+  MenuCategoryRecord,
+  MenuItemRecord,
+  MenuChoiceGroup,
+  MenuChoiceOption,
+} from "@/lib/menu/types";
 import { cn } from "@/lib/utils";
 
 type AdminMenuManagerProps = {
   initialMenu: MenuCategoryRecord[];
 };
 
-type CategoryDialogState =
-  | null
-  | {
-      mode: "create";
-    }
-  | {
-      mode: "edit";
-      category: MenuCategoryRecord;
-    };
+type ItemDraft = {
+  nameEn: string;
+  nameMm: string;
+  descriptionEn: string;
+  descriptionMm: string;
+  placeholderIcon: string;
+  price: string;
+  isAvailable: boolean;
+  allowUserNotes: boolean;
+};
 
-type ItemDialogState =
-  | null
-  | {
-      mode: "create";
-      categoryId: string;
-    }
-  | {
-      mode: "edit";
-      categoryId: string;
-      item: MenuItemRecord;
-    };
+type CategoryDraft = {
+  nameEn: string;
+  nameMm: string;
+  isActive: boolean;
+};
 
-type GroupDialogState =
-  | null
-  | {
-      mode: "create";
-      menuItemId: string;
-    }
-  | {
-      mode: "edit";
-      menuItemId: string;
-      group: MenuItemRecord["choiceGroups"][number];
-    };
-
-type OptionDialogState =
-  | null
-  | {
-      mode: "create";
-      choiceGroupId: string;
-    }
-  | {
-      mode: "edit";
-      choiceGroupId: string;
-      option: MenuItemRecord["choiceGroups"][number]["options"][number];
-    };
-
-type ImageDialogState =
-  | null
-  | {
-      item: MenuItemRecord;
-    };
-
-const numberFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const FALLBACK_IMAGE =
+  "https://placehold.co/320x240/edf2f7/1f2933?text=Menu+preview";
 
 const defaultHeaders = {
   "Content-Type": "application/json",
@@ -111,66 +72,80 @@ async function fetchJSON<T>(
   return response.json() as Promise<T>;
 }
 
+function createItemDraft(item?: MenuItemRecord | null): ItemDraft {
+  if (!item) {
+    return {
+      nameEn: "",
+      nameMm: "",
+      descriptionEn: "",
+      descriptionMm: "",
+      placeholderIcon: "",
+      price: "",
+      isAvailable: true,
+      allowUserNotes: false,
+    };
+  }
+
+  return {
+    nameEn: item.nameEn,
+    nameMm: item.nameMm ?? "",
+    descriptionEn: item.descriptionEn ?? "",
+    descriptionMm: item.descriptionMm ?? "",
+    placeholderIcon: item.placeholderIcon ?? "",
+    price: item.price.toString(),
+    isAvailable: item.isAvailable,
+    allowUserNotes: item.allowUserNotes,
+  };
+}
+
+function createCategoryDraft(category?: MenuCategoryRecord | null): CategoryDraft {
+  if (!category) {
+    return {
+      nameEn: "",
+      nameMm: "",
+      isActive: true,
+    };
+  }
+
+  return {
+    nameEn: category.nameEn,
+    nameMm: category.nameMm ?? "",
+    isActive: category.isActive,
+  };
+}
+
+function nextDisplayOrder(records: { displayOrder: number }[]) {
+  if (records.length === 0) return 0;
+  const max = Math.max(...records.map((record) => record.displayOrder ?? 0));
+  return max + 1;
+}
+
 export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
   const [menu, setMenu] = useState<MenuCategoryRecord[]>(initialMenu);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     initialMenu[0]?.id ?? null
   );
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(
+    initialMenu[0]?.items?.[0]?.id ?? null
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(
+    createCategoryDraft()
+  );
+  const [previewLocale, setPreviewLocale] = useState<"en" | "mm">("en");
 
-  const [categoryDialog, setCategoryDialog] =
-    useState<CategoryDialogState>(null);
-  const [itemDialog, setItemDialog] = useState<ItemDialogState>(null);
-  const [groupDialog, setGroupDialog] = useState<GroupDialogState>(null);
-  const [optionDialog, setOptionDialog] = useState<OptionDialogState>(null);
-  const [imageDialog, setImageDialog] = useState<ImageDialogState>(null);
+  const localize = useCallback(
+    (en: string | null | undefined, mm?: string | null) => {
+      if (previewLocale === "mm" && mm && mm.trim().length > 0) {
+        return mm;
+      }
+      return en ?? "";
+    },
+    [previewLocale]
+  );
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const refreshMenu = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      const data = await fetchJSON<{ menu: MenuCategoryRecord[] }>(
-        "/api/admin/menu/tree",
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
-      setMenu(data.menu ?? []);
-      if (data.menu.length === 0) {
-        setSelectedCategoryId(null);
-        setSelectedItemId(null);
-      } else if (
-        selectedCategoryId &&
-        !data.menu.some((category) => category.id === selectedCategoryId)
-      ) {
-        setSelectedCategoryId(data.menu[0]?.id ?? null);
-        setSelectedItemId(null);
-      } else if (selectedCategoryId) {
-        const activeCategory = data.menu.find(
-          (category) => category.id === selectedCategoryId
-        );
-        if (
-          activeCategory &&
-          selectedItemId &&
-          !activeCategory.items.some((item) => item.id === selectedItemId)
-        ) {
-          setSelectedItemId(
-            activeCategory.items.length > 0
-              ? activeCategory.items[0].id
-              : null
-          );
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(error instanceof Error ? error.message : "Failed to refresh menu");
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [selectedCategoryId, selectedItemId]);
 
   const selectedCategory = useMemo(() => {
     if (!selectedCategoryId) return null;
@@ -184,259 +159,253 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
     );
   }, [selectedCategory, selectedItemId]);
 
-  const handleCreateOrEditCategory = useCallback(
-    async (values: {
-      nameEn: string;
-      nameMm?: string;
-      displayOrder?: number;
-      isActive?: boolean;
-    }) => {
-      if (categoryDialog?.mode === "edit" && categoryDialog.category) {
-        await fetchJSON<{ category: MenuCategoryRecord }>(
-          `/api/admin/menu/categories/${categoryDialog.category.id}`,
-          {
-            method: "PATCH",
-            headers: defaultHeaders,
-            body: JSON.stringify(values),
-          }
-        );
-        toast.success("Category updated");
-      } else {
-        await fetchJSON<{ category: MenuCategoryRecord }>(
-          "/api/admin/menu/categories",
-          {
-            method: "POST",
-            headers: defaultHeaders,
-            body: JSON.stringify(values),
-          }
-        );
-        toast.success("Category created");
-      }
-      await refreshMenu();
-      setCategoryDialog(null);
-    },
-    [categoryDialog, refreshMenu]
+  const [itemDraft, setItemDraft] = useState<ItemDraft>(
+    createItemDraft(selectedItem)
   );
 
-  const handleDeleteCategory = useCallback(
-    async (categoryId: string) => {
-      if (
-        !window.confirm(
-          "Deleting this category will remove all menu items under it. Continue?"
-        )
-      ) {
-        return;
-      }
+  useEffect(() => {
+    setItemDraft(createItemDraft(selectedItem));
+  }, [selectedItemId, selectedItem]);
 
-      await fetchJSON<{ success: boolean }>(
+  useEffect(() => {
+    if (!selectedCategory && menu.length > 0) {
+      setSelectedCategoryId(menu[0]?.id ?? null);
+      setSelectedItemId(menu[0]?.items?.[0]?.id ?? null);
+    }
+  }, [menu, selectedCategory]);
+
+  const refreshMenu = useCallback(
+    async (nextSelection?: { categoryId?: string; itemId?: string }) => {
+      setIsRefreshing(true);
+      try {
+        const data = await fetchJSON<{ menu: MenuCategoryRecord[] }>(
+          "/api/admin/menu/tree",
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+        setMenu(data.menu ?? []);
+
+        const categoryId =
+          nextSelection?.categoryId ??
+          selectedCategoryId ??
+          data.menu[0]?.id ??
+          null;
+
+        const category = data.menu.find((item) => item.id === categoryId);
+        const itemId =
+          nextSelection?.itemId ??
+          selectedItemId ??
+          category?.items?.[0]?.id ??
+          null;
+
+        setSelectedCategoryId(categoryId ?? null);
+        setSelectedItemId(itemId ?? null);
+      } catch (error) {
+        console.error(error);
+        toast.error(
+          error instanceof Error ? error.message : "Failed to refresh menu"
+        );
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    [selectedCategoryId, selectedItemId]
+  );
+
+  const handleCategorySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const payload = {
+      nameEn: categoryDraft.nameEn.trim(),
+      nameMm: categoryDraft.nameMm.trim() || undefined,
+      isActive: categoryDraft.isActive,
+      displayOrder: nextDisplayOrder(menu),
+    };
+
+    try {
+      const { category } = await fetchJSON<{ category: MenuCategoryRecord }>(
+        "/api/admin/menu/categories",
+        {
+          method: "POST",
+          headers: defaultHeaders,
+          body: JSON.stringify(payload),
+        }
+      );
+
+      toast.success("Category created");
+      setCategoryDraft(createCategoryDraft());
+      setCategoryFormOpen(false);
+      await refreshMenu({ categoryId: category.id, itemId: null });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create category"
+      );
+    }
+  };
+
+  const handleCategoryEdit = async (
+    categoryId: string,
+    updates: Partial<CategoryDraft>
+  ) => {
+    try {
+      await fetchJSON<{ category: MenuCategoryRecord }>(
         `/api/admin/menu/categories/${categoryId}`,
         {
-          method: "DELETE",
+          method: "PATCH",
+          headers: defaultHeaders,
+          body: JSON.stringify({
+            nameEn: updates.nameEn?.trim(),
+            nameMm: updates.nameMm?.trim() || undefined,
+            isActive: updates.isActive,
+          }),
         }
+      );
+      toast.success("Category updated");
+      await refreshMenu();
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update category"
+      );
+    }
+  };
+
+  const handleCategoryDelete = async (categoryId: string) => {
+    if (
+      !window.confirm(
+        "Deleting this category removes all menu items under it. Continue?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await fetchJSON<{ success: boolean }>(
+        `/api/admin/menu/categories/${categoryId}`,
+        { method: "DELETE" }
       );
       toast.success("Category deleted");
       await refreshMenu();
-    },
-    [refreshMenu]
-  );
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete category"
+      );
+    }
+  };
 
-  const handleCreateOrEditItem = useCallback(
-    async (
-      categoryId: string,
-      values: {
-        nameEn: string;
-        nameMm?: string;
-        descriptionEn?: string;
-        descriptionMm?: string;
-        placeholderIcon?: string;
-        price: number;
-        isAvailable?: boolean;
-        allowUserNotes?: boolean;
-        displayOrder?: number;
-      }
-    ) => {
-      if (itemDialog?.mode === "edit" && itemDialog.item) {
-        await fetchJSON<{ item: MenuItemRecord }>(
-          `/api/admin/menu/items/${itemDialog.item.id}`,
+  const isExistingItem = Boolean(selectedItem);
+
+  const handleItemSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedCategory) {
+      toast.error("Select a category first");
+      return;
+    }
+
+    const priceValue = Number(itemDraft.price);
+    if (Number.isNaN(priceValue) || priceValue < 0) {
+      toast.error("Price must be a non-negative number");
+      return;
+    }
+
+    const payload = {
+      nameEn: itemDraft.nameEn.trim(),
+      nameMm: itemDraft.nameMm.trim() || undefined,
+      descriptionEn: itemDraft.descriptionEn.trim() || undefined,
+      descriptionMm: itemDraft.descriptionMm.trim() || undefined,
+      placeholderIcon: itemDraft.placeholderIcon.trim() || undefined,
+      price: priceValue,
+      isAvailable: itemDraft.isAvailable,
+      allowUserNotes: itemDraft.allowUserNotes,
+    };
+
+    try {
+      if (isExistingItem && selectedItem) {
+        const { item } = await fetchJSON<{ item: MenuItemRecord }>(
+          `/api/admin/menu/items/${selectedItem.id}`,
           {
             method: "PATCH",
             headers: defaultHeaders,
             body: JSON.stringify({
-              ...values,
-              categoryId,
+              ...payload,
+              categoryId: selectedCategory.id,
             }),
           }
         );
         toast.success("Menu item updated");
+        await refreshMenu({
+          categoryId: selectedCategory.id,
+          itemId: item.id,
+        });
       } else {
-        await fetchJSON<{ item: MenuItemRecord }>(
+        const displayOrder = nextDisplayOrder(selectedCategory.items);
+        const { item } = await fetchJSON<{ item: MenuItemRecord }>(
           "/api/admin/menu/items",
           {
             method: "POST",
             headers: defaultHeaders,
             body: JSON.stringify({
-              ...values,
-              categoryId,
+              ...payload,
+              categoryId: selectedCategory.id,
+              displayOrder,
             }),
           }
         );
         toast.success("Menu item created");
+        await refreshMenu({
+          categoryId: selectedCategory.id,
+          itemId: item.id,
+        });
       }
-      await refreshMenu();
-      setItemDialog(null);
-    },
-    [itemDialog, refreshMenu]
-  );
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save menu item"
+      );
+    }
+  };
 
-  const handleDeleteItem = useCallback(
-    async (itemId: string) => {
-      if (
-        !window.confirm(
-          "Deleting this menu item will remove all choice groups and options. Continue?"
-        )
-      ) {
-        return;
-      }
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return;
+    if (
+      !window.confirm(
+        "Deleting this menu item removes all choice groups and options. Continue?"
+      )
+    ) {
+      return;
+    }
 
+    try {
       await fetchJSON<{ success: boolean }>(
-        `/api/admin/menu/items/${itemId}`,
-        {
-          method: "DELETE",
-        }
+        `/api/admin/menu/items/${selectedItem.id}`,
+        { method: "DELETE" }
       );
       toast.success("Menu item deleted");
       await refreshMenu();
-    },
-    [refreshMenu]
-  );
-
-  const handleCreateOrEditGroup = useCallback(
-    async (
-      menuItemId: string,
-      values: {
-        titleEn: string;
-        titleMm?: string;
-        minSelect: number;
-        maxSelect: number;
-        isRequired?: boolean;
-        displayOrder?: number;
-      }
-    ) => {
-      if (groupDialog?.mode === "edit" && groupDialog.group) {
-        await fetchJSON(`/api/admin/menu/choice-groups/${groupDialog.group.id}`, {
-          method: "PATCH",
-          headers: defaultHeaders,
-          body: JSON.stringify({
-            ...values,
-            menuItemId,
-          }),
-        });
-        toast.success("Choice group updated");
-      } else {
-        await fetchJSON("/api/admin/menu/choice-groups", {
-          method: "POST",
-          headers: defaultHeaders,
-          body: JSON.stringify({
-            ...values,
-            menuItemId,
-          }),
-        });
-        toast.success("Choice group created");
-      }
-      await refreshMenu();
-      setGroupDialog(null);
-    },
-    [groupDialog, refreshMenu]
-  );
-
-  const handleDeleteGroup = useCallback(
-    async (groupId: string) => {
-      if (
-        !window.confirm(
-          "Deleting this choice group will remove all options inside it. Continue?"
-        )
-      ) {
-        return;
-      }
-
-      await fetchJSON<{ success: boolean }>(
-        `/api/admin/menu/choice-groups/${groupId}`,
-        {
-          method: "DELETE",
-        }
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete menu item"
       );
-      toast.success("Choice group deleted");
-      await refreshMenu();
-    },
-    [refreshMenu]
-  );
+    }
+  };
 
-  const handleCreateOrEditOption = useCallback(
-    async (
-      choiceGroupId: string,
-      values: {
-        nameEn: string;
-        nameMm?: string;
-        extraPrice: number;
-        isAvailable?: boolean;
-        displayOrder?: number;
-      }
-    ) => {
-      if (optionDialog?.mode === "edit" && optionDialog.option) {
-        await fetchJSON(
-          `/api/admin/menu/choice-options/${optionDialog.option.id}`,
-          {
-            method: "PATCH",
-            headers: defaultHeaders,
-            body: JSON.stringify({
-              ...values,
-              choiceGroupId,
-            }),
-          }
-        );
-        toast.success("Choice option updated");
-      } else {
-        await fetchJSON("/api/admin/menu/choice-options", {
-          method: "POST",
-          headers: defaultHeaders,
-          body: JSON.stringify({
-            ...values,
-            choiceGroupId,
-          }),
-        });
-        toast.success("Choice option created");
-      }
-      await refreshMenu();
-      setOptionDialog(null);
-    },
-    [optionDialog, refreshMenu]
-  );
-
-  const handleDeleteOption = useCallback(
-    async (optionId: string) => {
-      await fetchJSON<{ success: boolean }>(
-        `/api/admin/menu/choice-options/${optionId}`,
-        {
-          method: "DELETE",
-        }
-      );
-      toast.success("Choice option removed");
-      await refreshMenu();
-    },
-    [refreshMenu]
-  );
-
-  const handleImageUpload = useCallback(
-    async (itemId: string, file: File) => {
-      const formData = new FormData();
-      formData.append("menuItemId", itemId);
-      formData.append("file", file);
-
+  const handleImageUpload = async (file: File) => {
+    if (!selectedItem) {
+      toast("Save the item before uploading an image.");
+      return;
+    }
+    const formData = new FormData();
+    formData.append("menuItemId", selectedItem.id);
+    formData.append("file", file);
+    try {
       const response = await fetch("/api/admin/menu/images", {
         method: "POST",
         body: formData,
       });
-
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(
@@ -445,1354 +414,1301 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
             : "Image upload failed"
         );
       }
-
-      await refreshMenu();
       toast.success("Image updated");
-    },
-    [refreshMenu]
-  );
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem.id,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload image"
+      );
+    }
+  };
 
-  const handleImageDelete = useCallback(
-    async (itemId: string) => {
+  const handleImageDelete = async () => {
+    if (!selectedItem) return;
+    try {
       await fetchJSON<{ success: boolean }>(
-        `/api/admin/menu/images?menuItemId=${itemId}`,
-        {
-          method: "DELETE",
-        }
+        `/api/admin/menu/images?menuItemId=${selectedItem.id}`,
+        { method: "DELETE" }
       );
       toast.success("Image removed");
-      await refreshMenu();
-    },
-    [refreshMenu]
-  );
-
-  return (
-    <div className="grid gap-6 md:grid-cols-[260px_1fr]">
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Categories</h2>
-          <Button
-            size="sm"
-            onClick={() => setCategoryDialog({ mode: "create" })}
-          >
-            New
-          </Button>
-        </div>
-        <div className="space-y-2">
-          {menu.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 p-6 text-sm text-slate-500">
-              No categories yet. Create your first category to start building the
-              menu.
-            </div>
-          ) : (
-            menu.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategoryId(category.id);
-                  setSelectedItemId(
-                    category.items.length > 0
-                      ? category.items[0].id
-                      : null
-                  );
-                }}
-                className={cn(
-                  "w-full rounded-lg border px-4 py-3 text-left transition",
-                  selectedCategoryId === category.id
-                    ? "border-emerald-500 bg-emerald-50"
-                    : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {category.nameEn}
-                    </p>
-                    {category.nameMm && (
-                      <p className="text-xs text-slate-500">
-                        {category.nameMm}
-                      </p>
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-medium",
-                      category.isActive
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-200 text-slate-600"
-                    )}
-                  >
-                    {category.isActive ? "Active" : "Hidden"}
-                  </span>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-        <div>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={refreshMenu}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </Button>
-        </div>
-      </section>
-
-      <section className="space-y-6">
-        {selectedCategory ? (
-          <Fragment>
-            <header className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h1 className="text-xl font-semibold text-slate-900">
-                    {selectedCategory.nameEn}
-                  </h1>
-                  <p className="text-sm text-slate-600">
-                    Control visibility, order, and localized names for this category.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      setCategoryDialog({
-                        mode: "edit",
-                        category: selectedCategory,
-                      })
-                    }
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleDeleteCategory(selectedCategory.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-
-              <dl className="grid gap-2 md:grid-cols-2">
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Display order
-                  </dt>
-                  <dd className="text-sm text-slate-900">
-                    {selectedCategory.displayOrder}
-                  </dd>
-                </div>
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Burmese label
-                  </dt>
-                  <dd className="text-sm text-slate-900">
-                    {selectedCategory.nameMm ?? "—"}
-                  </dd>
-                </div>
-              </dl>
-            </header>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Menu items
-                </h2>
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    setItemDialog({
-                      mode: "create",
-                      categoryId: selectedCategory.id,
-                    })
-                  }
-                >
-                  Add item
-                </Button>
-              </div>
-
-              {selectedCategory.items.length === 0 ? (
-                <div className="mt-5 rounded-lg border border-dashed border-slate-200 p-6 text-sm text-slate-500">
-                  No menu items in this category yet. Add your first dish.
-                </div>
-              ) : (
-                <div className="mt-5 space-y-4">
-                  {selectedCategory.items.map((item) => (
-                    <article
-                      key={item.id}
-                      className={cn(
-                        "rounded-lg border border-slate-200 p-4 transition",
-                        selectedItem?.id === item.id
-                          ? "border-emerald-400 bg-emerald-50/50"
-                          : "bg-white"
-                      )}
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base font-semibold text-slate-900">
-                              {item.nameEn}
-                            </h3>
-                            {!item.isAvailable && (
-                              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
-                                Hidden
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-slate-600">
-                            {item.descriptionEn ?? "No description"}
-                          </p>
-                          <div className="text-sm text-slate-900">
-                            Base price: ฿{numberFormatter.format(item.price)}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            Display order: {item.displayOrder}
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedItemId(item.id);
-                              setItemDialog({
-                                mode: "edit",
-                                categoryId: selectedCategory.id,
-                                item,
-                              });
-                            }}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedItemId(item.id);
-                              setGroupDialog({
-                                mode: "create",
-                                menuItemId: item.id,
-                              });
-                            }}
-                          >
-                            Add choice group
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setImageDialog({ item });
-                            }}
-                          >
-                            {item.hasImage ? "Replace image" : "Add image"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteItem(item.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-
-                      {item.choiceGroups.length > 0 && (
-                        <div className="mt-4 space-y-4">
-                          {item.choiceGroups.map((group) => (
-                            <div
-                              key={group.id}
-                              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                            >
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                  <p className="text-sm font-semibold text-slate-900">
-                                    {group.titleEn}
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    Min {group.minSelect} · Max {group.maxSelect}{" "}
-                                    {group.isRequired ? "· Required" : "· Optional"}
-                                  </p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      setGroupDialog({
-                                        mode: "edit",
-                                        menuItemId: item.id,
-                                        group,
-                                      })
-                                    }
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      setOptionDialog({
-                                        mode: "create",
-                                        choiceGroupId: group.id,
-                                      })
-                                    }
-                                  >
-                                    Add option
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleDeleteGroup(group.id)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {group.options.length === 0 ? (
-                                <div className="mt-3 rounded border border-dashed border-slate-200 p-3 text-xs text-slate-500">
-                                  No options yet.
-                                </div>
-                              ) : (
-                                <ul className="mt-3 space-y-2">
-                                  {group.options.map((option) => (
-                                    <li
-                                      key={option.id}
-                                      className="flex items-center justify-between rounded border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    >
-                                      <div>
-                                        <p className="font-medium text-slate-900">
-                                          {option.nameEn}
-                                        </p>
-                                        <p className="text-xs text-slate-500">
-                                          Extra: ฿
-                                          {numberFormatter.format(option.extraPrice)}
-                                        </p>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() =>
-                                            setOptionDialog({
-                                              mode: "edit",
-                                              choiceGroupId: group.id,
-                                              option,
-                                            })
-                                          }
-                                        >
-                                          Edit
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() =>
-                                            handleDeleteOption(option.id)
-                                          }
-                                        >
-                                          Delete
-                                        </Button>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Fragment>
-        ) : (
-          <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
-            Select a category to manage its items, or create a new category.
-          </div>
-        )}
-      </section>
-
-      <CategoryDialog
-        state={categoryDialog}
-        onClose={() => setCategoryDialog(null)}
-        onSubmit={handleCreateOrEditCategory}
-      />
-
-      <ItemDialog
-        state={itemDialog}
-        onClose={() => setItemDialog(null)}
-        onSubmit={handleCreateOrEditItem}
-      />
-
-      <GroupDialog
-        state={groupDialog}
-        onClose={() => setGroupDialog(null)}
-        onSubmit={handleCreateOrEditGroup}
-      />
-
-      <OptionDialog
-        state={optionDialog}
-        onClose={() => setOptionDialog(null)}
-        onSubmit={handleCreateOrEditOption}
-      />
-
-      <ImageDialog
-        state={imageDialog}
-        onClose={() => setImageDialog(null)}
-        onUpload={handleImageUpload}
-        onDelete={handleImageDelete}
-        fileInputRef={fileInputRef}
-      />
-    </div>
-  );
-}
-
-type CategoryDialogProps = {
-  state: CategoryDialogState;
-  onClose: () => void;
-  onSubmit: (values: {
-    nameEn: string;
-    nameMm?: string;
-    displayOrder?: number;
-    isActive?: boolean;
-  }) => Promise<void>;
-};
-
-function CategoryDialog({ state, onClose, onSubmit }: CategoryDialogProps) {
-  const [formState, setFormState] = useState({
-    nameEn: "",
-    nameMm: "",
-    displayOrder: 0,
-    isActive: true,
-  });
-  const [loading, setLoading] = useState(false);
-
-  const isOpen = state !== null;
-
-  const isEdit = state?.mode === "edit";
-
-  useEffect(() => {
-    if (state?.mode === "edit") {
-      const category = state.category;
-      setFormState({
-        nameEn: category.nameEn,
-        nameMm: category.nameMm ?? "",
-        displayOrder: category.displayOrder,
-        isActive: category.isActive,
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem.id,
       });
-    } else if (state?.mode === "create") {
-      setFormState({
-        nameEn: "",
-        nameMm: "",
-        displayOrder: 0,
-        isActive: true,
-      });
-    }
-  }, [state]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    try {
-      await onSubmit({
-        nameEn: formState.nameEn.trim(),
-        nameMm: formState.nameMm.trim() || undefined,
-        displayOrder: Number.isFinite(formState.displayOrder)
-          ? formState.displayOrder
-          : 0,
-        isActive: formState.isActive,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save category"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit category" : "Create category"}
-          </DialogTitle>
-          <DialogDescription>
-            Provide localized labels and control visibility for this category.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              English name
-            </label>
-            <Input
-              value={formState.nameEn}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  nameEn: event.target.value,
-                }))
-              }
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Burmese name
-            </label>
-            <Input
-              value={formState.nameMm}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  nameMm: event.target.value,
-                }))
-              }
-              placeholder="Optional"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Display order
-              </label>
-              <Input
-                type="number"
-                value={formState.displayOrder}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    displayOrder: Number(event.target.value),
-                  }))
-                }
-                min={0}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Visibility
-              </label>
-              <select
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                value={formState.isActive ? "true" : "false"}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    isActive: event.target.value === "true",
-                  }))
-                }
-              >
-                <option value="true">Active</option>
-                <option value="false">Hidden</option>
-              </select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type ItemDialogProps = {
-  state: ItemDialogState;
-  onClose: () => void;
-  onSubmit: (
-    categoryId: string,
-    values: {
-      nameEn: string;
-      nameMm?: string;
-      descriptionEn?: string;
-      descriptionMm?: string;
-      placeholderIcon?: string;
-      price: number;
-      isAvailable?: boolean;
-      allowUserNotes?: boolean;
-      displayOrder?: number;
-    }
-  ) => Promise<void>;
-};
-
-function ItemDialog({ state, onClose, onSubmit }: ItemDialogProps) {
-  const [formState, setFormState] = useState({
-    nameEn: "",
-    nameMm: "",
-    descriptionEn: "",
-    descriptionMm: "",
-    placeholderIcon: "",
-    price: 0,
-    isAvailable: true,
-    allowUserNotes: false,
-    displayOrder: 0,
-  });
-  const [loading, setLoading] = useState(false);
-
-  const isOpen = state !== null;
-  const isEdit = state?.mode === "edit";
-
-  useEffect(() => {
-    if (state?.mode === "edit") {
-      const item = state.item;
-      setFormState({
-        nameEn: item.nameEn,
-        nameMm: item.nameMm ?? "",
-        descriptionEn: item.descriptionEn ?? "",
-        descriptionMm: item.descriptionMm ?? "",
-        placeholderIcon: item.placeholderIcon ?? "",
-        price: item.price,
-        isAvailable: item.isAvailable,
-        allowUserNotes: item.allowUserNotes,
-        displayOrder: item.displayOrder,
-      });
-    } else if (state?.mode === "create") {
-      setFormState({
-        nameEn: "",
-        nameMm: "",
-        descriptionEn: "",
-        descriptionMm: "",
-        placeholderIcon: "",
-        price: 0,
-        isAvailable: true,
-        allowUserNotes: false,
-        displayOrder: 0,
-      });
-    }
-  }, [state]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!state) return;
-
-    setLoading(true);
-    try {
-      await onSubmit(state.categoryId, {
-        nameEn: formState.nameEn.trim(),
-        nameMm: formState.nameMm.trim() || undefined,
-        descriptionEn: formState.descriptionEn.trim() || undefined,
-        descriptionMm: formState.descriptionMm.trim() || undefined,
-        placeholderIcon: formState.placeholderIcon.trim() || undefined,
-        price: Number(formState.price),
-        isAvailable: formState.isAvailable,
-        allowUserNotes: formState.allowUserNotes,
-        displayOrder: Number.isFinite(formState.displayOrder)
-          ? formState.displayOrder
-          : 0,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save menu item"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit menu item" : "Add menu item"}</DialogTitle>
-          <DialogDescription>
-            Configure pricing, notes, and availability. Choice groups can be added after saving.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                English name
-              </label>
-              <Input
-                value={formState.nameEn}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    nameEn: event.target.value,
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Burmese name
-              </label>
-              <Input
-                value={formState.nameMm}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    nameMm: event.target.value,
-                  }))
-                }
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Base price (THB)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={formState.price}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    price: Number(event.target.value),
-                  }))
-                }
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Placeholder icon
-              </label>
-              <Input
-                value={formState.placeholderIcon}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    placeholderIcon: event.target.value,
-                  }))
-                }
-                placeholder="Optional emoji or icon reference"
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                English description
-              </label>
-              <Textarea
-                value={formState.descriptionEn}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    descriptionEn: event.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Burmese description
-              </label>
-              <Textarea
-                value={formState.descriptionMm}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    descriptionMm: event.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Display order
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={formState.displayOrder}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    displayOrder: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Visibility
-              </label>
-              <select
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                value={formState.isAvailable ? "true" : "false"}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    isAvailable: event.target.value === "true",
-                  }))
-                }
-              >
-                <option value="true">Available</option>
-                <option value="false">Hidden</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="allow-notes"
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              checked={formState.allowUserNotes}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  allowUserNotes: event.target.checked,
-                }))
-              }
-            />
-            <label htmlFor="allow-notes" className="text-sm text-slate-700">
-              Allow customer notes
-            </label>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type GroupDialogProps = {
-  state: GroupDialogState;
-  onClose: () => void;
-  onSubmit: (
-    menuItemId: string,
-    values: {
-      titleEn: string;
-      titleMm?: string;
-      minSelect: number;
-      maxSelect: number;
-      isRequired?: boolean;
-      displayOrder?: number;
-    }
-  ) => Promise<void>;
-};
-
-function GroupDialog({ state, onClose, onSubmit }: GroupDialogProps) {
-  const [formState, setFormState] = useState({
-    titleEn: "",
-    titleMm: "",
-    minSelect: 0,
-    maxSelect: 1,
-    isRequired: false,
-    displayOrder: 0,
-  });
-  const [loading, setLoading] = useState(false);
-
-  const isOpen = state !== null;
-  const isEdit = state?.mode === "edit";
-
-  useEffect(() => {
-    if (state?.mode === "edit") {
-      const group = state.group;
-      setFormState({
-        titleEn: group.titleEn,
-        titleMm: group.titleMm ?? "",
-        minSelect: group.minSelect,
-        maxSelect: group.maxSelect,
-        isRequired: group.isRequired,
-        displayOrder: group.displayOrder,
-      });
-    } else if (state?.mode === "create") {
-      setFormState({
-        titleEn: "",
-        titleMm: "",
-        minSelect: 0,
-        maxSelect: 1,
-        isRequired: false,
-        displayOrder: 0,
-      });
-    }
-  }, [state]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!state) return;
-
-    if (formState.maxSelect < formState.minSelect) {
-      toast.error("Max select must be greater than or equal to min select");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await onSubmit(state.menuItemId, {
-        titleEn: formState.titleEn.trim(),
-        titleMm: formState.titleMm.trim() || undefined,
-        minSelect: Number(formState.minSelect),
-        maxSelect: Number(formState.maxSelect),
-        isRequired: formState.isRequired,
-        displayOrder: Number.isFinite(formState.displayOrder)
-          ? formState.displayOrder
-          : 0,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save choice group"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit choice group" : "Add choice group"}
-          </DialogTitle>
-          <DialogDescription>
-            Define how many options customers can pick for this group.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              English title
-            </label>
-            <Input
-              value={formState.titleEn}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  titleEn: event.target.value,
-                }))
-              }
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Burmese title
-            </label>
-            <Input
-              value={formState.titleMm}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  titleMm: event.target.value,
-                }))
-              }
-              placeholder="Optional"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Min select
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={formState.minSelect}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    minSelect: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Max select
-              </label>
-              <Input
-                type="number"
-                min={1}
-                value={formState.maxSelect}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    maxSelect: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Display order
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={formState.displayOrder}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    displayOrder: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Requirement
-              </label>
-              <select
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                value={formState.isRequired ? "true" : "false"}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    isRequired: event.target.value === "true",
-                  }))
-                }
-              >
-                <option value="false">Optional</option>
-                <option value="true">Required</option>
-              </select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type OptionDialogProps = {
-  state: OptionDialogState;
-  onClose: () => void;
-  onSubmit: (
-    choiceGroupId: string,
-    values: {
-      nameEn: string;
-      nameMm?: string;
-      extraPrice: number;
-      isAvailable?: boolean;
-      displayOrder?: number;
-    }
-  ) => Promise<void>;
-};
-
-function OptionDialog({ state, onClose, onSubmit }: OptionDialogProps) {
-  const [formState, setFormState] = useState({
-    nameEn: "",
-    nameMm: "",
-    extraPrice: 0,
-    isAvailable: true,
-    displayOrder: 0,
-  });
-  const [loading, setLoading] = useState(false);
-
-  const isOpen = state !== null;
-  const isEdit = state?.mode === "edit";
-
-  useEffect(() => {
-    if (state?.mode === "edit") {
-      const option = state.option;
-      setFormState({
-        nameEn: option.nameEn,
-        nameMm: option.nameMm ?? "",
-        extraPrice: option.extraPrice,
-        isAvailable: option.isAvailable,
-        displayOrder: option.displayOrder,
-      });
-    } else if (state?.mode === "create") {
-      setFormState({
-        nameEn: "",
-        nameMm: "",
-        extraPrice: 0,
-        isAvailable: true,
-        displayOrder: 0,
-      });
-    }
-  }, [state]);
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!state) return;
-
-    setLoading(true);
-    try {
-      await onSubmit(state.choiceGroupId, {
-        nameEn: formState.nameEn.trim(),
-        nameMm: formState.nameMm.trim() || undefined,
-        extraPrice: Number(formState.extraPrice),
-        isAvailable: formState.isAvailable,
-        displayOrder: Number.isFinite(formState.displayOrder)
-          ? formState.displayOrder
-          : 0,
-      });
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save choice option"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit option" : "Add option"}
-          </DialogTitle>
-          <DialogDescription>
-            Extra price is in THB and will be added to the base price.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              English name
-            </label>
-            <Input
-              value={formState.nameEn}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  nameEn: event.target.value,
-                }))
-              }
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Burmese name
-            </label>
-            <Input
-              value={formState.nameMm}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  nameMm: event.target.value,
-                }))
-              }
-              placeholder="Optional"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Extra price (THB)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={formState.extraPrice}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    extraPrice: Number(event.target.value),
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Availability
-              </label>
-              <select
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                value={formState.isAvailable ? "true" : "false"}
-                onChange={(event) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    isAvailable: event.target.value === "true",
-                  }))
-                }
-              >
-                <option value="true">Available</option>
-                <option value="false">Hidden</option>
-              </select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Display order
-            </label>
-            <Input
-              type="number"
-              min={0}
-              value={formState.displayOrder}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  displayOrder: Number(event.target.value),
-                }))
-              }
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type ImageDialogProps = {
-  state: ImageDialogState;
-  onClose: () => void;
-  onUpload: (itemId: string, file: File) => Promise<void>;
-  onDelete: (itemId: string) => Promise<void>;
-  fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
-};
-
-function ImageDialog({
-  state,
-  onClose,
-  onUpload,
-  onDelete,
-  fileInputRef,
-}: ImageDialogProps) {
-  const [loading, setLoading] = useState(false);
-  const isOpen = state !== null;
-  const item = state?.item;
-
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!item || !file) return;
-    setLoading(true);
-    try {
-      await onUpload(item.id, file);
-      onClose();
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Image upload failed"
-      );
-    } finally {
-      setLoading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
-  const handleRemove = async () => {
-    if (!item) return;
-    setLoading(true);
-    try {
-      await onDelete(item.id);
-      onClose();
     } catch (error) {
       console.error(error);
       toast.error(
         error instanceof Error ? error.message : "Failed to remove image"
       );
-    } finally {
-      setLoading(false);
     }
   };
 
+  const handleCreateGroup = async (values: {
+    titleEn: string;
+    titleMm?: string;
+    minSelect: number;
+    maxSelect: number;
+    isRequired: boolean;
+  }) => {
+    if (!selectedItem) return;
+    try {
+      await fetchJSON<{ group: MenuChoiceGroup }>(
+        "/api/admin/menu/choice-groups",
+        {
+          method: "POST",
+          headers: defaultHeaders,
+          body: JSON.stringify({
+            ...values,
+            menuItemId: selectedItem.id,
+            displayOrder: nextDisplayOrder(selectedItem.choiceGroups),
+          }),
+        }
+      );
+      toast.success("Choice group created");
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem.id,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create choice group"
+      );
+    }
+  };
+
+  const handleUpdateGroup = async (
+    group: MenuChoiceGroup,
+    values: Partial<{
+      titleEn: string;
+      titleMm: string;
+      minSelect: number;
+      maxSelect: number;
+      isRequired: boolean;
+    }>
+  ) => {
+    try {
+      await fetchJSON<{ group: MenuChoiceGroup }>(
+        `/api/admin/menu/choice-groups/${group.id}`,
+        {
+          method: "PATCH",
+          headers: defaultHeaders,
+          body: JSON.stringify(values),
+        }
+      );
+      toast.success("Choice group updated");
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem?.id ?? null,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update choice group"
+      );
+    }
+  };
+
+  const handleDeleteGroup = async (group: MenuChoiceGroup) => {
+    if (
+      !window.confirm(
+        "Deleting this group removes all linked options. Continue?"
+      )
+    ) {
+      return;
+    }
+    try {
+      await fetchJSON<{ success: boolean }>(
+        `/api/admin/menu/choice-groups/${group.id}`,
+        { method: "DELETE" }
+      );
+      toast.success("Choice group deleted");
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem?.id ?? null,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete choice group"
+      );
+    }
+  };
+
+  const handleCreateOption = async (
+    group: MenuChoiceGroup,
+    values: {
+      nameEn: string;
+      nameMm?: string;
+      extraPrice: number;
+      isAvailable: boolean;
+    }
+  ) => {
+    try {
+      await fetchJSON<{ option: MenuChoiceOption }>(
+        "/api/admin/menu/choice-options",
+        {
+          method: "POST",
+          headers: defaultHeaders,
+          body: JSON.stringify({
+            ...values,
+            choiceGroupId: group.id,
+            displayOrder: nextDisplayOrder(group.options),
+          }),
+        }
+      );
+      toast.success("Option added");
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem?.id ?? null,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add option"
+      );
+    }
+  };
+
+  const handleUpdateOption = async (
+    option: MenuChoiceOption,
+    values: Partial<{
+      nameEn: string;
+      nameMm: string;
+      extraPrice: number;
+      isAvailable: boolean;
+    }>
+  ) => {
+    try {
+      await fetchJSON<{ option: MenuChoiceOption }>(
+        `/api/admin/menu/choice-options/${option.id}`,
+        {
+          method: "PATCH",
+          headers: defaultHeaders,
+          body: JSON.stringify(values),
+        }
+      );
+      toast.success("Option updated");
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem?.id ?? null,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update option"
+      );
+    }
+  };
+
+  const handleDeleteOption = async (option: MenuChoiceOption) => {
+    if (!window.confirm("Remove this option?")) {
+      return;
+    }
+    try {
+      await fetchJSON<{ success: boolean }>(
+        `/api/admin/menu/choice-options/${option.id}`,
+        { method: "DELETE" }
+      );
+      toast.success("Option removed");
+      await refreshMenu({
+        categoryId: selectedCategory?.id,
+        itemId: selectedItem?.id ?? null,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove option"
+      );
+    }
+  };
+
+  const activeImage = selectedItem?.imageUrl || FALLBACK_IMAGE;
+  const computedPrice = (() => {
+    const base = Number(itemDraft.price) || 0;
+    if (!selectedItem) return base;
+    const optionExtras = selectedItem.choiceGroups.flatMap((group) =>
+      group.options.map((option) => option.extraPrice)
+    );
+    return base + optionExtras.reduce((acc, price) => acc + price, 0);
+  })();
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Manage image</DialogTitle>
-          <DialogDescription>
-            Upload a new hero image for this menu item. Images are cached aggressively, so replacing them generates a new URL automatically.
-          </DialogDescription>
-        </DialogHeader>
-        {item && (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              <p>
-                Current status:{" "}
-                <strong className="font-semibold text-slate-900">
-                  {item.hasImage ? "Image in use" : "No image"}
-                </strong>
-              </p>
-              {item.imageUrl && (
-                <a
-                  href={item.imageUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-block text-sm font-semibold text-emerald-600 hover:text-emerald-700"
-                >
-                  Preview current image →
-                </a>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={loading}
-              >
-                {loading ? "Uploading..." : "Select image"}
-              </Button>
-              {item.hasImage && (
-                <Button
-                  variant="ghost"
-                  onClick={handleRemove}
-                  disabled={loading}
-                >
-                  Remove image
-                </Button>
-              )}
-            </div>
+    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      <aside className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <header className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Categories</h2>
             <p className="text-xs text-slate-500">
-              PNG, JPEG, or WebP up to 8MB. Files are lightly optimized before upload.
+              Group items for the customer menu.
             </p>
           </div>
-        )}
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Close
+          <Button
+            size="sm"
+            variant={categoryFormOpen ? "secondary" : "outline"}
+            onClick={() => setCategoryFormOpen((prev) => !prev)}
+          >
+            {categoryFormOpen ? "Close" : "New"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </header>
+
+        {categoryFormOpen && (
+          <form
+            onSubmit={handleCategorySubmit}
+            className="space-y-3 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+          >
+            <Input
+              value={categoryDraft.nameEn}
+              onChange={(event) =>
+                setCategoryDraft((prev) => ({
+                  ...prev,
+                  nameEn: event.target.value,
+                }))
+              }
+              placeholder="English name *"
+              required
+            />
+            <Input
+              value={categoryDraft.nameMm}
+              onChange={(event) =>
+                setCategoryDraft((prev) => ({
+                  ...prev,
+                  nameMm: event.target.value,
+                }))
+              }
+              placeholder="Burmese name"
+            />
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={categoryDraft.isActive}
+                onChange={(event) =>
+                  setCategoryDraft((prev) => ({
+                    ...prev,
+                    isActive: event.target.checked,
+                  }))
+                }
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              Category visible to customers
+            </label>
+            <Button size="sm" type="submit" className="w-full">
+              Create category
+            </Button>
+          </form>
+        )}
+
+        <div className="space-y-2">
+          {menu.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-200 p-6 text-sm text-slate-500">
+              No categories yet. Create your first category to start.
+            </div>
+          ) : (
+            menu.map((category) => {
+              const isActive = category.id === selectedCategoryId;
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId(category.id);
+                    setSelectedItemId(category.items[0]?.id ?? null);
+                  }}
+                  className={cn(
+                    "w-full rounded-lg border px-4 py-3 text-left transition",
+                    isActive
+                      ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-emerald-300"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {localize(category.nameEn, category.nameMm)}
+                    </p>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-xs font-medium",
+                        category.isActive
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-200 text-slate-600"
+                      )}
+                    >
+                      {category.isActive ? "Active" : "Hidden"}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                    <span>{category.items.length} items</span>
+                    <button
+                      type="button"
+                      className="text-emerald-600 hover:text-emerald-700"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleCategoryEdit(category.id, {
+                          isActive: !category.isActive,
+                        });
+                      }}
+                    >
+                      {category.isActive ? "Hide" : "Activate"}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-2 text-xs text-rose-500 hover:text-rose-600"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleCategoryDelete(category.id);
+                    }}
+                  >
+                    Delete category
+                  </button>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => refreshMenu()}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? "Refreshing…" : "Refresh"}
+        </Button>
+      </aside>
+
+      <section className="space-y-6">
+        {selectedCategory ? (
+          <Fragment>
+            <header className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                {localize(selectedCategory.nameEn, selectedCategory.nameMm)}
+              </span>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-slate-900">
+                    {localize(selectedCategory.nameEn, selectedCategory.nameMm)}
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    Draft items, manage choice groups, and preview what customers see—all in one screen.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white p-1 text-xs font-semibold text-slate-600">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewLocale("en")}
+                      className={cn(
+                        "rounded-sm px-3 py-1 transition",
+                        previewLocale === "en"
+                          ? "bg-emerald-600 text-white"
+                          : "text-slate-600 hover:text-emerald-600"
+                      )}
+                    >
+                      English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewLocale("mm")}
+                      className={cn(
+                        "rounded-sm px-3 py-1 transition",
+                        previewLocale === "mm"
+                          ? "bg-emerald-600 text-white"
+                          : "text-slate-600 hover:text-emerald-600"
+                      )}
+                    >
+                      Burmese
+                    </button>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setItemDraft(createItemDraft());
+                      setSelectedItemId(null);
+                    }}
+                  >
+                    <PlusIcon className="size-4" />
+                    New item
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled>
+                    Reorder (coming soon)
+                  </Button>
+                </div>
+              </div>
+            </header>
+
+            <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+              <aside className="space-y-4">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Live preview
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    See how the card appears on the customer menu.
+                  </p>
+                  <div className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="relative size-20 overflow-hidden rounded-md border border-slate-200 bg-white">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={activeImage}
+                          alt={
+                            previewLocale === "mm"
+                              ? itemDraft.nameMm || itemDraft.nameEn || "Menu preview"
+                              : itemDraft.nameEn || "Menu preview"
+                          }
+                          className="size-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {previewLocale === "mm"
+                            ? itemDraft.nameMm || itemDraft.nameEn || "Untitled dish"
+                            : itemDraft.nameEn || itemDraft.nameMm || "Untitled dish"}
+                        </p>
+                        <p className="text-xs text-slate-500 line-clamp-3">
+                          {previewLocale === "mm"
+                            ? itemDraft.descriptionMm ||
+                              itemDraft.descriptionEn ||
+                              "Add a short description so customers know what to expect."
+                            : itemDraft.descriptionEn ||
+                              itemDraft.descriptionMm ||
+                              "Add a short description so customers know what to expect."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-emerald-700">
+                        ฿
+                        {Number.isNaN(computedPrice)
+                          ? "0.00"
+                          : computedPrice.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {itemDraft.allowUserNotes ? "Notes enabled" : "Notes disabled"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedCategory.items.length > 0 && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Items in this category
+                    </h3>
+                    <ul className="mt-3 space-y-2">
+                      {selectedCategory.items.map((item) => (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedItemId(item.id)}
+                            className={cn(
+                              "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition",
+                              selectedItemId === item.id
+                                ? "border-emerald-400 bg-emerald-50"
+                                : "border-slate-200 bg-white hover:border-emerald-300"
+                            )}
+                          >
+                            <span className="flex items-center gap-2">
+                              <ChevronRightIcon className="size-4 text-slate-400" />
+                              {localize(item.nameEn, item.nameMm)}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              ฿{item.price.toFixed(2)}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </aside>
+
+              <div className="space-y-6">
+                <form
+                  onSubmit={handleItemSubmit}
+                  className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        {isExistingItem ? "Edit menu item" : "Create menu item"}
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Fill out the basics before adding choice groups or options.
+                      </p>
+                    </div>
+                    {isExistingItem && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeleteItem}
+                      >
+                        Delete item
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      value={itemDraft.nameEn}
+                      onChange={(event) =>
+                        setItemDraft((prev) => ({
+                          ...prev,
+                          nameEn: event.target.value,
+                        }))
+                      }
+                      placeholder="English name *"
+                      required
+                    />
+                    <Input
+                      value={itemDraft.nameMm}
+                      onChange={(event) =>
+                        setItemDraft((prev) => ({
+                          ...prev,
+                          nameMm: event.target.value,
+                        }))
+                      }
+                      placeholder="Burmese name"
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Textarea
+                      value={itemDraft.descriptionEn}
+                      onChange={(event) =>
+                        setItemDraft((prev) => ({
+                          ...prev,
+                          descriptionEn: event.target.value,
+                        }))
+                      }
+                      placeholder="English description"
+                      rows={3}
+                    />
+                    <Textarea
+                      value={itemDraft.descriptionMm}
+                      onChange={(event) =>
+                        setItemDraft((prev) => ({
+                          ...prev,
+                          descriptionMm: event.target.value,
+                        }))
+                      }
+                      placeholder="Burmese description"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Base price (THB)
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={itemDraft.price}
+                        onChange={(event) =>
+                          setItemDraft((prev) => ({
+                            ...prev,
+                            price: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700">
+                        Placeholder icon (emoji or keyword)
+                      </label>
+                      <Input
+                        value={itemDraft.placeholderIcon}
+                        onChange={(event) =>
+                          setItemDraft((prev) => ({
+                            ...prev,
+                            placeholderIcon: event.target.value,
+                          }))
+                        }
+                        placeholder="e.g., 🍛"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">
+                      Image
+                    </label>
+                    <div className="flex flex-col gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+                      <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <ImageIcon className="size-5 text-emerald-500" />
+                        <span>
+                          {selectedItem?.hasImage
+                            ? "Replace the feature image."
+                            : "Upload a hero image for this dish (optional)."}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) {
+                              void handleImageUpload(file);
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={!selectedItem}
+                        >
+                          {selectedItem ? "Upload image" : "Save item first"}
+                        </Button>
+                        {selectedItem?.hasImage && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleImageDelete}
+                          >
+                            Remove image
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Optimal size 1200×900px. We cache images for a long time—uploading a new one auto-generates a fresh URL.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={itemDraft.isAvailable}
+                        onChange={(event) =>
+                          setItemDraft((prev) => ({
+                            ...prev,
+                            isAvailable: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      Show to customers
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={itemDraft.allowUserNotes}
+                        onChange={(event) =>
+                          setItemDraft((prev) => ({
+                            ...prev,
+                            allowUserNotes: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      Allow customer notes
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2">
+                    <Button type="submit">
+                      {isExistingItem ? "Update item" : "Save and continue"}
+                    </Button>
+                  </div>
+                </form>
+
+                {isExistingItem && selectedItem && (
+                  <ChoiceGroupSection
+                    key={selectedItem.id}
+                    item={selectedItem}
+                    locale={previewLocale}
+                    onCreateGroup={handleCreateGroup}
+                    onUpdateGroup={handleUpdateGroup}
+                    onDeleteGroup={handleDeleteGroup}
+                    onCreateOption={handleCreateOption}
+                    onUpdateOption={handleUpdateOption}
+                    onDeleteOption={handleDeleteOption}
+                  />
+                )}
+              </div>
+            </div>
+          </Fragment>
+        ) : (
+          <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-500">
+            Create a category to get started.
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+type ChoiceGroupSectionProps = {
+  item: MenuItemRecord;
+  locale: "en" | "mm";
+  onCreateGroup: (values: {
+    titleEn: string;
+    titleMm?: string;
+    minSelect: number;
+    maxSelect: number;
+    isRequired: boolean;
+  }) => Promise<void>;
+  onUpdateGroup: (
+    group: MenuChoiceGroup,
+    values: Partial<{
+      titleEn: string;
+      titleMm: string;
+      minSelect: number;
+      maxSelect: number;
+      isRequired: boolean;
+    }>
+  ) => Promise<void>;
+  onDeleteGroup: (group: MenuChoiceGroup) => Promise<void>;
+  onCreateOption: (
+    group: MenuChoiceGroup,
+    values: {
+      nameEn: string;
+      nameMm?: string;
+      extraPrice: number;
+      isAvailable: boolean;
+    }
+  ) => Promise<void>;
+  onUpdateOption: (
+    option: MenuChoiceOption,
+    values: Partial<{
+      nameEn: string;
+      nameMm: string;
+      extraPrice: number;
+      isAvailable: boolean;
+    }>
+  ) => Promise<void>;
+  onDeleteOption: (option: MenuChoiceOption) => Promise<void>;
+};
+
+function ChoiceGroupSection({
+  item,
+  locale,
+  onCreateGroup,
+  onUpdateGroup,
+  onDeleteGroup,
+  onCreateOption,
+  onUpdateOption,
+  onDeleteOption,
+}: ChoiceGroupSectionProps) {
+  const [groupDraft, setGroupDraft] = useState(() => ({
+    titleEn: "",
+    titleMm: "",
+    minSelect: 0,
+    maxSelect: 1,
+    isRequired: false,
+  }));
+
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+
+  const handleGroupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (groupDraft.maxSelect < groupDraft.minSelect) {
+      toast.error("Max select must be greater than or equal to min select");
+      return;
+    }
+    if (!groupDraft.titleEn.trim()) {
+      toast.error("English title is required");
+      return;
+    }
+    await onCreateGroup({
+      titleEn: groupDraft.titleEn.trim(),
+      titleMm: groupDraft.titleMm.trim() || undefined,
+      minSelect: groupDraft.minSelect,
+      maxSelect: groupDraft.maxSelect,
+      isRequired: groupDraft.isRequired,
+    });
+    setGroupDraft({
+      titleEn: "",
+      titleMm: "",
+      minSelect: 0,
+      maxSelect: 1,
+      isRequired: false,
+    });
+  };
+
+  const sortedGroups = [...item.choiceGroups].sort(
+    (a, b) => a.displayOrder - b.displayOrder
+  );
+
+  return (
+    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+      <h3 className="text-lg font-semibold text-slate-900">Choice groups</h3>
+          <p className="text-xs text-slate-500">
+            Use these for proteins, toppings, or add-on selections.
+          </p>
+        </div>
+      </div>
+
+      <form
+        onSubmit={handleGroupSubmit}
+        className="space-y-3 rounded-lg border border-emerald-100 bg-emerald-50/60 p-4"
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <Input
+            value={groupDraft.titleEn}
+            onChange={(event) =>
+              setGroupDraft((prev) => ({
+                ...prev,
+                titleEn: event.target.value,
+              }))
+            }
+            placeholder="English title *"
+            required
+          />
+          <Input
+            value={groupDraft.titleMm}
+            onChange={(event) =>
+              setGroupDraft((prev) => ({
+                ...prev,
+                titleMm: event.target.value,
+              }))
+            }
+            placeholder="Burmese title"
+          />
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Input
+            type="number"
+            min={0}
+            value={groupDraft.minSelect}
+            onChange={(event) =>
+              setGroupDraft((prev) => ({
+                ...prev,
+                minSelect: Number(event.target.value),
+              }))
+            }
+            placeholder="Min select"
+          />
+          <Input
+            type="number"
+            min={1}
+            value={groupDraft.maxSelect}
+            onChange={(event) =>
+              setGroupDraft((prev) => ({
+                ...prev,
+                maxSelect: Number(event.target.value),
+              }))
+            }
+            placeholder="Max select"
+          />
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={groupDraft.isRequired}
+              onChange={(event) =>
+                setGroupDraft((prev) => ({
+                  ...prev,
+                  isRequired: event.target.checked,
+                }))
+              }
+              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            Required group
+          </label>
+        </div>
+        <Button type="submit" size="sm">
+          Add group
+        </Button>
+      </form>
+
+      {sortedGroups.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+          No choice groups yet. Add one above to start collecting options.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sortedGroups.map((group) => (
+            <GroupCard
+              key={`${group.id}-${group.options.length}`}
+              group={group}
+              locale={locale}
+              expanded={expandedGroupId === group.id}
+              onToggle={() =>
+                setExpandedGroupId((prev) =>
+                  prev === group.id ? null : group.id
+                )
+              }
+              onUpdateGroup={onUpdateGroup}
+              onDeleteGroup={onDeleteGroup}
+              onCreateOption={onCreateOption}
+              onUpdateOption={onUpdateOption}
+              onDeleteOption={onDeleteOption}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+type GroupCardProps = {
+  group: MenuChoiceGroup;
+  expanded: boolean;
+  onToggle: () => void;
+  locale: "en" | "mm";
+  onUpdateGroup: ChoiceGroupSectionProps["onUpdateGroup"];
+  onDeleteGroup: ChoiceGroupSectionProps["onDeleteGroup"];
+  onCreateOption: ChoiceGroupSectionProps["onCreateOption"];
+  onUpdateOption: ChoiceGroupSectionProps["onUpdateOption"];
+  onDeleteOption: ChoiceGroupSectionProps["onDeleteOption"];
+};
+
+function GroupCard({
+  group,
+  expanded,
+  onToggle,
+  locale,
+  onUpdateGroup,
+  onDeleteGroup,
+  onCreateOption,
+  onUpdateOption,
+  onDeleteOption,
+}: GroupCardProps) {
+  const [optionDrafts, setOptionDrafts] = useState<
+    Record<
+      string,
+      {
+        nameEn: string;
+        nameMm: string;
+        extraPrice: string;
+        isAvailable: boolean;
+      }
+    >
+  >({});
+
+  const blankOption = {
+    nameEn: "",
+    nameMm: "",
+    extraPrice: "",
+    isAvailable: true,
+  };
+
+  const sortedOptions = [...group.options].sort(
+    (a, b) => a.displayOrder - b.displayOrder
+  );
+
+  const handleOptionChange = (
+    optionId: string,
+    field: keyof typeof blankOption,
+    value: string | boolean
+  ) => {
+    setOptionDrafts((prev) => ({
+      ...prev,
+      [optionId]: {
+        ...(prev[optionId] ?? blankOption),
+        [field]: value,
+      },
+    }));
+  };
+
+  const draftFor = (optionId: string) =>
+    optionDrafts[optionId] ?? {
+      nameEn: "",
+      nameMm: "",
+      extraPrice: "",
+      isAvailable: true,
+    };
+
+  const handleAddOption = async () => {
+    const newDraft = draftFor("new");
+    if (!newDraft.nameEn.trim()) {
+      toast.error("English name is required");
+      return;
+    }
+    const extraPrice = Number(newDraft.extraPrice) || 0;
+    await onCreateOption(group, {
+      nameEn: newDraft.nameEn.trim(),
+      nameMm: newDraft.nameMm.trim() || undefined,
+      extraPrice,
+      isAvailable: newDraft.isAvailable,
+    });
+    setOptionDrafts((prev) => ({
+      ...prev,
+      new: blankOption,
+    }));
+  };
+
+  const handleOptionUpdate = async (option: MenuChoiceOption) => {
+    const draft = draftFor(option.id);
+    const payload: Partial<{
+      nameEn: string;
+      nameMm: string;
+      extraPrice: number;
+      isAvailable: boolean;
+    }> = {};
+
+    if (draft.nameEn.trim() && draft.nameEn.trim() !== option.nameEn) {
+      payload.nameEn = draft.nameEn.trim();
+    }
+    if (draft.nameMm.trim() !== (option.nameMm ?? "")) {
+      payload.nameMm = draft.nameMm.trim() || undefined;
+    }
+    if (draft.extraPrice !== "" && Number(draft.extraPrice) !== option.extraPrice) {
+      payload.extraPrice = Number(draft.extraPrice);
+    }
+    if (draft.isAvailable !== option.isAvailable) {
+      payload.isAvailable = draft.isAvailable;
+    }
+    if (Object.keys(payload).length === 0) {
+      toast("No changes to save");
+      return;
+    }
+    await onUpdateOption(option, payload);
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm"
+      >
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-slate-900">
+            {locale === "mm"
+              ? group.titleMm || group.titleEn
+              : group.titleEn}
+          </span>
+          <span className="text-xs text-slate-500">
+            Min {group.minSelect} · Max {group.maxSelect} ·{" "}
+            {group.isRequired ? "Required" : "Optional"}
+          </span>
+        </div>
+        <ChevronRightIcon
+          className={cn(
+            "size-4 text-slate-400 transition-transform",
+            expanded && "rotate-90"
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="space-y-4 border-t border-slate-200 p-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700"
+              onClick={() =>
+                onUpdateGroup(group, { isRequired: !group.isRequired })
+              }
+            >
+              Toggle required
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700"
+              onClick={() =>
+                onUpdateGroup(group, {
+                  minSelect: Math.max(0, group.minSelect - 1),
+                })
+              }
+            >
+              Min -1
+            </button>
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700"
+              onClick={() =>
+                onUpdateGroup(group, { minSelect: group.minSelect + 1 })
+              }
+            >
+              Min +1
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700"
+              onClick={() =>
+                onUpdateGroup(group, {
+                  maxSelect: Math.max(group.minSelect, group.maxSelect - 1),
+                })
+              }
+            >
+              Max -1
+            </button>
+            <button
+              type="button"
+              className="text-emerald-600 hover:text-emerald-700"
+              onClick={() =>
+                onUpdateGroup(group, { maxSelect: group.maxSelect + 1 })
+              }
+            >
+              Max +1
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              className="text-rose-500 hover:text-rose-600"
+              onClick={() => onDeleteGroup(group)}
+            >
+              Delete group
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {sortedOptions.length === 0 ? (
+              <div className="rounded border border-dashed border-slate-200 p-3 text-xs text-slate-500">
+                No options yet. Add the first one below.
+              </div>
+            ) : (
+              sortedOptions.map((option) => (
+                <div
+                  key={option.id}
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"
+                >
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <Input
+                      placeholder="English name"
+                      defaultValue={option.nameEn}
+                      onChange={(event) =>
+                        handleOptionChange(
+                          option.id,
+                          "nameEn",
+                          event.target.value
+                        )
+                      }
+                    />
+                    <Input
+                      placeholder="Burmese name"
+                      defaultValue={option.nameMm ?? ""}
+                      onChange={(event) =>
+                        handleOptionChange(
+                          option.id,
+                          "nameMm",
+                          event.target.value
+                        )
+                      }
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Extra price"
+                      defaultValue={option.extraPrice.toFixed(2)}
+                      onChange={(event) =>
+                        handleOptionChange(
+                          option.id,
+                          "extraPrice",
+                          event.target.value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <label className="flex items-center gap-2 text-slate-600">
+                      <input
+                        type="checkbox"
+                        defaultChecked={option.isAvailable}
+                        onChange={(event) =>
+                          handleOptionChange(
+                            option.id,
+                            "isAvailable",
+                            event.target.checked
+                          )
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      Available
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        onClick={() => handleOptionUpdate(option)}
+                      >
+                        Save changes
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        type="button"
+                        onClick={() => onDeleteOption(option)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="rounded-lg border border-dashed border-slate-200 bg-white p-4">
+            <h4 className="text-sm font-semibold text-slate-900">
+              Add new option
+            </h4>
+            <p className="text-xs text-slate-500">
+              Extra price is added to the base price at checkout.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <Input
+                placeholder="English name"
+                value={draftFor("new").nameEn}
+                onChange={(event) =>
+                  handleOptionChange("new", "nameEn", event.target.value)
+                }
+              />
+              <Input
+                placeholder="Burmese name"
+                value={draftFor("new").nameMm}
+                onChange={(event) =>
+                  handleOptionChange("new", "nameMm", event.target.value)
+                }
+              />
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Extra price"
+                value={draftFor("new").extraPrice}
+                onChange={(event) =>
+                  handleOptionChange("new", "extraPrice", event.target.value)
+                }
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={draftFor("new").isAvailable}
+                  onChange={(event) =>
+                    handleOptionChange("new", "isAvailable", event.target.checked)
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                Available
+              </label>
+              <Button size="sm" type="button" onClick={handleAddOption}>
+                Add option
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
