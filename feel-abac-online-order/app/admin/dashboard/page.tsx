@@ -34,7 +34,7 @@ export default async function AdminDashboard() {
     .orderBy(admins.createdAt);
 
   return (
-    <div className="min-h-screen bg-white px-6 py-10 text-slate-900">
+    <div className="admin-light-surface min-h-screen bg-white px-6 py-10 text-slate-900">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">

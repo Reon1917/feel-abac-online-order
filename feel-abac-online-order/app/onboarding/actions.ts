@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/src/db/client";
 import { userProfiles } from "@/src/db/schema";
 import { onboardingSchema } from "@/lib/validations";
+import { encryptPhone } from "@/lib/crypto";
 
 export async function completeOnboarding(prevState: { error?: string } | null, formData: FormData) {
   const parsed = onboardingSchema.safeParse({
@@ -49,16 +50,18 @@ export async function completeOnboarding(prevState: { error?: string } | null, f
     };
   }
 
+  const encryptedPhone = encryptPhone(parsed.data.phoneNumber);
+
   await db
     .insert(userProfiles)
     .values({
       id: userId,
-      phoneNumber: parsed.data.phoneNumber,
+      phoneNumber: encryptedPhone,
     })
     .onConflictDoUpdate({
       target: userProfiles.id,
       set: {
-        phoneNumber: parsed.data.phoneNumber,
+        phoneNumber: encryptedPhone,
       },
     });
 

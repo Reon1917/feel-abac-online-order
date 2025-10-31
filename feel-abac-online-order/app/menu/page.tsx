@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AdminBar } from "@/components/admin/admin-bar";
 import { MenuBrowser } from "@/components/menu/menu-browser";
+import { PhoneEditModal } from "@/components/menu/phone-edit-modal";
 import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
 
@@ -135,12 +136,12 @@ export default async function MenuPage() {
               <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
                 Welcome back, {sessionData.session.user.name || "guest"} 👋
               </h1>
-              <p className="text-sm text-slate-600">
-                Reachable at {" "}
+              <p className="text-sm text-slate-600 flex items-center gap-1">
+                Reachable at{" "}
                 <strong className="font-semibold text-slate-800">
                   {profile.phoneNumber}
                 </strong>
-                . Update it anytime from onboarding.
+                <PhoneEditModal currentPhone={profile.phoneNumber} />
               </p>
             </div>
             <SignOutButton />
