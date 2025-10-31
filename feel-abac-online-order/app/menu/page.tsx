@@ -1,29 +1,114 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
-import { getCurrentSession } from "@/lib/session";
+import { AdminBar } from "@/components/admin/admin-bar";
+import { MenuBrowser } from "@/components/menu/menu-browser";
+import { PhoneEditModal } from "@/components/menu/phone-edit-modal";
+import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
 
-const sampleMenu = [
+const mockMenu = [
   {
-    category: "Signature Rice",
+    id: "app",
+    name: "Appetizers",
     items: [
-      { name: "Garlic pork rice", price: "65 THB" },
-      { name: "Crispy basil chicken rice", price: "70 THB" },
+      {
+        id: "tea-leaf-salad",
+        name: "Tea Leaf Salad",
+        description: "Fermented leaves, peanut crumble, citrus dressing.",
+        price: 85,
+        isVegetarian: true,
+        emoji: "🥗",
+        spiceLevel: 1,
+      },
+      {
+        id: "crispy-samosa",
+        name: "Crispy Samosa Trio",
+        description: "Golden pastries with tamarind mint chutney.",
+        price: 65,
+        emoji: "🥟",
+      },
     ],
   },
   {
-    category: "Noodle Bowls",
+    id: "mains",
+    name: "Main Course",
     items: [
-      { name: "Tom yum noodle soup", price: "75 THB" },
-      { name: "Tokyo yakisoba", price: "70 THB" },
+      {
+        id: "mohinga",
+        name: "Mohinga",
+        description: "Traditional fish noodle soup with herbs and citrus.",
+        price: 120,
+        emoji: "🍲",
+        isRecommended: true,
+        spiceLevel: 2,
+      },
+      {
+        id: "shan-noodles",
+        name: "Shan Noodles",
+        description: "Rice noodles with chicken in savoury tomato sauce.",
+        price: 95,
+        emoji: "🍜",
+      },
+      {
+        id: "coconut-chicken-noodles",
+        name: "Coconut Chicken Noodles",
+        description: "Creamy coconut curry sauce with grilled chicken.",
+        price: 110,
+        emoji: "🍛",
+        isRecommended: true,
+        spiceLevel: 3,
+      },
+      {
+        id: "burmese-curry",
+        name: "Burmese Curry",
+        description: "Slow-cooked beef with toasted spices and potato.",
+        price: 140,
+        emoji: "🍛",
+        spiceLevel: 3,
+      },
     ],
   },
   {
-    category: "Drink Bar",
+    id: "desserts",
+    name: "Desserts",
     items: [
-      { name: "Thai iced tea", price: "35 THB" },
-      { name: "Lemongrass iced soda", price: "40 THB" },
+      {
+        id: "sticky-rice-mango",
+        name: "Sticky Rice with Mango",
+        description: "Coconut-infused rice with ripe mango and sesame.",
+        price: 75,
+        emoji: "🥭",
+        isVegetarian: true,
+      },
+      {
+        id: "coconut-panna-cotta",
+        name: "Coconut Panna Cotta",
+        description: "Silky coconut custard with kaffir lime.",
+        price: 85,
+        emoji: "🍮",
+      },
+    ],
+  },
+  {
+    id: "drinks",
+    name: "Drinks",
+    items: [
+      {
+        id: "thai-iced-tea",
+        name: "Thai Iced Tea",
+        description: "Sweet condensed milk, slow-brewed black tea.",
+        price: 45,
+        emoji: "🧋",
+      },
+      {
+        id: "lemongrass-soda",
+        name: "Lemongrass Iced Soda",
+        description: "House-made syrup, fizz, and lime.",
+        price: 40,
+        emoji: "🥤",
+        isVegetarian: true,
+      },
     ],
   },
 ];
@@ -31,74 +116,40 @@ const sampleMenu = [
 export default async function MenuPage() {
   noStore();
 
-  const session = await getCurrentSession();
-  if (!session?.user) {
+  const sessionData = await getSession();
+  if (!sessionData?.session?.user) {
     redirect("/");
   }
 
-  const profile = await getUserProfile(session.user.id);
+  const profile = await getUserProfile(sessionData.session.user.id);
   if (!profile) {
     redirect("/onboarding");
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-16">
-      <header className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-            Welcome back, {session.user.name || "guest"} 👋
-          </h1>
-          <p className="text-sm text-slate-600">
-            Contact number on file:{" "}
-            <strong className="font-semibold text-slate-800">
-              {profile.phoneNumber}
-            </strong>
-            . Update it anytime from onboarding.
-          </p>
-        </div>
-        <SignOutButton />
-      </header>
-
-      <section className="grid gap-6 rounded-3xl border border-slate-100 bg-emerald-50/70 p-6 text-slate-900 shadow-sm">
-        <h2 className="text-xl font-semibold">Today&apos;s highlights</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {sampleMenu.map((section) => (
-            <div
-              key={section.category}
-              className="rounded-2xl border border-emerald-100 bg-white p-5"
-            >
-              <h3 className="text-lg font-semibold text-emerald-900">
-                {section.category}
-              </h3>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                {section.items.map((item) => (
-                  <li
-                    key={item.name}
-                    className="flex items-center justify-between"
-                  >
-                    <span>{item.name}</span>
-                    <span className="font-medium text-emerald-800">
-                      {item.price}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+    <>
+      {sessionData.isAdmin && <AdminBar />}
+      <main className="min-h-screen w-full bg-white">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-12">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+                Welcome back, {sessionData.session.user.name || "guest"} 👋
+              </h1>
+              <p className="text-sm text-slate-600 flex items-center gap-1">
+                Reachable at{" "}
+                <strong className="font-semibold text-slate-800">
+                  {profile.phoneNumber}
+                </strong>
+                <PhoneEditModal currentPhone={profile.phoneNumber} />
+              </p>
             </div>
-          ))}
-        </div>
-      </section>
+            <SignOutButton />
+          </header>
 
-      <section className="grid gap-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">
-          What&apos;s next for Feel ABAC?
-        </h2>
-        <ul className="list-disc space-y-2 pl-5 text-sm text-slate-600">
-          <li>Menu management dashboard for restaurant admins</li>
-          <li>Order status timeline with kitchen updates</li>
-          <li>Pickup windows to reduce lunchtime bottlenecks</li>
-          <li>Automated order throttling when the kitchen gets busy</li>
-        </ul>
-      </section>
-    </main>
+          <MenuBrowser categories={mockMenu} />
+        </div>
+      </main>
+    </>
   );
 }
