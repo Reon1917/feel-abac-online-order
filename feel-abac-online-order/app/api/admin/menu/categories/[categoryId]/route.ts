@@ -10,9 +10,9 @@ import { menuCategories, menuItems } from "@/src/db/schema";
 import { menuCategoryUpdateSchema } from "@/lib/menu/validators";
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     categoryId: string;
-  };
+  }>;
 };
 
 export const revalidate = 0;
@@ -22,6 +22,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  const { categoryId } = await params;
 
   const payload = await request.json();
   const parsed = menuCategoryUpdateSchema.safeParse(payload);
@@ -60,7 +62,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const [category] = await db
     .update(menuCategories)
     .set(updateData)
-    .where(eq(menuCategories.id, params.categoryId))
+    .where(eq(menuCategories.id, categoryId))
     .returning();
 
   if (!category) {
@@ -76,17 +78,19 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  const { categoryId } = await params;
+
   const items = await db
     .select({
       id: menuItems.id,
       imageUrl: menuItems.imageUrl,
     })
     .from(menuItems)
-    .where(eq(menuItems.categoryId, params.categoryId));
+    .where(eq(menuItems.categoryId, categoryId));
 
   const [category] = await db
     .delete(menuCategories)
-    .where(eq(menuCategories.id, params.categoryId))
+    .where(eq(menuCategories.id, categoryId))
     .returning();
 
   if (!category) {

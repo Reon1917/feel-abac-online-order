@@ -6,9 +6,9 @@ import { menuChoiceGroups } from "@/src/db/schema";
 import { menuChoiceGroupUpdateSchema } from "@/lib/menu/validators";
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     groupId: string;
-  };
+  }>;
 };
 
 export const revalidate = 0;
@@ -18,6 +18,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
+
+  const { groupId } = await params;
 
   const payload = await request.json();
   const parsed = menuChoiceGroupUpdateSchema.safeParse(payload);
@@ -33,7 +35,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const [existing] = await db
     .select()
     .from(menuChoiceGroups)
-    .where(eq(menuChoiceGroups.id, params.groupId))
+    .where(eq(menuChoiceGroups.id, groupId))
     .limit(1);
 
   if (!existing) {
@@ -82,7 +84,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const [group] = await db
     .update(menuChoiceGroups)
     .set(updateData)
-    .where(eq(menuChoiceGroups.id, params.groupId))
+    .where(eq(menuChoiceGroups.id, groupId))
     .returning();
 
   return Response.json({ group });
@@ -94,9 +96,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  const { groupId } = await params;
+
   const [group] = await db
     .delete(menuChoiceGroups)
-    .where(eq(menuChoiceGroups.id, params.groupId))
+    .where(eq(menuChoiceGroups.id, groupId))
     .returning();
 
   if (!group) {
