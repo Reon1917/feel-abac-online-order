@@ -1,15 +1,13 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import Image from "next/image";
 import clsx from "clsx";
-import {
-  PublicMenuCategory,
-  PublicMenuChoiceGroup,
-  PublicMenuItem,
-} from "@/lib/menu/types";
+import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 
 type MenuBrowserProps = {
   categories: PublicMenuCategory[];
+  layout?: "default" | "compact";
 };
 
 function formatPrice(value: number) {
@@ -19,7 +17,7 @@ function formatPrice(value: number) {
   });
 }
 
-export function MenuBrowser({ categories }: MenuBrowserProps) {
+export function MenuBrowser({ categories, layout = "default" }: MenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
    const [locale, setLocale] = useState<"en" | "mm">("en");
@@ -39,12 +37,7 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
 
     return categories.flatMap((category) => {
       if (activeCategory !== "all" && category.id !== activeCategory) {
-        return [] as Array<{
-          item: PublicMenuItem;
-          categoryId: string;
-          categoryNameEn: string;
-          categoryNameMm: string | null;
-        }>;
+        return [] as PublicMenuItem[];
       }
 
       return category.items
@@ -60,12 +53,7 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
             .toLowerCase();
           return haystack.includes(query);
         })
-        .map((item) => ({
-          item,
-          categoryId: category.id,
-          categoryNameEn: category.name,
-          categoryNameMm: category.nameMm ?? null,
-        }));
+        .map((item) => item);
     });
   }, [activeCategory, categories, searchTerm]);
 
@@ -146,20 +134,21 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={clsx(
+          "grid gap-4 max-[360px]:grid-cols-1",
+          layout === "compact"
+            ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-3"
+            : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3"
+        )}
+      >
         {filteredItems.length === 0 ? (
           <div className="col-span-full rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
             Nothing matches your search yet. Try a different term or category.
           </div>
         ) : (
-          filteredItems.map(({ item, categoryNameEn, categoryNameMm }) => (
-            <MenuItemCard
-              key={item.id}
-              item={item}
-              categoryNameEn={categoryNameEn}
-              categoryNameMm={categoryNameMm}
-              locale={locale}
-            />
+          filteredItems.map((item) => (
+            <MenuItemCard key={item.id} item={item} locale={locale} />
           ))
         )}
       </div>
@@ -169,13 +158,9 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
 
 function MenuItemCard({
   item,
-  categoryNameEn,
-  categoryNameMm,
   locale,
 }: {
   item: PublicMenuItem;
-  categoryNameEn: string;
-  categoryNameMm: string | null;
   locale: "en" | "mm";
 }) {
   const displayName =
@@ -186,14 +171,16 @@ function MenuItemCard({
       {/* Image - upper half */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
         {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.imageUrl}
-            alt={displayName}
-            className="h-full w-full object-cover transition group-hover:scale-105"
-            loading="lazy"
-            decoding="async"
-          />
+          <div className="relative h-full w-full">
+            <Image
+              src={item.imageUrl}
+              alt={displayName}
+              fill
+              className="object-cover transition group-hover:scale-105"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+              priority={false}
+            />
+          </div>
         ) : (
           <div className="flex h-full w-full items-center justify-center text-6xl">
             {item.placeholderIcon ?? "🍽️"}

@@ -99,11 +99,11 @@ type MenuEditorFormValues = {
 const FALLBACK_IMAGE = "/menu-placeholders/placeholder-img-1.png";
 
 const CHOICE_TYPE_LABEL: Record<MenuChoiceGroupType, string> = {
-  single: "Single Choice",
-  multi: "Multiple Choice",
-  toggle: "Toggle",
-  dropdown: "Dropdown",
-  quantity: "Quantity",
+  single: "Pick one",
+  multi: "Pick many",
+  toggle: "On/off",
+  dropdown: "Dropdown list",
+  quantity: "With quantity",
 };
 
 const STATUS_BADGE_STYLES: Record<MenuItemStatus, string> = {
@@ -357,13 +357,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
       type: MenuChoiceGroupType;
     }) => {
       if (!selectedItem) {
-        toast.error("Select a menu item before adding choice groups.");
+        toast.error("Pick a menu item before adding a choices section.");
         return;
       }
-
       const menuItemId = selectedItem.id?.trim();
       if (!menuItemId) {
-        toast.error("Menu item is missing an ID.");
+        toast.error("This menu item is missing an ID.");
         return;
       }
 
@@ -376,7 +375,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             headers: defaultHeaders,
             body: JSON.stringify({
               ...input,
-              menuItemId,
+              menuItemId: menuItemId,
               displayOrder: groupFields.length,
             }),
           }
@@ -404,11 +403,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
           },
         });
 
-        toast.success("Choice group created");
+        toast.success("Section added");
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to create group"
+          error instanceof Error ? error.message : "Couldn't add that section"
         );
       } finally {
         setIsChoiceMutating(false);
@@ -421,7 +420,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
     async (groupId: string, values: Partial<MenuChoiceGroupFormValue>) => {
       const normalizedGroupId = groupId.trim();
       if (!normalizedGroupId) {
-        toast.error("Choice group ID is missing.");
+        toast.error("This section is missing an ID.");
         return;
       }
       setIsChoiceMutating(true);
@@ -441,11 +440,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             }),
           }
         );
-        toast.success("Group updated");
+        toast.success("Section updated");
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to update group"
+          error instanceof Error ? error.message : "Couldn't update that section"
         );
       } finally {
         setIsChoiceMutating(false);
@@ -459,7 +458,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
       if (!selectedItem) return;
       const normalizedGroupId = groupId.trim();
       if (!normalizedGroupId) {
-        toast.error("Choice group ID is missing.");
+        toast.error("This section is missing an ID.");
         return;
       }
       setIsChoiceMutating(true);
@@ -475,15 +474,15 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
           categoryId: selectedItem.categoryId,
           updates: {
             choiceGroups: selectedItem.choiceGroups.filter(
-              (group) => group.id !== normalizedGroupId
+              (group) => group.id?.trim() !== normalizedGroupId
             ),
           },
         });
-        toast.success("Group removed");
+        toast.success("Section removed");
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to remove group"
+          error instanceof Error ? error.message : "Couldn't remove that section"
         );
       } finally {
         setIsChoiceMutating(false);
@@ -511,11 +510,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             );
           })
         );
-        toast.success("Groups reordered");
+        toast.success("Sections reordered");
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to reorder groups"
+          error instanceof Error ? error.message : "Couldn't reorder those sections"
         );
         move(to, from);
       } finally {
@@ -529,7 +528,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
     async (groupId: string, displayOrder: number) => {
       const normalizedGroupId = groupId.trim();
       if (!normalizedGroupId) {
-        toast.error("Choice group ID is missing.");
+        toast.error("This section is missing an ID.");
         return null;
       }
       setIsChoiceMutating(true);
@@ -546,12 +545,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             }),
           }
         );
-        toast.success("Option added");
+        toast.success("Choice added");
         return option;
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to add option"
+          error instanceof Error ? error.message : "Couldn't add that choice"
         );
         return null;
       } finally {
@@ -565,7 +564,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
     async (optionId: string, values: MenuOptionFormValue) => {
       const normalizedOptionId = optionId.trim();
       if (!normalizedOptionId) {
-        toast.error("Choice option ID is missing.");
+        toast.error("This choice is missing an ID.");
         return;
       }
       setIsChoiceMutating(true);
@@ -585,11 +584,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             }),
           }
         );
-        toast.success("Option updated");
+        toast.success("Choice updated");
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to update option"
+          error instanceof Error ? error.message : "Couldn't update that choice"
         );
       } finally {
         setIsChoiceMutating(false);
@@ -601,7 +600,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
   const deleteOption = useCallback(async (optionId: string) => {
     const normalizedOptionId = optionId.trim();
     if (!normalizedOptionId) {
-      toast.error("Choice option ID is missing.");
+      toast.error("This choice is missing an ID.");
       return false;
     }
     setIsChoiceMutating(true);
@@ -610,12 +609,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
         `/api/admin/menu/choice-options/${normalizedOptionId}`,
         { method: "DELETE" }
       );
-      toast.success("Option removed");
+      toast.success("Choice removed");
       return true;
     } catch (error) {
       console.error(error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to remove option"
+        error instanceof Error ? error.message : "Couldn't remove that choice"
       );
       return false;
     } finally {
@@ -641,11 +640,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             )
           )
         );
-        toast.success("Options reordered");
+        toast.success("Choices reordered");
       } catch (error) {
         console.error(error);
         toast.error(
-          error instanceof Error ? error.message : "Failed to reorder options"
+          error instanceof Error ? error.message : "Couldn't reorder those choices"
         );
         throw error;
       } finally {
@@ -969,8 +968,8 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
           </div>
 
           <SectionHeading
-            title="Step 3 · Choice groups"
-            description="Add modifiers, toppings, or required selections. Drag cards to reorder."
+            title="Step 3 · Choices & add-ons"
+            description="Bundle sides, toppings, and upsells into easy sections. Drag cards to reorder."
           />
 
           <ChoiceGroupPanel
@@ -1010,7 +1009,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             </Button>
           </div>
           <Button variant="destructive" type="button" onClick={() => void deleteItem()}>
-            Delete menu item
+            Delete this item
           </Button>
         </CardFooter>
       </Card>
@@ -1279,17 +1278,17 @@ function ChoiceGroupPanel({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
-          Choice groups let admins bundle related options such as sizes, sides, or toppings.
+          Use sections to group extra choices like sizes, sides, or toppings so everything stays clear.
         </p>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button type="button">Add choice group</Button>
+            <Button type="button">Add choices section</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Create choice group</DialogTitle>
+              <DialogTitle>Create choices section</DialogTitle>
               <DialogDescription>
-                Give the group a clear name and define how many options diners can pick.
+                Give the section a clear name and decide how diners can make their picks.
               </DialogDescription>
             </DialogHeader>
             <form
@@ -1299,19 +1298,19 @@ function ChoiceGroupPanel({
                 void handleCreateGroup();
               }}
             >
-              <FieldBlock label="Group title" required>
+              <FieldBlock label="Section title" required>
                 <Input
                   {...newGroupForm.register("titleEn", { required: true })}
                   placeholder="e.g. Choose your base"
                 />
               </FieldBlock>
-              <FieldBlock label="Group title (Burmese)">
+              <FieldBlock label="Section title (Burmese)">
                 <Input
                   {...newGroupForm.register("titleMm")}
                   placeholder="မြန်မာလို အမည်"
                 />
               </FieldBlock>
-              <FieldBlock label="Choice type" required>
+              <FieldBlock label="Selection style" required>
                 <Controller
                   control={newGroupForm.control}
                   name="type"
@@ -1335,7 +1334,7 @@ function ChoiceGroupPanel({
                 />
               </FieldBlock>
               <div className="grid gap-4 md:grid-cols-2">
-                <FieldBlock label="Minimum selections">
+                <FieldBlock label="Minimum picks">
                   <Input
                     type="number"
                     min={0}
@@ -1344,7 +1343,7 @@ function ChoiceGroupPanel({
                     })}
                   />
                 </FieldBlock>
-                <FieldBlock label="Maximum selections" required>
+                <FieldBlock label="Maximum picks" required>
                   <Input
                     type="number"
                     min={1}
@@ -1355,8 +1354,8 @@ function ChoiceGroupPanel({
                 </FieldBlock>
               </div>
               <ToggleBlock
-                label="Require diners to choose"
-                description="Checkout is blocked until they make a selection."
+                label="Require a choice"
+                description="Turn on if guests must pick something here."
               >
                 <Controller
                   control={newGroupForm.control}
@@ -1370,7 +1369,7 @@ function ChoiceGroupPanel({
                 />
               </ToggleBlock>
               <DialogFooter>
-                <Button type="submit">Create group</Button>
+                <Button type="submit">Create section</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -1449,22 +1448,25 @@ function ChoiceGroupCard({
   };
 
   const handleGroupBlur = () => {
-    if (!groupField.id) return;
+    const normalizedId = groupField.id?.trim();
+    if (!normalizedId) return;
     const value = form.getValues(`choiceGroups.${index}`);
-    void onUpdateGroup(groupField.id, value);
+    void onUpdateGroup(normalizedId, value);
   };
 
   const handleOptionBlur = (optionIndex: number) => {
     const option = form.getValues(
       `choiceGroups.${index}.options.${optionIndex}`
     );
-    if (!option?.id) return;
-    void onUpdateOption(option.id, option);
+    const normalizedId = option?.id?.trim();
+    if (!normalizedId) return;
+    void onUpdateOption(normalizedId, option);
   };
 
   const handleAddOption = async () => {
-    if (!groupField.id) return;
-    const option = await onCreateOption(groupField.id, optionFields.length);
+    const normalizedId = groupField.id?.trim();
+    if (!normalizedId) return;
+    const option = await onCreateOption(normalizedId, optionFields.length);
     if (option) {
       append({
         id: option.id,
@@ -1478,8 +1480,9 @@ function ChoiceGroupCard({
 
   const handleDeleteOption = async (optionIndex: number) => {
     const option = optionFields[optionIndex];
-    if (option?.id) {
-      const success = await onDeleteOption(option.id);
+    const normalizedId = option?.id?.trim();
+    if (normalizedId) {
+      const success = await onDeleteOption(normalizedId);
       if (!success) return;
     }
     remove(optionIndex);
@@ -1499,7 +1502,9 @@ function ChoiceGroupCard({
     const nextOptions = form.getValues(`choiceGroups.${index}.options`);
     const updates = nextOptions
       .map((option, idx) =>
-        option.id ? { optionId: option.id, displayOrder: idx } : null
+        option.id?.trim()
+          ? { optionId: option.id.trim(), displayOrder: idx }
+          : null
       )
       .filter((entry): entry is { optionId: string; displayOrder: number } =>
         Boolean(entry)
@@ -1528,14 +1533,14 @@ function ChoiceGroupCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex-1 space-y-3">
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
-            <FieldBlock label="Group title" required>
+            <FieldBlock label="Section title" required>
               <Input
                 {...form.register(`choiceGroups.${index}.titleEn` as const)}
                 placeholder="e.g. Choose your protein"
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <FieldBlock label="Choice type" required>
+            <FieldBlock label="Selection style" required>
               <Controller
                 control={form.control}
                 name={`choiceGroups.${index}.type` as const}
@@ -1563,7 +1568,7 @@ function ChoiceGroupCard({
             </FieldBlock>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            <FieldBlock label="Minimum choices">
+            <FieldBlock label="Minimum picks">
               <Input
                 type="number"
                 min={0}
@@ -1573,7 +1578,7 @@ function ChoiceGroupCard({
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <FieldBlock label="Maximum choices" required>
+            <FieldBlock label="Maximum picks" required>
               <Input
                 type="number"
                 min={1}
@@ -1583,7 +1588,7 @@ function ChoiceGroupCard({
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <ToggleBlock label="Required">
+            <ToggleBlock label="Make this required?">
               <Controller
                 control={form.control}
                 name={`choiceGroups.${index}.isRequired` as const}
@@ -1604,25 +1609,29 @@ function ChoiceGroupCard({
           variant="ghost"
           className="text-rose-600 hover:text-rose-700"
           type="button"
-          onClick={() => groupField.id && onDeleteGroup(groupField.id, index)}
+          onClick={() => {
+            const normalizedId = groupField.id?.trim();
+            if (!normalizedId) return;
+            void onDeleteGroup(normalizedId, index);
+          }}
         >
-          Remove
+          Delete section
         </Button>
       </div>
 
       <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-            Options
+            Choices in this section
           </h4>
           <Button size="sm" type="button" onClick={() => void handleAddOption()}>
-            Add option
+            Add choice
           </Button>
         </div>
 
         {optionFields.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            No options yet. Add add-ons, portion sizes, or upgrades for diners to choose.
+            No choices here yet. Add portion sizes, toppings, or upgrades for diners to pick.
           </div>
         ) : (
           <div className="space-y-3">
@@ -1636,7 +1645,7 @@ function ChoiceGroupCard({
                 className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
               >
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_150px_120px]">
-                  <FieldBlock label="Option name" required>
+                  <FieldBlock label="Choice name" required>
                     <Input
                       {...form.register(
                         `choiceGroups.${index}.options.${optionIndex}.nameEn` as const
@@ -1645,7 +1654,7 @@ function ChoiceGroupCard({
                       onBlur={() => handleOptionBlur(optionIndex)}
                     />
                   </FieldBlock>
-                  <FieldBlock label="Extra price">
+                  <FieldBlock label="Extra price (optional)">
                     <Input
                       type="number"
                       step="0.01"
@@ -1656,7 +1665,7 @@ function ChoiceGroupCard({
                       onBlur={() => handleOptionBlur(optionIndex)}
                     />
                   </FieldBlock>
-                  <ToggleBlock label="Available">
+                  <ToggleBlock label="Show to diners">
                     <Controller
                       control={form.control}
                       name={`choiceGroups.${index}.options.${optionIndex}.isAvailable` as const}
@@ -1678,7 +1687,7 @@ function ChoiceGroupCard({
                   type="button"
                   onClick={() => void handleDeleteOption(optionIndex)}
                 >
-                  Remove option
+                  Remove choice
                 </Button>
               </div>
             ))}

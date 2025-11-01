@@ -45,6 +45,15 @@ type AdminMenuManagerProps = {
   initialMenu: MenuCategoryRecord[];
 };
 
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 type CategoryDialogState =
   | { mode: "create" }
   | { mode: "edit"; category: MenuCategoryRecord }
@@ -279,13 +288,13 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
       <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-            Menu builder
+            Menu studio
           </span>
           <h1 className="text-3xl font-semibold text-slate-900">
             Craft your digital lineup
           </h1>
           <p className="text-sm text-slate-600">
-            Draft items autosave instantly. Preview updates live and publish when ready.
+            Everything autosaves as you go—no more lost work. Preview changes instantly and publish when you’re ready.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -462,10 +471,10 @@ function CategoryPanel({
       <Card className="shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold text-slate-900">
-            Step 1 · Choose a category
+            Step 1 · Pick a category
           </CardTitle>
           <CardDescription className="text-sm text-slate-600">
-            Categories segment your menu. Pick one to start editing items.
+            Categories keep your menu tidy. Choose one to see its dishes.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -476,7 +485,7 @@ function CategoryPanel({
               onClick={() => setDialogState({ mode: "create" })}
             >
               <PlusCircleIcon className="size-4" />
-              New category
+              Create category
             </Button>
           </div>
           {menu.length === 0 ? (
@@ -553,7 +562,7 @@ function CategoryPanel({
                           className="text-xs font-semibold text-rose-600 hover:text-rose-700"
                           onClick={() => void onDeleteCategory(category.id)}
                         >
-                          Delete
+                          Delete category
                         </button>
                       </div>
                     </div>
@@ -568,11 +577,12 @@ function CategoryPanel({
       <Card className="shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold text-slate-900">
-            Items in{" "}
-            {selectedCategory ? selectedCategory.nameEn : "your selection"}
+            Step 2 · Add dishes & drinks
           </CardTitle>
           <CardDescription className="text-sm text-slate-600">
-            Step 2: select or draft a menu item to edit.
+            {selectedCategory
+              ? `You're working inside ${selectedCategory.nameEn}. Pick an existing item or add something new.`
+              : "Choose a category first, then start adding dishes and drinks here."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -584,13 +594,13 @@ function CategoryPanel({
               disabled={!selectedCategory}
             >
               <PlusCircleIcon className="size-4" />
-              New menu item
+              Add menu item
             </Button>
           </div>
           {selectedCategory ? (
             selectedCategory.items.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                No items yet. Use the button above to create your first draft.
+                No items yet. Click “Add menu item” to start filling this category.
               </div>
             ) : (
               <div className="space-y-2">
@@ -621,10 +631,10 @@ function CategoryPanel({
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-semibold text-slate-600">
-                            {item.status === "published" ? "Published" : "Draft"}
+                            {item.status === "published" ? "Live" : "Draft"}
                           </span>
                           <div className="text-xs text-slate-500">
-                            {`$${item.price.toFixed(2)}`}
+                            {formatMoney(item.price)}
                           </div>
                         </div>
                       </div>
@@ -648,7 +658,7 @@ function CategoryPanel({
               {dialogState?.mode === "edit" ? "Edit category" : "Create category"}
             </DialogTitle>
             <DialogDescription>
-              Categories group related menu items together.
+              Give the category a clear name so diners find what they want fast.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
