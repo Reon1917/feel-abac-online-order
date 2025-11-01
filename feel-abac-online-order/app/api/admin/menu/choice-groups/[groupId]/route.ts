@@ -75,6 +75,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (updates.displayOrder !== undefined) {
     updateData.displayOrder = updates.displayOrder;
   }
+  if (updates.type !== undefined) {
+    updateData.type = updates.type;
+  }
 
   const [group] = await db
     .update(menuChoiceGroups)

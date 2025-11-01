@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import {
+  deleteMenuImageByKey,
+  parseMenuImageKey,
+} from "@/lib/menu/image-storage";
 import { db } from "@/src/db/client";
 import { menuItems } from "@/src/db/schema";
 import {
@@ -8,18 +12,24 @@ import {
   toDecimalString,
 } from "@/lib/menu/validators";
 
-type RouteParams = {
-  params: {
-    itemId: string;
-  };
-};
-
 export const revalidate = 0;
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+type RouteContext = {
+  params: Promise<{
+    itemId: string;
+  }>;
+};
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
   const session = await requireActiveAdmin();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { itemId: rawItemId } = await context.params;
+  const itemId = rawItemId?.trim();
+  if (!itemId) {
+    return Response.json({ error: "Menu item ID is required" }, { status: 400 });
   }
 
   const payload = await request.json();
@@ -77,6 +87,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (updates.displayOrder !== undefined) {
     updateData.displayOrder = updates.displayOrder;
   }
+  if (updates.status !== undefined) {
+    updateData.status = updates.status;
+  }
   if (updates.hasImage !== undefined && updates.imageUrl === undefined) {
     updateData.hasImage = updates.hasImage;
   }
@@ -84,7 +97,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const [item] = await db
     .update(menuItems)
     .set(updateData)
-    .where(eq(menuItems.id, params.itemId))
+    .where(eq(menuItems.id, itemId))
     .returning();
 
   if (!item) {
@@ -94,19 +107,30 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return Response.json({ item });
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   const session = await requireActiveAdmin();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  const { itemId: rawItemId } = await context.params;
+  const itemId = rawItemId?.trim();
+  if (!itemId) {
+    return Response.json({ error: "Menu item ID is required" }, { status: 400 });
+  }
+
   const [item] = await db
     .delete(menuItems)
-    .where(eq(menuItems.id, params.itemId))
+    .where(eq(menuItems.id, itemId))
     .returning();
 
   if (!item) {
     return Response.json({ error: "Menu item not found" }, { status: 404 });
+  }
+
+  const imageKey = parseMenuImageKey(item.imageUrl);
+  if (imageKey) {
+    await deleteMenuImageByKey(imageKey).catch(() => undefined);
   }
 
   return Response.json({ success: true });

@@ -6,6 +6,7 @@ const accessKeyId = process.env.R2_ACCESS_KEY_ID;
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 const bucket = process.env.R2_BUCKET;
 const rawEndpoint = process.env.R2_S3_ENDPOINT;
+const publicOverride = process.env.R2_PUBLIC_BUCKET_URL?.trim();
 
 if (!accessKeyId || !secretAccessKey || !bucket || !rawEndpoint) {
   throw new Error(
@@ -23,6 +24,9 @@ const normalizedEndpoint = (() => {
 })();
 
 const publicEndpoint = (() => {
+  if (publicOverride) {
+    return publicOverride.replace(/\/+$/, "");
+  }
   const trimmed = rawEndpoint.replace(/\/+$/, "");
   const suffix = `/${bucket}`;
   if (trimmed.endsWith(suffix)) {

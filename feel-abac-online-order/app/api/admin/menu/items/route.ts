@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       allowUserNotes: values.allowUserNotes ?? false,
       displayOrder: values.displayOrder ?? 0,
       hasImage: values.hasImage ?? Boolean(values.imageUrl),
+      status: values.status ?? "draft",
     })
     .returning();
 

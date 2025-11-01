@@ -8,18 +8,24 @@ import {
   toDecimalString,
 } from "@/lib/menu/validators";
 
-type RouteParams = {
-  params: {
-    optionId: string;
-  };
-};
-
 export const revalidate = 0;
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+type RouteContext = {
+  params: Promise<{
+    optionId: string;
+  }>;
+};
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
   const session = await requireActiveAdmin();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { optionId: rawOptionId } = await context.params;
+  const optionId = rawOptionId?.trim();
+  if (!optionId) {
+    return Response.json({ error: "Choice option ID is required" }, { status: 400 });
   }
 
   const payload = await request.json();
@@ -59,7 +65,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const [option] = await db
     .update(menuChoiceOptions)
     .set(updateData)
-    .where(eq(menuChoiceOptions.id, params.optionId))
+    .where(eq(menuChoiceOptions.id, optionId))
     .returning();
 
   if (!option) {
@@ -69,15 +75,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return Response.json({ option });
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   const session = await requireActiveAdmin();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  const { optionId: rawOptionId } = await context.params;
+  const optionId = rawOptionId?.trim();
+  if (!optionId) {
+    return Response.json({ error: "Choice option ID is required" }, { status: 400 });
+  }
+
   const [option] = await db
     .delete(menuChoiceOptions)
-    .where(eq(menuChoiceOptions.id, params.optionId))
+    .where(eq(menuChoiceOptions.id, optionId))
     .returning();
 
   if (!option) {

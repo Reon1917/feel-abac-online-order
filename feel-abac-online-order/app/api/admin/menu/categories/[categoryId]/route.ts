@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import {
+  deleteMenuImageByKey,
+  parseMenuImageKey,
+} from "@/lib/menu/image-storage";
 import { db } from "@/src/db/client";
-import { menuCategories } from "@/src/db/schema";
+import { menuCategories, menuItems } from "@/src/db/schema";
 import { menuCategoryUpdateSchema } from "@/lib/menu/validators";
 
 type RouteParams = {
@@ -72,6 +76,14 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  const items = await db
+    .select({
+      id: menuItems.id,
+      imageUrl: menuItems.imageUrl,
+    })
+    .from(menuItems)
+    .where(eq(menuItems.categoryId, params.categoryId));
+
   const [category] = await db
     .delete(menuCategories)
     .where(eq(menuCategories.id, params.categoryId))
@@ -79,6 +91,12 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
   if (!category) {
     return Response.json({ error: "Category not found" }, { status: 404 });
+  }
+
+  for (const item of items) {
+    const imageKey = parseMenuImageKey(item.imageUrl);
+    if (!imageKey) continue;
+    await deleteMenuImageByKey(imageKey).catch(() => undefined);
   }
 
   return Response.json({ success: true });

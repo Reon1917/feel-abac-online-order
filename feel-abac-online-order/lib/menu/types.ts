@@ -10,6 +10,13 @@ export type MenuChoiceOption = {
   updatedAt: Date;
 };
 
+export type MenuChoiceGroupType =
+  | "single"
+  | "multi"
+  | "toggle"
+  | "dropdown"
+  | "quantity";
+
 export type MenuChoiceGroup = {
   id: string;
   menuItemId: string;
@@ -18,11 +25,14 @@ export type MenuChoiceGroup = {
   minSelect: number;
   maxSelect: number;
   isRequired: boolean;
+  type: MenuChoiceGroupType;
   displayOrder: number;
   createdAt: Date;
   updatedAt: Date;
   options: MenuChoiceOption[];
 };
+
+export type MenuItemStatus = "draft" | "published";
 
 export type MenuItemRecord = {
   id: string;
@@ -37,6 +47,7 @@ export type MenuItemRecord = {
   descriptionMm: string | null;
   isAvailable: boolean;
   allowUserNotes: boolean;
+  status: MenuItemStatus;
   displayOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -70,6 +81,7 @@ export type PublicMenuChoiceGroup = {
   minSelect: number;
   maxSelect: number;
   isRequired: boolean;
+  type: MenuChoiceGroupType;
   displayOrder: number;
   options: PublicMenuOption[];
 };

@@ -51,6 +51,7 @@ function mapChoiceGroups(
     minSelect: group.minSelect,
     maxSelect: group.maxSelect,
     isRequired: group.isRequired,
+    type: group.type,
     displayOrder: group.displayOrder,
     createdAt: group.createdAt,
     updatedAt: group.updatedAt,
@@ -131,6 +132,7 @@ export async function getAdminMenuHierarchy(): Promise<MenuCategoryRecord[]> {
       descriptionMm: item.descriptionMm,
       isAvailable: item.isAvailable,
       allowUserNotes: item.allowUserNotes,
+      status: item.status,
       displayOrder: item.displayOrder,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -170,12 +172,12 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
   const items = await db
     .select()
     .from(menuItems)
-    .where(
-      inArray(menuItems.categoryId, categoryIds),
-    )
+    .where(inArray(menuItems.categoryId, categoryIds))
     .orderBy(asc(menuItems.displayOrder), asc(menuItems.createdAt));
 
-  const activeItems = items.filter((item) => item.isAvailable);
+  const activeItems = items.filter(
+    (item) => item.isAvailable && item.status === "published"
+  );
   const itemIds = activeItems.map((item) => item.id);
 
   const groups = itemIds.length
@@ -227,6 +229,7 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
       minSelect: group.minSelect,
       maxSelect: group.maxSelect,
       isRequired: group.isRequired,
+      type: group.type,
       displayOrder: group.displayOrder,
       options: optionsByGroup.get(group.id) ?? [],
     };

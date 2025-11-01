@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       maxSelect: values.maxSelect,
       isRequired: values.isRequired ?? false,
       displayOrder: values.displayOrder ?? 0,
+      type: values.type ?? "single",
     })
     .returning();
 

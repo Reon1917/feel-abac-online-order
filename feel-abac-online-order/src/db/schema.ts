@@ -125,6 +125,7 @@ export const menuItems = pgTable("menu_items", {
   descriptionMm: text("description_mm"),
   isAvailable: boolean("is_available").default(true).notNull(),
   allowUserNotes: boolean("allow_user_notes").default(false).notNull(),
+  status: text("status").default("draft").notNull(),
   displayOrder: integer("display_order").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
@@ -143,6 +144,7 @@ export const menuChoiceGroups = pgTable("menu_choice_groups", {
   minSelect: integer("min_select").default(0).notNull(),
   maxSelect: integer("max_select").default(1).notNull(),
   isRequired: boolean("is_required").default(false).notNull(),
+  type: text("type").default("single").notNull(),
   displayOrder: integer("display_order").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
