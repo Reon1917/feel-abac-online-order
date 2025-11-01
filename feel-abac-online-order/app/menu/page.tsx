@@ -2,7 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AdminBar } from "@/components/admin/admin-bar";
-import { MenuBrowser } from "@/components/menu/menu-browser";
+import { ResponsiveMenuBrowser } from "@/components/menu/responsive-menu-browser";
 import { PhoneEditModal } from "@/components/menu/phone-edit-modal";
 import { getPublicMenuHierarchy } from "@/lib/menu/queries";
 import { getSession } from "@/lib/session";
@@ -48,7 +48,7 @@ export default async function MenuPage() {
           </header>
 
           {hasMenu ? (
-            <MenuBrowser categories={menuCategories} />
+            <ResponsiveMenuBrowser categories={menuCategories} />
           ) : (
             <section className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">
               <h2 className="text-xl font-semibold text-slate-900">
