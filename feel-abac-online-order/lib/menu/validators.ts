@@ -118,28 +118,38 @@ export const menuItemUpdateSchema = z.object({
   status: menuItemStatusEnum.optional(),
 });
 
-export const menuChoiceGroupSchema = z.object({
-  menuItemId: z.uuid("Menu item ID is required"),
-  titleEn: z.string().trim().min(1, "English title is required"),
-  titleMm: z
-    .string()
-    .trim()
-    .min(1, "Burmese title cannot be empty")
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  minSelect: z.coerce
-    .number()
-    .int()
-    .min(0, "Minimum selections cannot be negative")
-    .default(0),
-  maxSelect: z.coerce
-    .number()
-    .int()
-    .min(1, "Maximum selections must be at least 1"),
-  isRequired: z.coerce.boolean().optional(),
-  displayOrder: z.coerce.number().int().gte(0).optional(),
-  type: menuChoiceGroupTypeEnum.default("single"),
-});
+export const menuChoiceGroupSchema = z
+  .object({
+    menuItemId: z.uuid("Menu item ID is required"),
+    titleEn: z.string().trim().min(1, "English title is required"),
+    titleMm: z
+      .string()
+      .trim()
+      .min(1, "Burmese title cannot be empty")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    minSelect: z.coerce
+      .number()
+      .int()
+      .min(0, "Minimum selections cannot be negative")
+      .default(0),
+    maxSelect: z.coerce
+      .number()
+      .int()
+      .min(1, "Maximum selections must be at least 1"),
+    isRequired: z.coerce.boolean().optional(),
+    displayOrder: z.coerce.number().int().gte(0).optional(),
+    type: menuChoiceGroupTypeEnum.default("single"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.minSelect > data.maxSelect) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Minimum selections cannot exceed maximum selections",
+        path: ["minSelect"],
+      });
+    }
+  });
 
 export const menuChoiceGroupUpdateSchema = z.object({
   menuItemId: z.uuid("Menu item ID is required").optional(),
