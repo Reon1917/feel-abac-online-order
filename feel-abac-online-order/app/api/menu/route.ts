@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPublicMenuHierarchy } from "@/lib/menu/queries";
 
-export const revalidate = 0;
+export const revalidate = 300; // 5 minutes
 
 const CACHE_HEADER =
   "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
