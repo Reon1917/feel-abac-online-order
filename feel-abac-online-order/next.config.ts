@@ -53,6 +53,7 @@ registerRemotePattern(process.env.R2_S3_ENDPOINT);
 const nextConfig: NextConfig = {
   images: {
     remotePatterns,
+    unoptimized: true,
   },
 };
 
