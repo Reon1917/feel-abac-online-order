@@ -17,16 +17,16 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const categoryId = searchParams.get("categoryId");
 
-  let query = db
-    .select()
-    .from(menuItems)
-    .orderBy(asc(menuItems.displayOrder), asc(menuItems.createdAt));
+  const baseQuery = db.select().from(menuItems);
 
-  if (categoryId) {
-    query = query.where(eq(menuItems.categoryId, categoryId));
-  }
+  const filteredQuery = categoryId
+    ? baseQuery.where(eq(menuItems.categoryId, categoryId))
+    : baseQuery;
 
-  const items = await query;
+  const items = await filteredQuery.orderBy(
+    asc(menuItems.displayOrder),
+    asc(menuItems.createdAt)
+  );
   return Response.json({ items });
 }
 

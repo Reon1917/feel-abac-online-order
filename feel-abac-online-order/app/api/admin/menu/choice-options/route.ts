@@ -20,19 +20,16 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const choiceGroupId = searchParams.get("choiceGroupId");
 
-  let query = db
-    .select()
-    .from(menuChoiceOptions)
-    .orderBy(
-      asc(menuChoiceOptions.displayOrder),
-      asc(menuChoiceOptions.createdAt)
-    );
+  const baseQuery = db.select().from(menuChoiceOptions);
 
-  if (choiceGroupId) {
-    query = query.where(eq(menuChoiceOptions.choiceGroupId, choiceGroupId));
-  }
+  const filteredQuery = choiceGroupId
+    ? baseQuery.where(eq(menuChoiceOptions.choiceGroupId, choiceGroupId))
+    : baseQuery;
 
-  const options = await query;
+  const options = await filteredQuery.orderBy(
+    asc(menuChoiceOptions.displayOrder),
+    asc(menuChoiceOptions.createdAt)
+  );
   return Response.json({ options });
 }
 

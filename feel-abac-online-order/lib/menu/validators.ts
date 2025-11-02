@@ -63,8 +63,9 @@ export const menuItemSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   price: z.coerce
-    .number({
-      invalid_type_error: "Price must be a number",
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Price must be a number",
     })
     .min(0, "Price cannot be negative"),
   isAvailable: z.coerce.boolean().optional(),
@@ -104,8 +105,9 @@ export const menuItemUpdateSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   price: z.coerce
-    .number({
-      invalid_type_error: "Price must be a number",
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Price must be a number",
     })
     .min(0, "Price cannot be negative")
     .optional(),
@@ -173,8 +175,9 @@ export const menuChoiceOptionSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   extraPrice: z.coerce
-    .number({
-      invalid_type_error: "Extra price must be a number",
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Extra price must be a number",
     })
     .min(0, "Extra price cannot be negative")
     .default(0),
@@ -192,8 +195,9 @@ export const menuChoiceOptionUpdateSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   extraPrice: z.coerce
-    .number({
-      invalid_type_error: "Extra price must be a number",
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Extra price must be a number",
     })
     .min(0, "Extra price cannot be negative")
     .optional(),

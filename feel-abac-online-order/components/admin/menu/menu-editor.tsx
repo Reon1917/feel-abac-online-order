@@ -308,7 +308,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
     [form, selectedItem, updateItem]
   );
 
-  const watchedValues = useWatch({ control: form.control });
+  const watchedValues =
+    (useWatch<MenuEditorFormValues>({ control: form.control }) ??
+      form.getValues()) as MenuEditorFormValues;
+  const watchedChoiceGroups = watchedValues.choiceGroups ?? [];
+  const currentStatus = watchedValues.status ?? "draft";
 
   useEffect(() => {
     const subscription = form.watch((values, info) => {
@@ -323,7 +327,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
       setIsAutosaving(true);
       setAutosaveError(null);
       autosaveTimer.current = setTimeout(() => {
-        void persistItemDraft(values);
+        void persistItemDraft(values as MenuEditorFormValues);
       }, 750);
     });
 
@@ -851,10 +855,10 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-xs font-semibold",
-                  STATUS_BADGE_STYLES[watchedValues.status]
+                  STATUS_BADGE_STYLES[currentStatus]
                 )}
               >
-                {watchedValues.status === "published" ? "Published" : "Draft"}
+                {currentStatus === "published" ? "Published" : "Draft"}
               </span>
             </p>
             <div className="flex flex-wrap gap-3 text-xs text-slate-500">
@@ -988,7 +992,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
         <CardFooter className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-3">
             <Button
-              variant={watchedValues.status === "draft" ? "default" : "outline"}
+              variant={currentStatus === "draft" ? "default" : "outline"}
               type="button"
               onClick={() => setStatus("draft")}
               disabled={isAutosaving}
@@ -996,9 +1000,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
               Save as draft
             </Button>
             <Button
-              variant={watchedValues.status === "published" ? "default" : "outline"}
+              variant={currentStatus === "published" ? "default" : "outline"}
               className={cn(
-                watchedValues.status !== "published" &&
+                currentStatus !== "published" &&
                   "border-emerald-500 text-emerald-700 hover:bg-emerald-600 hover:text-white"
               )}
               type="button"
@@ -1068,12 +1072,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
                 )}
               </div>
               <div className="space-y-3">
-                {watchedValues.choiceGroups.length === 0 ? (
+                {watchedChoiceGroups.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
                     No choice groups yet. Use them for toppings, sizes, or combos.
                   </div>
                 ) : (
-                  watchedValues.choiceGroups.map((group) => (
+                  watchedChoiceGroups.map((group) => (
                     <div
                       key={group.id ?? group.titleEn}
                       className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4"
@@ -1087,12 +1091,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
                         </span>
                       </div>
                       <div className="space-y-1">
-                        {group.options.length === 0 ? (
+                        {(group.options ?? []).length === 0 ? (
                           <p className="text-xs italic text-emerald-700">
                             Add options so diners can make a choice.
                           </p>
                         ) : (
-                          group.options.map((option) => (
+                          (group.options ?? []).map((option) => (
                             <div
                               key={option.id ?? option.nameEn}
                               className="flex items-center justify-between text-sm text-emerald-900"

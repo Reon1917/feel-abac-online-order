@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
-type RemotePattern = NonNullable<NextConfig["images"]>["remotePatterns"][number];
+type RemotePattern = {
+  protocol: "http" | "https";
+  hostname: string;
+  port?: string;
+  pathname: string;
+};
 
 const remotePatterns: RemotePattern[] = [
   {
