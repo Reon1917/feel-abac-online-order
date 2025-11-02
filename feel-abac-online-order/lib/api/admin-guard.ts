@@ -40,12 +40,10 @@ export async function requireActiveAdmin(): Promise<FeelSession | null> {
     return null;
   }
 
-  if (!session) {
-    return null;
-  }
+  const resolvedSession = session as FeelSession;
 
   return {
-    ...session,
+    ...resolvedSession,
     isAdmin: true,
   };
 }

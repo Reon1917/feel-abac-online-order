@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 
@@ -69,6 +69,22 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
       })),
     ];
   }, [categories, locale, localize]);
+
+  useEffect(() => {
+    const availableIds = categoryTabs.map((tab) => tab.id);
+    if (availableIds.includes(activeCategory)) {
+      return;
+    }
+
+    let fallback = "";
+    if (availableIds.includes("all")) {
+      fallback = "all";
+    } else if (availableIds.length > 0) {
+      fallback = availableIds[0];
+    }
+
+    queueMicrotask(() => setActiveCategory(fallback));
+  }, [activeCategory, categoryTabs]);
 
   return (
     <div className={styles.mobileRoot}>

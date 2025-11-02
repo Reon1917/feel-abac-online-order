@@ -14,12 +14,7 @@ type ResponsiveMenuBrowserProps = {
 const MOBILE_QUERY = "(max-width: 640px)";
 
 function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.matchMedia(query).matches;
-  });
+  const [matches, setMatches] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -30,7 +25,7 @@ function useMediaQuery(query: string) {
 
     const updateMatch = () => setMatches(mediaQuery.matches);
 
-    updateMatch();
+    queueMicrotask(updateMatch);
     mediaQuery.addEventListener("change", updateMatch);
 
     return () => {

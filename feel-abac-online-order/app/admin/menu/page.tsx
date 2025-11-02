@@ -1,16 +1,12 @@
 import { unstable_noStore as noStore } from "next/cache";
-import { redirect } from "next/navigation";
 import { AdminMenuManager } from "@/components/admin/menu/menu-manager";
-import { getSession } from "@/lib/session";
+import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { getAdminMenuHierarchy } from "@/lib/menu/queries";
 
 export default async function AdminMenuPage() {
   noStore();
 
-  const sessionData = await getSession();
-  if (!sessionData?.isAdmin) {
-    redirect("/");
-  }
+  await requireActiveAdmin();
 
   const menu = await getAdminMenuHierarchy();
 

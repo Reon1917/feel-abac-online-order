@@ -6,7 +6,7 @@ import { db } from "@/src/db/client";
 import { admins, users } from "@/src/db/schema";
 
 const addAdminSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
+  email: z.email("Enter a valid email address"),
 });
 
 export async function POST(request: NextRequest) {

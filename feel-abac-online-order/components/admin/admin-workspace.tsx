@@ -59,10 +59,6 @@ export function AdminWorkspace({
             key={panel.id}
             type="button"
             onClick={() => {
-              if (panel.id === "menu") {
-                router.push("/admin/menu");
-                return;
-              }
               setActivePanel(panel.id);
             }}
             className={clsx(

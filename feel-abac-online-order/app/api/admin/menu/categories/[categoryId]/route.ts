@@ -46,10 +46,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updatedAt: new Date(),
   };
 
-  if (updates.nameEn !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(updates, "nameEn")) {
     updateData.nameEn = updates.nameEn;
   }
-  if (updates.nameMm !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(updates, "nameMm")) {
     updateData.nameMm = updates.nameMm ?? null;
   }
   if (updates.displayOrder !== undefined) {

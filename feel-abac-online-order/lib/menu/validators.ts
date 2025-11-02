@@ -34,7 +34,7 @@ const menuItemStatusEnum = z.enum(MENU_ITEM_STATUSES);
 const menuChoiceGroupTypeEnum = z.enum(MENU_CHOICE_GROUP_TYPES);
 
 export const menuItemSchema = z.object({
-  categoryId: z.string().uuid("Category ID must be a valid UUID"),
+  categoryId: z.uuid("Category ID must be a valid UUID"),
   nameEn: z.string().trim().min(1, "English name is required"),
   nameMm: z
     .string()
@@ -76,7 +76,7 @@ export const menuItemSchema = z.object({
 });
 
 export const menuItemUpdateSchema = z.object({
-  categoryId: z.string().uuid("Category ID must be a valid UUID").optional(),
+  categoryId: z.uuid("Category ID must be a valid UUID").optional(),
   nameEn: z.string().trim().min(1, "English name is required").optional(),
   nameMm: z
     .string()
@@ -119,7 +119,7 @@ export const menuItemUpdateSchema = z.object({
 });
 
 export const menuChoiceGroupSchema = z.object({
-  menuItemId: z.string().uuid("Menu item ID is required"),
+  menuItemId: z.uuid("Menu item ID is required"),
   titleEn: z.string().trim().min(1, "English title is required"),
   titleMm: z
     .string()
@@ -142,7 +142,7 @@ export const menuChoiceGroupSchema = z.object({
 });
 
 export const menuChoiceGroupUpdateSchema = z.object({
-  menuItemId: z.string().uuid("Menu item ID is required").optional(),
+  menuItemId: z.uuid("Menu item ID is required").optional(),
   titleEn: z.string().trim().min(1, "English title is required").optional(),
   titleMm: z
     .string()
@@ -166,7 +166,7 @@ export const menuChoiceGroupUpdateSchema = z.object({
 });
 
 export const menuChoiceOptionSchema = z.object({
-  choiceGroupId: z.string().uuid("Choice group ID is required"),
+  choiceGroupId: z.uuid("Choice group ID is required"),
   nameEn: z.string().trim().min(1, "English name is required"),
   nameMm: z
     .string()
@@ -186,7 +186,7 @@ export const menuChoiceOptionSchema = z.object({
 });
 
 export const menuChoiceOptionUpdateSchema = z.object({
-  choiceGroupId: z.string().uuid("Choice group ID is required").optional(),
+  choiceGroupId: z.uuid("Choice group ID is required").optional(),
   nameEn: z.string().trim().min(1, "English name is required").optional(),
   nameMm: z
     .string()

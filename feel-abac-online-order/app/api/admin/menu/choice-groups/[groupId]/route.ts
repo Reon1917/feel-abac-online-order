@@ -56,13 +56,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updatedAt: new Date(),
   };
 
-  if (updates.menuItemId !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(updates, "menuItemId")) {
     updateData.menuItemId = updates.menuItemId;
   }
-  if (updates.titleEn !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(updates, "titleEn")) {
     updateData.titleEn = updates.titleEn;
   }
-  if (updates.titleMm !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(updates, "titleMm")) {
     updateData.titleMm = updates.titleMm ?? null;
   }
   if (updates.minSelect !== undefined) {
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (updates.displayOrder !== undefined) {
     updateData.displayOrder = updates.displayOrder;
   }
-  if (updates.type !== undefined) {
+  if (Object.prototype.hasOwnProperty.call(updates, "type")) {
     updateData.type = updates.type;
   }
 

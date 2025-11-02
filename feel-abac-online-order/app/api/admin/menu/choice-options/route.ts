@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import crypto from "node:crypto";
 import { asc, eq } from "drizzle-orm";
+import { z } from "zod";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { menuChoiceOptions } from "@/src/db/schema";
@@ -18,18 +19,35 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const choiceGroupId = searchParams.get("choiceGroupId");
+  const rawChoiceGroupId = searchParams.get("choiceGroupId");
 
-  const baseQuery = db.select().from(menuChoiceOptions);
+  const trimmedChoiceGroupId = rawChoiceGroupId?.trim();
+  if (trimmedChoiceGroupId) {
+    const parsed = z.uuid().safeParse(trimmedChoiceGroupId);
+    if (!parsed.success) {
+      return Response.json(
+        { error: "choiceGroupId must be a valid UUID" },
+        { status: 400 }
+      );
+    }
+    const options = await db
+      .select()
+      .from(menuChoiceOptions)
+      .where(eq(menuChoiceOptions.choiceGroupId, parsed.data))
+      .orderBy(
+        asc(menuChoiceOptions.displayOrder),
+        asc(menuChoiceOptions.createdAt)
+      );
+    return Response.json({ options });
+  }
 
-  const filteredQuery = choiceGroupId
-    ? baseQuery.where(eq(menuChoiceOptions.choiceGroupId, choiceGroupId))
-    : baseQuery;
-
-  const options = await filteredQuery.orderBy(
-    asc(menuChoiceOptions.displayOrder),
-    asc(menuChoiceOptions.createdAt)
-  );
+  const options = await db
+    .select()
+    .from(menuChoiceOptions)
+    .orderBy(
+      asc(menuChoiceOptions.displayOrder),
+      asc(menuChoiceOptions.createdAt)
+    );
   return Response.json({ options });
 }
 
