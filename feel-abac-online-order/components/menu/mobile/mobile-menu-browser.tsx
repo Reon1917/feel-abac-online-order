@@ -145,15 +145,19 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
         </div>
       </div>
 
-      <div className={styles.grid}>
+      <div>
         {filteredItems.length === 0 ? (
           <div className={styles.emptyState}>
             Nothing matches your search yet. Try a different term or category.
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <MobileMenuCard key={item.id} item={item} locale={locale} />
-          ))
+          <ul className={styles.listRoot}>
+            {filteredItems.map((item) => (
+              <li key={item.id} className={styles.listItem}>
+                <MobileMenuListItem item={item} locale={locale} />
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>
@@ -165,18 +169,23 @@ type MobileMenuCardProps = {
   locale: "en" | "mm";
 };
 
-function MobileMenuCard({ item, locale }: MobileMenuCardProps) {
+function MobileMenuListItem({ item, locale }: MobileMenuCardProps) {
   const displayName = locale === "mm" ? item.nameMm ?? item.name : item.name;
+  const descriptionCopy = item.description
+    ? locale === "mm"
+      ? item.descriptionMm ?? item.description
+      : item.description
+    : null;
 
   return (
-    <article className={styles.card}>
-      <div className={styles.imageArea}>
+    <div className={styles.listInner}>
+      <div className={styles.listImage}>
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
             alt={displayName}
             fill
-            sizes="(max-width: 600px) 50vw, 33vw"
+            sizes="(max-width: 600px) 40vw, 120px"
             className="object-cover"
           />
         ) : (
@@ -184,17 +193,17 @@ function MobileMenuCard({ item, locale }: MobileMenuCardProps) {
         )}
       </div>
 
-      <div className={styles.cardBody}>
+      <div className={styles.listContent}>
         <h3 className={styles.cardTitle}>{displayName}</h3>
-
-        <div className={styles.cardFooter}>
+        {descriptionCopy && <p className={styles.listDescription}>{descriptionCopy}</p>}
+        <div className={styles.listFooter}>
           <span className={styles.price}>฿{formatPrice(item.price)}</span>
           <button type="button" className={styles.addButton}>
             + Add
           </button>
         </div>
       </div>
-    </article>
+    </div>
   );
 }
 
