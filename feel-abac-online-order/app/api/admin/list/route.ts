@@ -1,12 +1,11 @@
-import { NextRequest } from "next/server";
-import { getSession } from "@/lib/session";
+import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 
-export async function GET(request: NextRequest) {
-  const sessionData = await getSession();
-  
-  if (!sessionData?.isAdmin) {
+export async function GET() {
+  const sessionData = await requireActiveAdmin();
+
+  if (!sessionData?.session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 

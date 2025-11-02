@@ -29,7 +29,7 @@ export function AdminManagement({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
       toast.success(data.message);
       setEmail("");
-    } catch (error) {
+    } catch {
       toast.error("Network error. Please try again.");
     } finally {
       setIsLoading(false);

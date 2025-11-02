@@ -8,6 +8,9 @@ import { AdminWorkspace } from "@/components/admin/admin-workspace";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminDashboard() {
   const sessionData = await getSession();
   

@@ -1,86 +1,120 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import Image from "next/image";
 import clsx from "clsx";
-
-type MenuItem = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  currency?: string;
-  isRecommended?: boolean;
-  isVegetarian?: boolean;
-  emoji?: string;
-  spiceLevel?: number;
-};
-
-type MenuCategory = {
-  id: string;
-  name: string;
-  items: MenuItem[];
-};
+import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 
 type MenuBrowserProps = {
-  categories: MenuCategory[];
+  categories: PublicMenuCategory[];
+  layout?: "default" | "compact";
 };
 
-const spiceColor = ["bg-slate-200", "bg-emerald-200", "bg-emerald-300"];
+function formatPrice(value: number) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
-export function MenuBrowser({ categories }: MenuBrowserProps) {
+export function MenuBrowser({ categories, layout = "default" }: MenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+   const [locale, setLocale] = useState<"en" | "mm">("en");
+
+  const localize = useCallback(
+    (en: string | null | undefined, mm?: string | null) => {
+      if (locale === "mm" && mm && mm.trim().length > 0) {
+        return mm;
+      }
+      return en ?? "";
+    },
+    [locale]
+  );
 
   const filteredItems = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
     return categories.flatMap((category) => {
       if (activeCategory !== "all" && category.id !== activeCategory) {
-        return [] as Array<MenuItem & { categoryId: string; categoryName: string }>;
+        return [] as PublicMenuItem[];
       }
 
-      const items = category.items
+      return category.items
         .filter((item) => {
           if (!query) return true;
-          return (
-            item.name.toLowerCase().includes(query) ||
-            item.description.toLowerCase().includes(query)
-          );
+          const haystack = [
+            item.name,
+            item.nameMm ?? "",
+            item.description ?? "",
+            item.descriptionMm ?? "",
+          ]
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query);
         })
-        .map((item) => ({
-          ...item,
-          categoryId: category.id,
-          categoryName: category.name,
-        }));
-
-      return items;
+        .map((item) => item);
     });
   }, [activeCategory, categories, searchTerm]);
 
-  const categoryTabs = [{ id: "all", name: "All" }, ...categories.map(({ id, name }) => ({ id, name }))];
+  const categoryTabs = useMemo(() => {
+    const allLabel = locale === "mm" ? "အားလုံး" : "All";
+    return [
+      { id: "all", name: allLabel },
+      ...categories.map(({ id, name, nameMm }) => ({
+        id,
+        name: localize(name, nameMm),
+      })),
+    ];
+  }, [categories, locale, localize]);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-5">
         <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold text-slate-900">Menu preview</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">Discover the menu</h1>
           <p className="text-sm text-slate-600">
-            Browse the mock lineup while the real menu syncs with the kitchen.
-            Refine by category or search for a dish.
+            Filter by category or search by name. Base prices are shown in Thai Baht; options update the total dynamically.
           </p>
         </header>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <label className="flex w-full items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-2 focus-within:border-emerald-300">
             <span className="text-base">🔍</span>
             <input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search dishes..."
+              placeholder="Search dishes or notes..."
               className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
             />
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white p-1 text-xs font-semibold text-slate-600">
+              <button
+                type="button"
+                onClick={() => setLocale("en")}
+                className={clsx(
+                  "rounded-sm px-3 py-1 transition",
+                  locale === "en"
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-600 hover:text-emerald-600"
+                )}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("mm")}
+                className={clsx(
+                  "rounded-sm px-3 py-1 transition",
+                  locale === "mm"
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-600 hover:text-emerald-600"
+                )}
+              >
+                Burmese
+              </button>
+            </div>
             {categoryTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -100,71 +134,21 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={clsx(
+          "grid gap-4 max-[360px]:grid-cols-1",
+          layout === "compact"
+            ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-3"
+            : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3"
+        )}
+      >
         {filteredItems.length === 0 ? (
           <div className="col-span-full rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
             Nothing matches your search yet. Try a different term or category.
           </div>
         ) : (
           filteredItems.map((item) => (
-            <article
-              key={item.id}
-              className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-                    {item.categoryName}
-                  </span>
-                  <h2 className="text-lg font-semibold text-slate-900">{item.name}</h2>
-                  <p className="text-sm text-slate-600">{item.description}</p>
-                </div>
-                <span className="text-3xl" aria-hidden>
-                  {item.emoji ?? "🍽️"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold text-emerald-800">
-                    {item.currency ?? "฿"}
-                    {item.price}
-                  </span>
-                  {item.isVegetarian && (
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                      Veg friendly
-                    </span>
-                  )}
-                  {typeof item.spiceLevel === "number" && item.spiceLevel > 0 && (
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: 3 }).map((_, index) => (
-                        <span
-                          key={index}
-                          className={clsx(
-                            "h-1.5 w-4 rounded-full",
-                            index < item.spiceLevel
-                              ? spiceColor[Math.min(item.spiceLevel - 1, spiceColor.length - 1)]
-                              : "bg-slate-200"
-                          )}
-                        />
-                      ))}
-                      <span className="text-xs text-slate-500">heat</span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
-                >
-                  <span>+</span>Add
-                </button>
-              </div>
-              {item.isRecommended && (
-                <div className="flex items-center justify-between rounded-md border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
-                  <span className="font-semibold">Chef says go for it</span>
-                  <span>⭐ Recommended</span>
-                </div>
-              )}
-            </article>
+            <MenuItemCard key={item.id} item={item} locale={locale} />
           ))
         )}
       </div>
@@ -172,4 +156,55 @@ export function MenuBrowser({ categories }: MenuBrowserProps) {
   );
 }
 
+function MenuItemCard({
+  item,
+  locale,
+}: {
+  item: PublicMenuItem;
+  locale: "en" | "mm";
+}) {
+  const displayName =
+    locale === "mm" ? item.nameMm ?? item.name : item.name;
 
+  return (
+    <article className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+      {/* Image - upper half */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+        {item.imageUrl ? (
+          <div className="relative h-full w-full">
+            <Image
+              src={item.imageUrl}
+              alt={displayName}
+              fill
+              className="object-cover transition group-hover:scale-105"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+              priority={false}
+            />
+          </div>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-6xl">
+            {item.placeholderIcon ?? "🍽️"}
+          </div>
+        )}
+      </div>
+
+      {/* Content - lower half */}
+      <div className="flex flex-col gap-3 p-4">
+        <h3 className="text-lg font-semibold text-slate-900 line-clamp-2">
+          {displayName}
+        </h3>
+        <div className="flex items-center justify-between">
+          <span className="text-xl font-bold text-emerald-600">
+            ฿{formatPrice(item.price)}
+          </span>
+          <button
+            type="button"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-95"
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}

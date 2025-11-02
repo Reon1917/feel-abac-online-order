@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import {
-  signInSchema,
-  signUpSchema,
-  type SignInInput,
-  type SignUpInput,
-} from "@/lib/validations";
+import { signInSchema, signUpSchema } from "@/lib/validations";
 
 type AuthView = "sign-in" | "sign-up";
 

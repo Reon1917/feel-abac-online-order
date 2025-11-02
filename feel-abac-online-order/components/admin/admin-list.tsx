@@ -50,7 +50,7 @@ export function AdminList({
       const removedAdmin = admins.find((a) => a.userId === userId);
       toast.success(`${removedAdmin?.name || "Admin"} removed successfully`);
       setAdmins(admins.filter((a) => a.userId !== userId));
-    } catch (error) {
+    } catch {
       toast.error("Network error. Please try again.");
     } finally {
       setRemoving(null);
@@ -64,7 +64,7 @@ export function AdminList({
       const data = await response.json();
       setAdmins(data);
       toast.success("Admin list refreshed");
-    } catch (error) {
+    } catch {
       toast.error("Failed to refresh admin list");
     } finally {
       setRefreshing(false);

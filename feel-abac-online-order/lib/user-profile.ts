@@ -22,7 +22,7 @@ export async function getUserProfile(userId: string) {
       ...profile,
       phoneNumber: decrypted,
     };
-  } catch (error) {
+  } catch {
     // Phone number is likely not encrypted yet (plaintext from before encryption was added)
     return profile;
   }

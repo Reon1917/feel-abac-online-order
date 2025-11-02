@@ -1,19 +1,19 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { getSession } from "@/lib/session";
+import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { admins, users } from "@/src/db/schema";
 
 const addAdminSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
+  email: z.email("Enter a valid email address"),
 });
 
 export async function POST(request: NextRequest) {
   // Security: Only super_admin can add admins
-  const sessionData = await getSession();
-  
-  if (!sessionData?.isAdmin) {
+  const sessionData = await requireActiveAdmin();
+
+  if (!sessionData?.session?.user?.id) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
