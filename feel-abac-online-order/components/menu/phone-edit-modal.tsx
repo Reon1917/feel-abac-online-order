@@ -15,10 +15,9 @@ import { onboardingSchema } from "@/lib/validations";
 
 interface PhoneEditModalProps {
   currentPhone: string;
-  onUpdate?: () => void;
 }
 
-export function PhoneEditModal({ currentPhone, onUpdate }: PhoneEditModalProps) {
+export function PhoneEditModal({ currentPhone }: PhoneEditModalProps) {
   const [open, setOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState(currentPhone);
   const [error, setError] = useState<string | null>(null);
