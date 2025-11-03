@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 
 type AdminMenuManagerProps = {
   initialMenu: MenuCategoryRecord[];
+  variant?: "standalone" | "workspace";
 };
 
 function formatMoney(value: number) {
@@ -64,7 +65,7 @@ function nextDisplayOrder(records: { displayOrder: number }[]) {
   return Math.max(...records.map((record) => record.displayOrder ?? 0)) + 1;
 }
 
-export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
+export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminMenuManagerProps) {
   const router = useRouter();
   const menu = useAdminMenuStore((state) => state.menu);
   const selectedCategoryId = useAdminMenuStore((state) => state.selectedCategoryId);
@@ -283,65 +284,107 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
     }
   };
 
-  return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-            Menu studio
-          </span>
-          <h1 className="text-3xl font-semibold text-slate-900">
-            Craft your digital lineup
-          </h1>
-          <p className="text-sm text-slate-600">
-            Everything autosaves as you go—no more lost work. Preview changes instantly and publish when you’re ready.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={handleBackToDashboard}
-          >
-            <ArrowLeftIcon className="size-4" />
-            Back to dashboard
-          </Button>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => void refreshMenu()}
-            disabled={isRefreshing}
-          >
-            {isRefreshing ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <RefreshCwIcon className="size-4" />
-            )}
-            Refresh
-          </Button>
-        </div>
-      </header>
+  const subtleActionClasses =
+    "border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800";
+  const primaryActionClasses =
+    "border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500";
+  const switchToneClasses =
+    "data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200";
 
-      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <CategoryPanel
-          menu={menu}
-          selectedCategoryId={selectedCategoryId}
-          selectedItemId={selectedItemId}
-          onSelectCategory={(categoryId) => setSelectedCategory(categoryId)}
-          onSelectItem={(itemId) => setSelectedItem(itemId)}
-          onCreateDraftItem={handleCreateDraftItem}
-          onCreateCategory={handleCreateCategory}
-          onUpdateCategory={handleUpdateCategory}
-          onDeleteCategory={handleDeleteCategory}
-        />
+  const headerBadgeLabel = variant === "standalone" ? "Menu studio" : "Workspace controls";
+  const headerTitle = variant === "standalone" ? "Craft your digital lineup" : "Menu workspace";
+  const headerSubtitle =
+    variant === "standalone"
+      ? "Everything autosaves as you go—no more lost work. Preview changes instantly and publish when you’re ready."
+      : "Organize categories, curate dishes, and adjust availability without leaving this workspace. Autosave keeps drafts safe while you experiment.";
 
-        <MenuEditor
-          refreshMenu={refreshMenu}
-          onDirtyChange={setHasUnsavedChanges}
-        />
+  const headerContent = (
+    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+          {headerBadgeLabel}
+        </span>
+        <h2
+          className={cn(
+            "font-semibold text-slate-900",
+            variant === "standalone" ? "text-3xl" : "text-2xl"
+          )}
+        >
+          {headerTitle}
+        </h2>
+        <p className="text-sm text-slate-600">{headerSubtitle}</p>
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          type="button"
+          onClick={handleBackToDashboard}
+          className={subtleActionClasses}
+        >
+          <ArrowLeftIcon className="size-4" />
+          Back to dashboard
+        </Button>
+        <Button
+          variant="default"
+          type="button"
+          onClick={() => void refreshMenu()}
+          disabled={isRefreshing}
+          className={primaryActionClasses}
+        >
+          {isRefreshing ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <RefreshCwIcon className="size-4" />
+          )}
+          Refresh
+        </Button>
+      </div>
+    </div>
+  );
 
-  <Dialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}>
+  const gridContent = (
+  <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <CategoryPanel
+        menu={menu}
+        selectedCategoryId={selectedCategoryId}
+        selectedItemId={selectedItemId}
+        onSelectCategory={(categoryId) => setSelectedCategory(categoryId)}
+        onSelectItem={(itemId) => setSelectedItem(itemId)}
+        onCreateDraftItem={handleCreateDraftItem}
+        onCreateCategory={handleCreateCategory}
+        onUpdateCategory={handleUpdateCategory}
+        onDeleteCategory={handleDeleteCategory}
+        primaryActionClassName={primaryActionClasses}
+        subtleActionClassName={subtleActionClasses}
+        switchToneClassName={switchToneClasses}
+      />
+
+      <MenuEditor
+        refreshMenu={refreshMenu}
+        onDirtyChange={setHasUnsavedChanges}
+      />
+    </div>
+  );
+
+  const layout =
+    variant === "workspace" ? (
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
+        <div className="border-b border-slate-200 bg-linear-to-br from-white via-white to-emerald-50/80 p-6">
+          {headerContent}
+        </div>
+        <div className="p-6">{gridContent}</div>
+      </section>
+    ) : (
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
+        {headerContent}
+        {gridContent}
+      </div>
+    );
+
+  return (
+    <>
+      {layout}
+      <Dialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Unsaved changes</DialogTitle>
@@ -354,6 +397,7 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
               variant="outline"
               type="button"
               onClick={() => setExitDialogOpen(false)}
+              className={subtleActionClasses}
             >
               Stay here
             </Button>
@@ -361,6 +405,7 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
               variant="outline"
               type="button"
               onClick={handleDiscardAndLeave}
+              className="border-rose-200 text-rose-600 hover:bg-rose-50"
             >
               Discard and leave
             </Button>
@@ -368,6 +413,7 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
               type="button"
               onClick={() => void handleSaveDraftAndLeave()}
               disabled={isSavingDraft}
+              className={primaryActionClasses}
             >
               {isSavingDraft ? (
                 <Loader2Icon className="size-4 animate-spin" />
@@ -377,7 +423,7 @@ export function AdminMenuManager({ initialMenu }: AdminMenuManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 
@@ -398,6 +444,9 @@ type CategoryPanelProps = {
     updates: Partial<{ nameEn: string; nameMm?: string; isActive: boolean }>
   ) => Promise<void>;
   onDeleteCategory: (categoryId: string) => Promise<void>;
+  primaryActionClassName: string;
+  subtleActionClassName: string;
+  switchToneClassName: string;
 };
 
 function CategoryPanel({
@@ -410,6 +459,9 @@ function CategoryPanel({
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
+  primaryActionClassName,
+  subtleActionClassName,
+  switchToneClassName,
 }: CategoryPanelProps) {
   const [dialogState, setDialogState] = useState<CategoryDialogState>(null);
   const [nameEn, setNameEn] = useState("");
@@ -483,6 +535,7 @@ function CategoryPanel({
               type="button"
               size="sm"
               onClick={() => setDialogState({ mode: "create" })}
+              className={primaryActionClassName}
             >
               <PlusCircleIcon className="size-4" />
               Create category
@@ -548,6 +601,7 @@ function CategoryPanel({
                                 isActive: checked,
                               })
                             }
+                            className={switchToneClassName}
                           />
                         </div>
                         <button
@@ -592,6 +646,7 @@ function CategoryPanel({
               type="button"
               onClick={() => void onCreateDraftItem()}
               disabled={!selectedCategory}
+              className={primaryActionClassName}
             >
               <PlusCircleIcon className="size-4" />
               Add menu item
@@ -652,12 +707,12 @@ function CategoryPanel({
       </Card>
 
       <Dialog open={dialogState !== null} onOpenChange={(open) => !open && setDialogState(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-white text-slate-900">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-slate-900">
               {dialogState?.mode === "edit" ? "Edit category" : "Create category"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-slate-600">
               Give the category a clear name so diners find what they want fast.
             </DialogDescription>
           </DialogHeader>
@@ -668,6 +723,7 @@ function CategoryPanel({
                 value={nameEn}
                 onChange={(event) => setNameEn(event.target.value)}
                 placeholder="e.g. Rice bowls"
+                className="border-slate-200 bg-white text-slate-900"
               />
             </label>
             <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
@@ -676,6 +732,7 @@ function CategoryPanel({
                 value={nameMm}
                 onChange={(event) => setNameMm(event.target.value)}
                 placeholder="မြန်မာလို အမည်"
+                className="border-slate-200 bg-white text-slate-900"
               />
             </label>
             <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -685,6 +742,7 @@ function CategoryPanel({
               <Switch
                 checked={isActive}
                 onCheckedChange={(checked) => setIsActive(checked)}
+                className={switchToneClassName}
               />
             </div>
           </div>
@@ -693,6 +751,7 @@ function CategoryPanel({
               variant="outline"
               type="button"
               onClick={() => setDialogState(null)}
+              className={subtleActionClassName}
             >
               Cancel
             </Button>
@@ -700,6 +759,7 @@ function CategoryPanel({
               type="button"
               onClick={() => void handleSubmitCategory()}
               disabled={isSubmitting}
+              className={primaryActionClassName}
             >
               {isSubmitting ? (
                 <Loader2Icon className="size-4 animate-spin" />
