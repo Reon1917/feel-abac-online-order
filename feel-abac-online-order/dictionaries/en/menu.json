@@ -9,7 +9,10 @@
     "searchPlaceholder": "Search dishes or notes...",
     "empty": "Nothing matches your search yet. Try a different term or category.",
     "mobileSubtitle": "Tailored for your screen. Search, filter, and add dishes in just a few taps.",
-    "categoryAll": "All"
+    "categoryAll": "All",
+    "viewLabel": "View mode",
+    "viewCards": "Card view",
+    "viewList": "List view"
   },
   "emptyState": {
     "heading": "No menu items yet",
