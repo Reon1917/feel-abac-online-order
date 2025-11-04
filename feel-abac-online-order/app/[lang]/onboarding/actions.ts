@@ -8,6 +8,9 @@ import { db } from "@/src/db/client";
 import { userProfiles } from "@/src/db/schema";
 import { onboardingSchema } from "@/lib/validations";
 import { encryptPhone } from "@/lib/crypto";
+import { withLocalePath } from "@/lib/i18n/path";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
+import { mapToSupportedLocale } from "@/lib/i18n/utils";
 
 export async function completeOnboarding(prevState: { error?: string } | null, formData: FormData) {
   const parsed = onboardingSchema.safeParse({
@@ -65,5 +68,7 @@ export async function completeOnboarding(prevState: { error?: string } | null, f
       },
     });
 
-  redirect("/menu");
+  const localeHeader = headerList.get("x-feel-locale");
+  const locale = mapToSupportedLocale(localeHeader) ?? DEFAULT_LOCALE;
+  redirect(withLocalePath(locale as Locale, "/menu"));
 }

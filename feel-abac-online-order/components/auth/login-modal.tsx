@@ -6,10 +6,15 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { signInSchema, signUpSchema } from "@/lib/validations";
+import type { Locale } from "@/lib/i18n/config";
 
 type AuthView = "sign-in" | "sign-up";
 
-export function LoginModal() {
+type LoginModalProps = {
+  locale: Locale;
+};
+
+export function LoginModal({ locale }: LoginModalProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<AuthView>("sign-in");
@@ -72,7 +77,7 @@ export function LoginModal() {
 
       toast.success(view === "sign-in" ? "Welcome back!" : "Account created successfully!");
       close();
-      router.push("/menu");
+      router.push(`/${locale}/menu`);
       router.refresh();
     } catch (err) {
       console.error("auth failed", err);
@@ -88,7 +93,7 @@ export function LoginModal() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/menu",
+        callbackURL: `/${locale}/menu`,
       });
       // OAuth redirects, so success toast will not show
       // The page will reload after OAuth callback

@@ -71,6 +71,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (updates.placeholderIcon !== undefined) {
     updateData.placeholderIcon = updates.placeholderIcon ?? null;
   }
+  if (updates.menuCode !== undefined) {
+    updateData.menuCode = updates.menuCode ?? null;
+  }
   if (updates.imageUrl !== undefined) {
     updateData.imageUrl = updates.imageUrl ?? null;
     updateData.hasImage = Boolean(updates.imageUrl);

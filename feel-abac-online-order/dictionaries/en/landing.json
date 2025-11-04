@@ -1,0 +1,31 @@
+{
+  "hero": {
+    "eyebrow": "Feel ABAC online ordering",
+    "headline": "Welcome to Feel ABAC online order platform",
+    "subheadline": "Below is how to use our menu and ordering tools so you can get your meal with zero hassle.",
+    "signInCta": "Sign in"
+  },
+  "instructions": {
+    "title": "Getting started",
+    "steps": [
+      "Sign in with your student account to unlock the daily menu.",
+      "Review each category, pick your dishes, and select Burmese names if you prefer.",
+      "Reserve a pickup slot or head straight to the counter when your order is ready."
+    ]
+  },
+  "pwa": {
+    "title": "Install as an app",
+    "iosLabel": "For iOS",
+    "iosSteps": [
+      "Open Feel ABAC in Safari",
+      "Tap share → Add to Home Screen",
+      "Confirm name, then add"
+    ],
+    "androidLabel": "Android & desktop",
+    "androidSteps": [
+      "Open in Chrome",
+      "Use Install prompt in menu",
+      "Launch from home screen"
+    ]
+  }
+}

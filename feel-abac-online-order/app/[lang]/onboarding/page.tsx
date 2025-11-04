@@ -4,20 +4,31 @@ import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { getCurrentSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
+import { withLocalePath } from "@/lib/i18n/path";
+import type { Locale } from "@/lib/i18n/config";
 
-export default async function OnboardingPage() {
+type PageProps = {
+  params: Promise<{
+    lang: string;
+  }>;
+};
+
+export default async function OnboardingPage({ params }: PageProps) {
   noStore();
+
+  const { lang } = await params;
+  const locale = lang as Locale;
 
   const session = await getCurrentSession();
 
   if (!session?.user) {
-    redirect("/");
+    redirect(withLocalePath(locale, "/"));
   }
 
   const profile = await getUserProfile(session.user.id);
 
   if (profile?.phoneNumber) {
-    redirect("/menu");
+    redirect(withLocalePath(locale, "/menu"));
   }
 
   return (

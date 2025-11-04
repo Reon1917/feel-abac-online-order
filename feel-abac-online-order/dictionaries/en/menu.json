@@ -1,0 +1,18 @@
+{
+  "header": {
+    "title": "Menu",
+    "description": "Reachable at"
+  },
+  "browser": {
+    "title": "Discover the menu",
+    "subtitle": "Filter by category or search by name. Base prices are shown in Thai Baht; options update the total dynamically.",
+    "searchPlaceholder": "Search dishes or notes...",
+    "empty": "Nothing matches your search yet. Try a different term or category.",
+    "mobileSubtitle": "Tailored for your screen. Search, filter, and add dishes in just a few taps.",
+    "categoryAll": "All"
+  },
+  "emptyState": {
+    "heading": "No menu items yet",
+    "body": "Check back soon as the kitchen adds new dishes throughout the day."
+  }
+}

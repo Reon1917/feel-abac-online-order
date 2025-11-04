@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import Image from "next/image";
+import { ChevronDownIcon } from "lucide-react";
 import {
   Controller,
   useFieldArray,
@@ -31,7 +32,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -65,7 +65,7 @@ type MenuEditorProps = {
 type MenuOptionFormValue = {
   id?: string;
   nameEn: string;
-  nameMm?: string;
+  nameMm: string;
   extraPrice: string;
   isAvailable: boolean;
 };
@@ -73,7 +73,7 @@ type MenuOptionFormValue = {
 type MenuChoiceGroupFormValue = {
   id?: string;
   titleEn: string;
-  titleMm?: string;
+  titleMm: string;
   minSelect: number;
   maxSelect: number;
   isRequired: boolean;
@@ -89,6 +89,7 @@ type MenuEditorFormValues = {
   descriptionEn?: string;
   descriptionMm?: string;
   placeholderIcon?: string;
+  menuCode?: string;
   price: string;
   isAvailable: boolean;
   allowUserNotes: boolean;
@@ -110,6 +111,17 @@ const STATUS_BADGE_STYLES: Record<MenuItemStatus, string> = {
   draft: "bg-amber-100 text-amber-700",
   published: "bg-emerald-100 text-emerald-700",
 };
+
+const PRIMARY_BUTTON_CLASS =
+  "border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500";
+const SUBTLE_BUTTON_CLASS =
+  "border border-emerald-200 text-emerald-700 hover:bg-emerald-50";
+const SWITCH_TONE_CLASS =
+  "data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200";
+const DANGER_BUTTON_CLASS =
+  "border border-rose-500 bg-rose-500 text-white shadow-sm hover:bg-rose-500/90";
+const COMPACT_INPUT_CLASS = "h-9";
+const COMPACT_SELECT_TRIGGER_CLASS = "h-9";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -133,6 +145,7 @@ function itemToFormValues(
       descriptionEn: "",
       descriptionMm: "",
       placeholderIcon: "",
+      menuCode: "",
       price: "",
       isAvailable: true,
       allowUserNotes: false,
@@ -149,6 +162,7 @@ function itemToFormValues(
     descriptionEn: item.descriptionEn ?? "",
     descriptionMm: item.descriptionMm ?? "",
     placeholderIcon: item.placeholderIcon ?? "",
+    menuCode: item.menuCode ?? "",
     price: item.price ? item.price.toString() : "",
     isAvailable: item.isAvailable,
     allowUserNotes: item.allowUserNotes,
@@ -203,6 +217,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
     keyName: "fieldId",
   });
 
+  const getStatusButtonClass = (isActive: boolean) =>
+    isActive ? PRIMARY_BUTTON_CLASS : SUBTLE_BUTTON_CLASS;
+
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -238,6 +255,14 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
       }
       if (values.placeholderIcon !== undefined) {
         payload.placeholderIcon = values.placeholderIcon?.trim() || undefined;
+      }
+      if (values.menuCode !== undefined) {
+        const trimmedCode = values.menuCode.trim();
+        const normalizedCode = trimmedCode.length ? trimmedCode : "";
+        const existingCode = selectedItem.menuCode?.trim() ?? "";
+        if (normalizedCode !== existingCode) {
+          payload.menuCode = normalizedCode;
+        }
       }
 
       if (values.price?.trim()) {
@@ -281,6 +306,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
         form.reset(
           {
             ...values,
+            menuCode: item.menuCode ?? "",
             price:
               payload.price !== undefined
                 ? String(payload.price)
@@ -840,11 +866,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <Card className="shadow-sm">
+    <div className="grid gap-6 xl:grid-cols-12 xl:items-start 2xl:grid-cols-12">
+      <Card className="shadow-sm xl:order-1 xl:col-span-7">
         <CardHeader className="border-b border-slate-100 pb-6">
           <CardTitle className="text-2xl font-semibold text-slate-900">
-            Step 2 · Menu details
+            Step 3 · Menu details
           </CardTitle>
           <CardDescription className="space-y-2 text-sm text-slate-600">
             <p>
@@ -885,97 +911,129 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             </div>
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8 pt-6">
-          <SectionHeading
-            title="Basic information"
-            description="Names, pricing, and descriptions shown to diners."
-          />
-          <div className="grid gap-4 md:grid-cols-2">
-            <FieldBlock label="Name (English)" required>
-              <Input
-                {...form.register("nameEn")}
-                placeholder="e.g. Grilled chicken bowl"
-              />
-            </FieldBlock>
-            <FieldBlock label="Name (Burmese)">
-              <Input
-                {...form.register("nameMm")}
-                placeholder="မြန်မာလို အမည်"
-              />
-            </FieldBlock>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <FieldBlock label="Price" description="Numbers only" required>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                {...form.register("price")}
-                placeholder="0.00"
-              />
-            </FieldBlock>
-            <FieldBlock label="Placeholder icon" description="Optional emoji or letters">
-              <Input
-                {...form.register("placeholderIcon")}
-                maxLength={4}
-                placeholder="🍜"
-              />
-            </FieldBlock>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <FieldBlock label="Description (English)">
-              <Textarea
-                {...form.register("descriptionEn")}
-                rows={3}
-                placeholder="Share ingredients or tasting notes."
-              />
-            </FieldBlock>
-            <FieldBlock label="Description (Burmese)">
-              <Textarea
-                {...form.register("descriptionMm")}
-                rows={3}
-                placeholder="အကြောင်းအရာ"
-              />
-            </FieldBlock>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <ToggleBlock
-              label="Visible to diners"
-              description="Hide temporarily while you polish the item."
-            >
-              <Controller
-                control={form.control}
-                name="isAvailable"
-                render={({ field }) => (
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={(checked) => field.onChange(checked)}
-                  />
-                )}
-              />
-            </ToggleBlock>
-            <ToggleBlock
-              label="Allow order notes"
-              description="Enable diners to send requests with their order."
-            >
-              <Controller
-                control={form.control}
-                name="allowUserNotes"
-                render={({ field }) => (
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={(checked) => field.onChange(checked)}
-                  />
-                )}
-              />
-            </ToggleBlock>
-          </div>
+        <CardContent className="space-y-6 pt-6">
+          <FormSection
+            title="Item basics"
+            description="Name your dish and set quick identifiers diners will see first."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <FieldBlock label="Name (English)" required>
+                <Input
+                  {...form.register("nameEn")}
+                  placeholder="e.g. Grilled chicken bowl"
+                />
+              </FieldBlock>
+              <FieldBlock label="Name (Burmese)">
+                <Input
+                  {...form.register("nameMm")}
+                  placeholder="မြန်မာလို အမည်"
+                />
+              </FieldBlock>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <FieldBlock label="Price" description="Enter numbers only" required>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  {...form.register("price")}
+                  placeholder="0.00"
+                />
+              </FieldBlock>
+              <FieldBlock
+                label="Menu code"
+                description="Shows on orders like A-12"
+              >
+                <Input
+                  {...form.register("menuCode")}
+                  placeholder="e.g. A-12"
+                  maxLength={32}
+                />
+              </FieldBlock>
+              <FieldBlock label="Placeholder icon" description="Optional emoji or letters">
+                <Input
+                  {...form.register("placeholderIcon")}
+                  maxLength={4}
+                  placeholder="🍜"
+                />
+              </FieldBlock>
+            </div>
+          </FormSection>
 
-          <SectionHeading
-            title="Step 3 · Choices & add-ons"
-            description="Bundle sides, toppings, and upsells into easy sections. Drag cards to reorder."
-          />
+          <FormSection
+            title="Descriptions"
+            description="Tell diners what makes this item special in both languages."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <FieldBlock label="Description (English)">
+                <Textarea
+                  {...form.register("descriptionEn")}
+                  rows={3}
+                  placeholder="Share ingredients or tasting notes."
+                />
+              </FieldBlock>
+              <FieldBlock label="Description (Burmese)">
+                <Textarea
+                  {...form.register("descriptionMm")}
+                  rows={3}
+                  placeholder="အကြောင်းအရာ"
+                />
+              </FieldBlock>
+            </div>
+          </FormSection>
 
+          <FormSection
+            title="Availability & ordering"
+            description="Control what guests see and whether they can leave special notes."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <ToggleBlock
+                label="Visible to diners"
+                description="Hide temporarily while you polish the item."
+              >
+                <Controller
+                  control={form.control}
+                  name="isAvailable"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked)}
+                      className={SWITCH_TONE_CLASS}
+                    />
+                  )}
+                />
+              </ToggleBlock>
+              <ToggleBlock
+                label="Allow order notes"
+                description="Enable diners to send requests with their order."
+              >
+                <Controller
+                  control={form.control}
+                  name="allowUserNotes"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked)}
+                      className={SWITCH_TONE_CLASS}
+                    />
+                  )}
+                />
+              </ToggleBlock>
+            </div>
+          </FormSection>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm xl:order-3 xl:col-span-12">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold text-slate-900">
+            Step 3 · Choices & add-ons
+          </CardTitle>
+          <CardDescription className="text-sm text-slate-600">
+            Bundle sides, toppings, and upsells into tidy sections. Drag cards to reorder and keep the menu clear.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <ChoiceGroupPanel
             form={form}
             groupFields={groupFields}
@@ -988,37 +1046,40 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
             onDeleteOption={deleteOption}
             onReorderOption={reorderOptions}
           />
-        </CardContent>
-        <CardFooter className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setStatus("draft")}
+                disabled={isAutosaving}
+                className={cn(getStatusButtonClass(currentStatus === "draft"), "transition-colors")}
+              >
+                Save as draft
+              </Button>
+              <Button
+                variant="outline"
+                className={cn(getStatusButtonClass(currentStatus === "published"), "transition-colors")}
+                type="button"
+                onClick={() => setStatus("published")}
+                disabled={isAutosaving}
+              >
+                Publish changes
+              </Button>
+            </div>
             <Button
-              variant={currentStatus === "draft" ? "default" : "outline"}
+              variant="destructive"
               type="button"
-              onClick={() => setStatus("draft")}
-              disabled={isAutosaving}
+              onClick={() => void deleteItem()}
+              className={DANGER_BUTTON_CLASS}
             >
-              Save as draft
-            </Button>
-            <Button
-              variant={currentStatus === "published" ? "default" : "outline"}
-              className={cn(
-                currentStatus !== "published" &&
-                  "border-emerald-500 text-emerald-700 hover:bg-emerald-600 hover:text-white"
-              )}
-              type="button"
-              onClick={() => setStatus("published")}
-              disabled={isAutosaving}
-            >
-              Publish changes
+              Delete this item
             </Button>
           </div>
-          <Button variant="destructive" type="button" onClick={() => void deleteItem()}>
-            Delete this item
-          </Button>
-        </CardFooter>
+        </CardContent>
       </Card>
 
-      <Card className="sticky top-6 h-fit border-emerald-100 bg-emerald-50/70 shadow-none backdrop-blur">
+      <Card className="sticky top-6 h-fit border-emerald-100 bg-emerald-50/70 shadow-none backdrop-blur xl:order-2 xl:col-span-5">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-emerald-900">
             Step 4 · Live preview
@@ -1029,7 +1090,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
         </CardHeader>
         <CardContent className="space-y-6">
           <figure className="overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
-            <div className="relative aspect-[4/3] w-full bg-emerald-100">
+            <div className="relative aspect-4/3 w-full bg-emerald-100">
               <Image
                 fill
                 className="object-cover"
@@ -1123,7 +1184,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
           <div className="space-y-3">
             <Button
               variant="outline"
-              className="w-full"
+              className={cn("w-full", SUBTLE_BUTTON_CLASS)}
               type="button"
               onClick={() => imageInputRef.current?.click()}
             >
@@ -1159,21 +1220,25 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
   );
 }
 
-type SectionHeadingProps = {
+type FormSectionProps = {
   title: string;
   description?: string;
+  children: React.ReactNode;
 };
 
-function SectionHeading({ title, description }: SectionHeadingProps) {
+function FormSection({ title, description, children }: FormSectionProps) {
   return (
-    <header className="space-y-1">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-        {title}
-      </h3>
-      {description ? (
-        <p className="text-sm text-slate-600">{description}</p>
-      ) : null}
-    </header>
+    <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
+          {title}
+        </h3>
+        {description ? (
+          <p className="text-sm text-slate-600">{description}</p>
+        ) : null}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
 }
 
@@ -1203,13 +1268,19 @@ type ToggleBlockProps = {
   label: string;
   description?: string;
   children: React.ReactNode;
+  className?: string;
 };
 
-function ToggleBlock({ label, description, children }: ToggleBlockProps) {
+function ToggleBlock({ label, description, children, className }: ToggleBlockProps) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4">
+    <div
+      className={cn(
+        "flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5",
+        className
+      )}
+    >
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-slate-800">{label}</p>
+        <p className="text-sm font-semibold text-slate-800 md:whitespace-nowrap">{label}</p>
         {description ? (
           <p className="text-xs text-slate-500">{description}</p>
         ) : null}
@@ -1279,24 +1350,33 @@ function ChoiceGroupPanel({
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-slate-600">
-          Use sections to group extra choices like sizes, sides, or toppings so everything stays clear.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
+            Choices sections
+          </h4>
+          <p className="text-sm text-slate-600">
+            Group add-ons, sizes, or toppings into sections so guests always know what to pick.
+          </p>
+        </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button type="button">Add choices section</Button>
+            <Button type="button" className={PRIMARY_BUTTON_CLASS}>
+              Add choices section
+            </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg bg-white text-slate-900">
             <DialogHeader>
-              <DialogTitle>Create choices section</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg font-semibold text-slate-900">
+                Create choices section
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-600">
                 Give the section a clear name and decide how diners can make their picks.
               </DialogDescription>
             </DialogHeader>
             <form
-              className="space-y-4"
+              className="space-y-4 text-slate-900"
               onSubmit={(event) => {
                 event.preventDefault();
                 void handleCreateGroup();
@@ -1304,12 +1384,14 @@ function ChoiceGroupPanel({
             >
               <FieldBlock label="Section title" required>
                 <Input
+                  className={cn(COMPACT_INPUT_CLASS, "border-slate-200 bg-white text-slate-900")}
                   {...newGroupForm.register("titleEn", { required: true })}
                   placeholder="e.g. Choose your base"
                 />
               </FieldBlock>
               <FieldBlock label="Section title (Burmese)">
                 <Input
+                  className={cn(COMPACT_INPUT_CLASS, "border-slate-200 bg-white text-slate-900")}
                   {...newGroupForm.register("titleMm")}
                   placeholder="မြန်မာလို အမည်"
                 />
@@ -1323,7 +1405,12 @@ function ChoiceGroupPanel({
                       value={field.value}
                       onValueChange={(value: MenuChoiceGroupType) => field.onChange(value)}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger
+                        className={cn(
+                          "w-full border-slate-200 bg-white text-slate-900",
+                          COMPACT_SELECT_TRIGGER_CLASS
+                        )}
+                      >
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1342,6 +1429,7 @@ function ChoiceGroupPanel({
                   <Input
                     type="number"
                     min={0}
+                    className={cn(COMPACT_INPUT_CLASS, "border-slate-200 bg-white text-slate-900")}
                     {...newGroupForm.register("minSelect", {
                       valueAsNumber: true,
                     })}
@@ -1351,6 +1439,7 @@ function ChoiceGroupPanel({
                   <Input
                     type="number"
                     min={1}
+                    className={cn(COMPACT_INPUT_CLASS, "border-slate-200 bg-white text-slate-900")}
                     {...newGroupForm.register("maxSelect", {
                       valueAsNumber: true,
                     })}
@@ -1360,6 +1449,7 @@ function ChoiceGroupPanel({
               <ToggleBlock
                 label="Require a choice"
                 description="Turn on if guests must pick something here."
+                className="border-slate-200 bg-slate-50"
               >
                 <Controller
                   control={newGroupForm.control}
@@ -1368,12 +1458,15 @@ function ChoiceGroupPanel({
                     <Switch
                       checked={field.value}
                       onCheckedChange={(checked) => field.onChange(checked)}
+                      className={SWITCH_TONE_CLASS}
                     />
                   )}
                 />
               </ToggleBlock>
               <DialogFooter>
-                <Button type="submit">Create section</Button>
+                <Button type="submit" className={PRIMARY_BUTTON_CLASS}>
+                  Create section
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -1381,8 +1474,8 @@ function ChoiceGroupPanel({
       </div>
 
       {groupFields.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-          No choice groups yet. Use them to prompt diners for sizes, sides, or add-ons.
+        <div className="rounded-xl border border-dashed border-emerald-200 bg-white p-6 text-sm text-emerald-700">
+          No choice sections yet. Create one to collect sides, toppings, or upgrades.
         </div>
       ) : (
         <div className="space-y-4">
@@ -1526,21 +1619,85 @@ function ChoiceGroupCard({
     }
   };
 
+  const groupValues = useWatch({
+    control: form.control,
+    name: `choiceGroups.${index}` as const,
+  }) as MenuChoiceGroupFormValue | undefined;
+
+  const summaryTitle = groupValues?.titleEn?.trim() || `Choices section ${index + 1}`;
+  const summaryTitleMm = groupValues?.titleMm?.trim();
+  const typeLabel = CHOICE_TYPE_LABEL[groupValues?.type ?? "single"];
+  const choiceCountLabel = `${optionFields.length} ${optionFields.length === 1 ? "choice" : "choices"}`;
+  const requirementLabel = groupValues?.isRequired ? "Required" : "Optional";
+  const summaryMeta = `${typeLabel} • ${choiceCountLabel} • ${requirementLabel}`;
+  const [isExpanded, setIsExpanded] = useState(true);
+  const toggleLabel = isExpanded ? "Close section" : "Open section";
+
   return (
     <div
       draggable
       onDragStart={handleGroupDragStart}
       onDragOver={handleGroupDragOver}
       onDrop={() => handleGroupDrop(index)}
-      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300"
+      className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex-1 space-y-3">
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-6 py-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{summaryTitle}</p>
+          {summaryTitleMm ? (
+            <p className="text-xs text-slate-500">{summaryTitleMm}</p>
+          ) : null}
+          <p className="mt-1 text-xs text-slate-500">{summaryMeta}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-expanded={isExpanded}
+            className={cn(
+              PRIMARY_BUTTON_CLASS,
+              "flex items-center gap-2 px-4 py-2 text-sm font-semibold"
+            )}
+          >
+            <span>{toggleLabel}</span>
+            <ChevronDownIcon
+              className={cn(
+                "size-4 transition-transform duration-200",
+                isExpanded ? "-rotate-180" : "rotate-0"
+              )}
+            />
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-rose-600 hover:text-rose-700"
+            type="button"
+            onClick={() => {
+              const normalizedId = groupField.id?.trim();
+              if (!normalizedId) return;
+              void onDeleteGroup(normalizedId, index);
+            }}
+          >
+            Delete section
+          </Button>
+        </div>
+      </div>
+
+      {isExpanded ? (
+        <div className="space-y-6 border-t border-emerald-100 px-6 pb-6 pt-4">
+          <div className="grid w-full gap-4 md:grid-cols-3">
             <FieldBlock label="Section title" required>
               <Input
+                className={COMPACT_INPUT_CLASS}
                 {...form.register(`choiceGroups.${index}.titleEn` as const)}
                 placeholder="e.g. Choose your protein"
+                onBlur={handleGroupBlur}
+              />
+            </FieldBlock>
+            <FieldBlock label="Section title (Burmese)">
+              <Input
+                className={COMPACT_INPUT_CLASS}
+                {...form.register(`choiceGroups.${index}.titleMm` as const)}
+                placeholder="မြန်မာလို အခန်း"
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
@@ -1556,7 +1713,7 @@ function ChoiceGroupCard({
                       void handleGroupBlur();
                     }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className={cn("w-full", COMPACT_SELECT_TRIGGER_CLASS)}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1571,11 +1728,13 @@ function ChoiceGroupCard({
               />
             </FieldBlock>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+
+          <div className="grid gap-4 md:grid-cols-3">
             <FieldBlock label="Minimum picks">
               <Input
                 type="number"
                 min={0}
+                className={COMPACT_INPUT_CLASS}
                 {...form.register(`choiceGroups.${index}.minSelect` as const, {
                   valueAsNumber: true,
                 })}
@@ -1586,6 +1745,7 @@ function ChoiceGroupCard({
               <Input
                 type="number"
                 min={1}
+                className={COMPACT_INPUT_CLASS}
                 {...form.register(`choiceGroups.${index}.maxSelect` as const, {
                   valueAsNumber: true,
                 })}
@@ -1603,101 +1763,116 @@ function ChoiceGroupCard({
                       field.onChange(checked);
                       void handleGroupBlur();
                     }}
+                    className={SWITCH_TONE_CLASS}
                   />
                 )}
               />
             </ToggleBlock>
           </div>
-        </div>
-        <Button
-          variant="ghost"
-          className="text-rose-600 hover:text-rose-700"
-          type="button"
-          onClick={() => {
-            const normalizedId = groupField.id?.trim();
-            if (!normalizedId) return;
-            void onDeleteGroup(normalizedId, index);
-          }}
-        >
-          Delete section
-        </Button>
-      </div>
 
-      <div className="mt-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-            Choices in this section
-          </h4>
-          <Button size="sm" type="button" onClick={() => void handleAddOption()}>
-            Add choice
-          </Button>
-        </div>
-
-        {optionFields.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            No choices here yet. Add portion sizes, toppings, or upgrades for diners to pick.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {optionFields.map((option, optionIndex) => (
-              <div
-                key={option.id ?? option.fieldId}
-                draggable
-                onDragStart={() => handleOptionDragStart(optionIndex)}
-                onDragOver={handleGroupDragOver}
-                onDrop={() => handleOptionDrop(optionIndex)}
-                className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-              >
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_150px_120px]">
-                  <FieldBlock label="Choice name" required>
-                    <Input
-                      {...form.register(
-                        `choiceGroups.${index}.options.${optionIndex}.nameEn` as const
-                      )}
-                      placeholder="e.g. Extra spicy"
-                      onBlur={() => handleOptionBlur(optionIndex)}
-                    />
-                  </FieldBlock>
-                  <FieldBlock label="Extra price (optional)">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      {...form.register(
-                        `choiceGroups.${index}.options.${optionIndex}.extraPrice` as const
-                      )}
-                      onBlur={() => handleOptionBlur(optionIndex)}
-                    />
-                  </FieldBlock>
-                  <ToggleBlock label="Show to diners">
-                    <Controller
-                      control={form.control}
-                      name={`choiceGroups.${index}.options.${optionIndex}.isAvailable` as const}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            void handleOptionBlur(optionIndex);
-                          }}
-                        />
-                      )}
-                    />
-                  </ToggleBlock>
-                </div>
-                <Button
-                  variant="ghost"
-                  className="mt-2 text-xs text-rose-600 hover:text-rose-700"
-                  type="button"
-                  onClick={() => void handleDeleteOption(optionIndex)}
-                >
-                  Remove choice
-                </Button>
+          <div className="space-y-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 pb-3">
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
+                  Choices in this section
+                </h4>
+                <p className="text-xs text-emerald-700/80">
+                  Drag cards to reorder or toggle availability on the right.
+                </p>
               </div>
-            ))}
+              <Button
+                size="sm"
+                type="button"
+                onClick={() => void handleAddOption()}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Add choice
+              </Button>
+            </div>
+
+            {optionFields.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-emerald-200 bg-white p-5 text-sm text-emerald-700">
+                No choices yet. Add portion sizes, toppings, or upgrades for diners to pick.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {optionFields.map((option, optionIndex) => (
+                  <div
+                    key={option.id ?? option.fieldId}
+                    draggable
+                    onDragStart={() => handleOptionDragStart(optionIndex)}
+                    onDragOver={handleGroupDragOver}
+                    onDrop={() => handleOptionDrop(optionIndex)}
+                    className="space-y-4 rounded-xl border border-transparent bg-white p-4 shadow-xs transition hover:shadow-sm"
+                  >
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <FieldBlock label="Choice name" required>
+                        <Input
+                          className={COMPACT_INPUT_CLASS}
+                          {...form.register(
+                            `choiceGroups.${index}.options.${optionIndex}.nameEn` as const
+                          )}
+                          placeholder="e.g. Extra spicy"
+                          onBlur={() => handleOptionBlur(optionIndex)}
+                        />
+                      </FieldBlock>
+                      <FieldBlock label="Choice name (Burmese)">
+                        <Input
+                          className={COMPACT_INPUT_CLASS}
+                          {...form.register(
+                            `choiceGroups.${index}.options.${optionIndex}.nameMm` as const
+                          )}
+                          placeholder="မြန်မာလို ရွေးချယ်မှု"
+                          onBlur={() => handleOptionBlur(optionIndex)}
+                        />
+                      </FieldBlock>
+                      <FieldBlock label="Extra price (optional)">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className={COMPACT_INPUT_CLASS}
+                          {...form.register(
+                            `choiceGroups.${index}.options.${optionIndex}.extraPrice` as const
+                          )}
+                          onBlur={() => handleOptionBlur(optionIndex)}
+                        />
+                      </FieldBlock>
+                      <ToggleBlock label="Show to diners">
+                        <Controller
+                          control={form.control}
+                          name={`choiceGroups.${index}.options.${optionIndex}.isAvailable` as const}
+                          render={({ field }) => (
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked);
+                                void handleOptionBlur(optionIndex);
+                              }}
+                              className={SWITCH_TONE_CLASS}
+                            />
+                          )}
+                        />
+                      </ToggleBlock>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-rose-600 hover:text-rose-700"
+                        type="button"
+                        onClick={() => void handleDeleteOption(optionIndex)}
+                      >
+                        Remove choice
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

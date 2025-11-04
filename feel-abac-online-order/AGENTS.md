@@ -32,3 +32,5 @@
 - Trim and validate IDs before passing them to Drizzle to avoid “not found” responses.
 - When updating menu flows, touch both the admin builder (`components/admin/menu`) and public browser (`components/menu`) so experiences stay aligned.
 - Supply fallback assets or copy when introducing new card layouts to keep `next/image` free of warnings about missing images or hosts.
+- Honour the active `[lang]` segment; use `withLocalePath` and hydrate UI copy through `getDictionary` so English/Burmese content stays in sync.
+- Expose the menu-language toggle (English/Burmese dish names) whenever showing menu data; persist updates via the `menuLocale` cookie and provider.

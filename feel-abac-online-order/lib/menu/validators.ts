@@ -32,6 +32,17 @@ export const menuCategoryUpdateSchema = menuCategorySchema.partial();
 
 const menuItemStatusEnum = z.enum(MENU_ITEM_STATUSES);
 const menuChoiceGroupTypeEnum = z.enum(MENU_CHOICE_GROUP_TYPES);
+const menuCodeField = z
+  .union([
+    z
+      .string()
+      .trim()
+      .min(1, "Menu code cannot be empty")
+      .max(32, "Menu code must be 32 characters or fewer"),
+    z.literal("").transform(() => null),
+    z.null(),
+  ])
+  .optional();
 
 export const menuItemSchema = z.object({
   categoryId: z.uuid("Category ID must be a valid UUID"),
@@ -57,6 +68,7 @@ export const menuItemSchema = z.object({
     .trim()
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  menuCode: menuCodeField,
   imageUrl: z
     .string()
     .url("Image URL must be valid")
@@ -99,6 +111,7 @@ export const menuItemUpdateSchema = z.object({
     .trim()
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  menuCode: menuCodeField,
   imageUrl: z
     .string()
     .url("Image URL must be valid")

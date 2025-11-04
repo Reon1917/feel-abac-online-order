@@ -1,0 +1,46 @@
+{
+  "header": {
+    "title": "Craft your digital lineup",
+    "subtitle": "Autosave keeps drafts safe. Publish only when you're happy with the preview.",
+    "workspaceLabel": "Menu workspace",
+    "publishChecklist": {
+      "title": "Publish checklist",
+      "items": [
+        "Confirm Burmese names so diners see localized copy.",
+        "Hide categories until they're ready with the visibility toggle.",
+        "Save new dishes as drafts while pricing or notes are still in progress.",
+        "Use refresh after bulk edits to pull the latest menu tree."
+      ]
+    }
+  },
+  "stats": {
+    "categories": {
+      "label": "Categories",
+      "allVisible": "All visible to diners",
+      "hidden": "%s hidden from diners"
+    },
+    "menuItems": {
+      "label": "Menu items",
+      "allAvailable": "All marked available",
+      "unavailable": "%s unavailable right now"
+    },
+    "published": {
+      "label": "Published",
+      "nothingLive": "Nothing live yet",
+      "liveForDiners": "Live for diners"
+    },
+    "drafts": {
+      "label": "Drafts",
+      "nothingPending": "Nothing pending",
+      "awaitingReview": "%s awaiting review"
+    }
+  },
+  "categories": {
+    "title": "Step 1 · Pick a category",
+    "description": "Categories keep your menu tidy. Choose one to see its dishes."
+  },
+  "items": {
+    "title": "Step 2 · Add dishes & drinks",
+    "description": "Choose a category first, then start adding dishes and drinks here."
+  }
+}

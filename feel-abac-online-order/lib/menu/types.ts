@@ -43,6 +43,7 @@ export type MenuItemRecord = {
   imageUrl: string | null;
   hasImage: boolean;
   placeholderIcon: string | null;
+  menuCode: string | null;
   descriptionEn: string | null;
   descriptionMm: string | null;
   isAvailable: boolean;
@@ -95,6 +96,7 @@ export type PublicMenuItem = {
   price: number;
   imageUrl: string | null;
   placeholderIcon: string | null;
+  menuCode: string | null;
   allowUserNotes: boolean;
   choiceGroups: PublicMenuChoiceGroup[];
   displayOrder: number;

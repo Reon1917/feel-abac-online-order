@@ -1,0 +1,19 @@
+{
+  "header": {
+    "title": "Menu studio",
+    "subtitle": "Keep the kitchen, counter, and diners in sync from a single control center."
+  },
+  "workspace": {
+    "badge": "Admin workspace"
+  },
+  "cards": {
+    "menuBuilder": {
+      "title": "Menu builder",
+      "body": "Draft new dishes, adjust availability, and publish when you're ready."
+    },
+    "team": {
+      "title": "Team access",
+      "body": "Invite teammates, assign roles, and manage admin permissions."
+    }
+  }
+}
