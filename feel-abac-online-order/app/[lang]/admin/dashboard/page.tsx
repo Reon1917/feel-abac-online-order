@@ -10,7 +10,7 @@ import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getDictionary } from "@/lib/i18n/dictionaries";
-import type { Locale } from "@/lib/i18n/config";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,12 @@ type PageProps = {
 
 export default async function AdminDashboard({ params }: PageProps) {
   const { lang } = await params;
+  
+  // Validate locale and redirect to default if invalid
+  if (!SUPPORTED_LOCALES.includes(lang as Locale)) {
+    redirect(withLocalePath(DEFAULT_LOCALE, "/admin/dashboard"));
+  }
+  
   const locale = lang as Locale;
   const dict = getDictionary(locale, "adminDashboard");
   const common = getDictionary(locale, "common");
