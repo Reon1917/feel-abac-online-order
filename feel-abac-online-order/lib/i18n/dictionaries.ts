@@ -31,6 +31,9 @@ export const DICTIONARIES = {
 
 export type Surface = keyof typeof DICTIONARIES.en;
 
-export function getDictionary(locale: Locale, surface: Surface) {
+export function getDictionary<S extends Surface>(
+  locale: Locale,
+  surface: S
+): typeof DICTIONARIES.en[S] {
   return DICTIONARIES[locale][surface];
 }
