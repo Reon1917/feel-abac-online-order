@@ -6,9 +6,14 @@ import { MenuBrowser } from "./menu-browser";
 import { MobileMenuBrowser } from "./mobile";
 import { PublicMenuCategory } from "@/lib/menu/types";
 
+type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
+type CommonDictionary = typeof import("@/dictionaries/en/common.json");
+
 type ResponsiveMenuBrowserProps = {
   categories: PublicMenuCategory[];
   layout?: "default" | "compact";
+  dictionary: MenuDictionary;
+  common: CommonDictionary;
 };
 
 const MOBILE_QUERY = "(max-width: 640px)";
@@ -36,13 +41,26 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
-export function ResponsiveMenuBrowser({ categories, layout }: ResponsiveMenuBrowserProps) {
+export function ResponsiveMenuBrowser({ categories, layout, dictionary, common }: ResponsiveMenuBrowserProps) {
   const isMobile = useMediaQuery(MOBILE_QUERY);
 
   if (isMobile) {
-    return <MobileMenuBrowser categories={categories} />;
+    return (
+      <MobileMenuBrowser
+        categories={categories}
+        dictionary={dictionary}
+        common={common}
+      />
+    );
   }
 
-  return <MenuBrowser categories={categories} layout={layout} />;
+  return (
+    <MenuBrowser
+      categories={categories}
+      layout={layout}
+      dictionary={dictionary}
+      common={common}
+    />
+  );
 }
 

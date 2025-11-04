@@ -67,7 +67,11 @@ export default async function MenuPage({ params }: PageProps) {
           </header>
 
           {hasMenu ? (
-            <ResponsiveMenuBrowser categories={menuCategories} />
+            <ResponsiveMenuBrowser
+              categories={menuCategories}
+              dictionary={dict}
+              common={common}
+            />
           ) : (
             <section className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">
               <h2 className="text-xl font-semibold text-slate-900">

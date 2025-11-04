@@ -3,5 +3,10 @@
     "label": "ဘာသာစကား",
     "english": "English",
     "burmese": "မြန်မာ"
+  },
+  "menuLanguageToggle": {
+    "label": "မီနူး ဘာသာ",
+    "english": "အဂ္ဂလိပ် မီနူး",
+    "burmese": "မြန်မာ မီနူး"
   }
 }

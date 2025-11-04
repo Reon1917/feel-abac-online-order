@@ -6,9 +6,17 @@ import clsx from "clsx";
 
 import styles from "./mobile-menu.module.css";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
+import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
+import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
+import type { Locale } from "@/lib/i18n/config";
+
+type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
+type CommonDictionary = typeof import("@/dictionaries/en/common.json");
 
 type MobileMenuBrowserProps = {
   categories: PublicMenuCategory[];
+  dictionary: MenuDictionary;
+  common: CommonDictionary;
 };
 
 function formatPrice(value: number) {
@@ -18,19 +26,20 @@ function formatPrice(value: number) {
   });
 }
 
-export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
+export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [locale, setLocale] = useState<"en" | "mm">("en");
+  const { menuLocale } = useMenuLocale();
+  const { browser } = dictionary;
 
   const localize = useCallback(
     (en: string | null | undefined, mm?: string | null) => {
-      if (locale === "mm" && mm && mm.trim().length > 0) {
+      if (menuLocale === "my" && mm && mm.trim().length > 0) {
         return mm;
       }
       return en ?? "";
     },
-    [locale]
+    [menuLocale]
   );
 
   const filteredItems = useMemo(() => {
@@ -59,7 +68,7 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
   }, [activeCategory, categories, searchTerm]);
 
   const categoryTabs = useMemo(() => {
-    const allLabel = locale === "mm" ? "အားလုံး" : "All";
+    const allLabel = browser.categoryAll;
 
     return [
       { id: "all", name: allLabel },
@@ -68,7 +77,7 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
         name: localize(name, nameMm),
       })),
     ];
-  }, [categories, locale, localize]);
+  }, [browser.categoryAll, categories, localize]);
 
   useEffect(() => {
     const availableIds = categoryTabs.map((tab) => tab.id);
@@ -89,10 +98,8 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
   return (
     <div className={styles.mobileRoot}>
       <header>
-        <h1 className={styles.headerTitle}>Discover the menu</h1>
-        <p className={styles.headerSubtitle}>
-          Tailored for your screen. Search, filter, and add dishes in just a few taps.
-        </p>
+        <h1 className={styles.headerTitle}>{browser.title}</h1>
+        <p className={styles.headerSubtitle}>{browser.mobileSubtitle}</p>
       </header>
 
       <div className={styles.controlRow}>
@@ -101,33 +108,15 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search dishes or notes..."
+            placeholder={browser.searchPlaceholder}
             className={styles.searchInput}
           />
         </label>
 
-        <div className={styles.localeToggle}>
-          <div className={styles.localeButtonGroup}>
-            <button
-              type="button"
-              onClick={() => setLocale("en")}
-              className={clsx(styles.localeButton, {
-                [styles.localeButtonActive]: locale === "en",
-              })}
-            >
-              English
-            </button>
-            <button
-              type="button"
-              onClick={() => setLocale("mm")}
-              className={clsx(styles.localeButton, {
-                [styles.localeButtonActive]: locale === "mm",
-              })}
-            >
-              Burmese
-            </button>
-          </div>
-        </div>
+        <MenuLanguageToggle
+          labels={common.menuLanguageToggle}
+          className="w-full"
+        />
 
         <div className={styles.categoryList}>
           {categoryTabs.map((tab) => (
@@ -147,14 +136,12 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
 
       <div>
         {filteredItems.length === 0 ? (
-          <div className={styles.emptyState}>
-            Nothing matches your search yet. Try a different term or category.
-          </div>
+          <div className={styles.emptyState}>{browser.empty}</div>
         ) : (
           <ul className={styles.listRoot}>
             {filteredItems.map((item) => (
               <li key={item.id} className={styles.listItem}>
-                <MobileMenuListItem item={item} locale={locale} />
+                <MobileMenuListItem item={item} locale={menuLocale} />
               </li>
             ))}
           </ul>
@@ -166,13 +153,13 @@ export function MobileMenuBrowser({ categories }: MobileMenuBrowserProps) {
 
 type MobileMenuCardProps = {
   item: PublicMenuItem;
-  locale: "en" | "mm";
+  locale: Locale;
 };
 
 function MobileMenuListItem({ item, locale }: MobileMenuCardProps) {
-  const displayName = locale === "mm" ? item.nameMm ?? item.name : item.name;
+  const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy = item.description
-    ? locale === "mm"
+    ? locale === "my"
       ? item.descriptionMm ?? item.description
       : item.description
     : null;

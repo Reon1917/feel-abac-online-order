@@ -3,5 +3,10 @@
     "label": "Language",
     "english": "English",
     "burmese": "မြန်မာ"
+  },
+  "menuLanguageToggle": {
+    "label": "Menu language",
+    "english": "English names",
+    "burmese": "Burmese names"
   }
 }

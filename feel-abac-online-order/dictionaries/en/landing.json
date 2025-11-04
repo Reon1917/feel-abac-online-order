@@ -1,19 +1,17 @@
 {
   "hero": {
     "eyebrow": "Feel ABAC online ordering",
-    "headline": "Streamline how students order Feel Restaurant meals.",
-    "subheadline": "Sign in to track the daily lineup, secure a pickup window, and keep the kitchen in sync across every device. The interface stays quiet until you need it—no distractions, just fast ordering.",
-    "signInCta": "Sign in",
-    "createAccountCta": "Create account"
+    "headline": "Welcome to Feel ABAC online order platform",
+    "subheadline": "Below is how to use our menu and ordering tools so you can get your meal with zero hassle.",
+    "signInCta": "Sign in"
   },
-  "quickFacts": {
-    "title": "What to expect",
-    "items": [
-      "Today's menu in one view",
-      "Reserve pickup slots ahead of time",
-      "Admins control availability instantly"
-    ],
-    "footnote": "Built mobile-first with responsive spacing, so the experience feels native on phones, tablets, and desktop kiosks."
+  "instructions": {
+    "title": "Getting started",
+    "steps": [
+      "Sign in with your student account to unlock the daily menu.",
+      "Review each category, pick your dishes, and select Burmese names if you prefer.",
+      "Reserve a pickup slot or head straight to the counter when your order is ready."
+    ]
   },
   "pwa": {
     "title": "Install as an app",

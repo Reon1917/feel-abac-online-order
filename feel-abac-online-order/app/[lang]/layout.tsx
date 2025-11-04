@@ -1,6 +1,13 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
-import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/config";
+import {
+  SUPPORTED_LOCALES,
+  MENU_LOCALE_COOKIE_NAME,
+  type Locale,
+} from "@/lib/i18n/config";
+import { MenuLocaleProvider } from "@/components/i18n/menu-locale-provider";
+import { mapToSupportedLocale } from "@/lib/i18n/utils";
 
 type LayoutProps = {
   children: ReactNode;
@@ -18,7 +25,28 @@ export default async function LangLayout({ children, params }: LayoutProps) {
   if (!SUPPORTED_LOCALES.includes(lang as Locale)) {
     notFound();
   }
+  const locale = lang as Locale;
+  let menuLocale: Locale = locale;
+  try {
+    const cookieStore = cookies();
+    const rawValue =
+      typeof (cookieStore as unknown as { get?: (name: string) => { value?: string } | undefined }).get ===
+      "function"
+        ? (cookieStore as unknown as { get: (name: string) => { value?: string } | undefined })
+            .get(MENU_LOCALE_COOKIE_NAME)
+            ?.value
+        : undefined;
+    const cookieLocale = mapToSupportedLocale(rawValue);
+    if (cookieLocale) {
+      menuLocale = cookieLocale;
+    }
+  } catch {
+    menuLocale = locale;
+  }
 
-  return <>{children}</>;
+  return (
+    <MenuLocaleProvider initialLocale={menuLocale}>
+      {children}
+    </MenuLocaleProvider>
+  );
 }
-
