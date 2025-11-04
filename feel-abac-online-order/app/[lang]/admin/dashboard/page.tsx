@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
@@ -54,10 +55,12 @@ export default async function AdminDashboard({ params }: PageProps) {
   return (
     <>
       <nav className="flex items-center justify-end bg-white px-6 py-4 text-slate-900 sm:px-10 lg:px-12">
-        <UiLanguageSwitcher
-          locale={locale}
-          labels={common.languageSwitcher}
-        />
+        <Suspense fallback={<div className="w-40" />}>
+          <UiLanguageSwitcher
+            locale={locale}
+            labels={common.languageSwitcher}
+          />
+        </Suspense>
       </nav>
       <div className="admin-light-surface min-h-screen bg-white px-6 py-10 text-slate-900">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">

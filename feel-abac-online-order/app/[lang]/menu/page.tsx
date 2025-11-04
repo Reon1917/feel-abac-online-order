@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -45,10 +46,12 @@ export default async function MenuPage({ params }: PageProps) {
     <>
       {sessionData.isAdmin && <AdminBar />}
       <nav className="flex items-center justify-end bg-white px-6 py-4 sm:px-10 lg:px-12">
-        <UiLanguageSwitcher
-          locale={locale}
-          labels={common.languageSwitcher}
-        />
+        <Suspense fallback={<div className="w-40" />}>
+          <UiLanguageSwitcher
+            locale={locale}
+            labels={common.languageSwitcher}
+          />
+        </Suspense>
       </nav>
       <main className="min-h-screen w-full bg-white">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-12">

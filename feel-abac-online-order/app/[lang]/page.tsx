@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginModal } from "@/components/auth/login-modal";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
@@ -19,7 +20,9 @@ export default async function Home({ params }: PageProps) {
     <main className="min-h-screen w-full bg-white text-slate-900">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-6 py-16 md:px-10 lg:px-12">
         <div className="flex justify-end">
-          <UiLanguageSwitcher locale={locale} labels={common.languageSwitcher} />
+          <Suspense fallback={<div className="w-40" />}>
+            <UiLanguageSwitcher locale={locale} labels={common.languageSwitcher} />
+          </Suspense>
         </div>
 
         <header className="flex flex-col gap-6">

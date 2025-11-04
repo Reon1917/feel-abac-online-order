@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { AdminMenuManager } from "@/components/admin/menu/menu-manager";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
@@ -79,10 +80,12 @@ export default async function AdminMenuPage({ params }: PageProps) {
   return (
     <>
       <nav className="flex items-center justify-end bg-white px-6 py-4 text-slate-900 sm:px-10 lg:px-12">
-        <UiLanguageSwitcher
-          locale={locale}
-          labels={common.languageSwitcher}
-        />
+        <Suspense fallback={<div className="w-40" />}>
+          <UiLanguageSwitcher
+            locale={locale}
+            labels={common.languageSwitcher}
+          />
+        </Suspense>
       </nav>
       <main className="min-h-screen bg-slate-100 text-slate-900">
       <section className="border-b border-slate-200 bg-linear-to-r from-white via-emerald-50 to-white">
