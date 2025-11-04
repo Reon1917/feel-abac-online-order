@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useActionState } from "react";
 import { toast } from "sonner";
-import { completeOnboarding } from "@/app/onboarding/actions";
+import { completeOnboarding } from "@/app/[lang]/onboarding/actions";
 import { Button } from "@/components/ui/button";
 
 export function OnboardingForm({

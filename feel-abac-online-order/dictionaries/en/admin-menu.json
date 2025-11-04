@@ -1,0 +1,14 @@
+{
+  "header": {
+    "title": "Craft your digital lineup",
+    "subtitle": "Autosave keeps drafts safe. Publish only when you’re happy with the preview."
+  },
+  "categories": {
+    "title": "Step 1 · Pick a category",
+    "description": "Categories keep your menu tidy. Choose one to see its dishes."
+  },
+  "items": {
+    "title": "Step 2 · Add dishes & drinks",
+    "description": "Choose a category first, then start adding dishes and drinks here."
+  }
+}

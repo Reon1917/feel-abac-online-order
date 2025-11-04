@@ -6,6 +6,18 @@ import { auth } from "./lib/auth";
 import { db } from "./src/db/client";
 import { userProfiles } from "./src/db/schema";
 import { getAdminByUserId } from "./lib/admin";
+import {
+  LOCALE_COOKIE_NAME,
+  MENU_LOCALE_COOKIE_NAME,
+  type Locale,
+} from "./lib/i18n/config";
+import {
+  addLocaleToPath,
+  extractLocaleFromPath,
+  mapToSupportedLocale,
+  negotiateLocale,
+  parseAcceptLanguage,
+} from "./lib/i18n/utils";
 
 const AUTH_REQUIRED_PATHS = ["/menu", "/onboarding", "/admin"];
 
@@ -32,6 +44,14 @@ async function hasCompletedOnboarding(userId: string) {
   return !!profile?.phoneNumber;
 }
 
+function setLocaleCookie(response: NextResponse, locale: Locale) {
+  response.cookies.set(LOCALE_COOKIE_NAME, locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -42,6 +62,38 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/static");
   if (isStatic) {
     return NextResponse.next();
+  }
+
+  const headerList = request.headers;
+  const cookieLocale = mapToSupportedLocale(
+    request.cookies.get(LOCALE_COOKIE_NAME)?.value
+  );
+  const headerLocales = parseAcceptLanguage(headerList.get("accept-language"));
+  const negotiatedLocale = negotiateLocale(headerLocales);
+
+  let locale: Locale = cookieLocale ?? negotiatedLocale;
+  let normalizedPathname = pathname;
+  let shouldPersistLocale = false;
+
+  if (!isApiRoute) {
+    const { locale: pathLocale, pathWithoutLocale } = extractLocaleFromPath(
+      pathname
+    );
+
+    if (!pathLocale) {
+      const url = request.nextUrl.clone();
+      url.pathname = addLocaleToPath(pathname, locale);
+      const response = NextResponse.redirect(url);
+      setLocaleCookie(response, locale);
+      return response;
+    }
+
+    locale = pathLocale;
+    normalizedPathname = pathWithoutLocale;
+
+    if (!cookieLocale || cookieLocale !== locale) {
+      shouldPersistLocale = true;
+    }
   }
 
   const session = await resolveSession(request);
@@ -57,15 +109,21 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isApiRoute) {
-    if (
-      !isAuthenticated &&
-      AUTH_REQUIRED_PATHS.some((path) => pathname.startsWith(path))
-    ) {
-      const url = new URL("/", request.url);
-      return NextResponse.redirect(url);
+    const requiresAuth = AUTH_REQUIRED_PATHS.some(
+      (path) =>
+        normalizedPathname === path ||
+        normalizedPathname.startsWith(`${path}/`)
+    );
+
+    if (!isAuthenticated && requiresAuth) {
+      const url = new URL(request.url);
+      url.pathname = addLocaleToPath("/", locale);
+      const response = NextResponse.redirect(url);
+      setLocaleCookie(response, locale);
+      return response;
     }
 
-    if (pathname.startsWith("/admin") && !isAdmin) {
+    if (normalizedPathname.startsWith("/admin") && !isAdmin) {
       return NextResponse.json(
         { error: "Access forbidden" },
         { status: 403 }
@@ -73,24 +131,43 @@ export async function proxy(request: NextRequest) {
     }
 
     if (isAuthenticated) {
-      if (isAdmin && onboarded && pathname === "/") {
-        const url = new URL("/admin/dashboard", request.url);
-        return NextResponse.redirect(url);
+      if (isAdmin && onboarded && normalizedPathname === "/") {
+        const url = new URL(request.url);
+        url.pathname = addLocaleToPath("/admin/dashboard", locale);
+        const response = NextResponse.redirect(url);
+        setLocaleCookie(response, locale);
+        return response;
       }
 
-      if (!onboarded && pathname !== "/onboarding" && pathname !== "/admin/dashboard") {
-        const url = new URL("/onboarding", request.url);
-        return NextResponse.redirect(url);
+      if (
+        !onboarded &&
+        normalizedPathname !== "/onboarding" &&
+        normalizedPathname !== "/admin/dashboard"
+      ) {
+        const url = new URL(request.url);
+        url.pathname = addLocaleToPath("/onboarding", locale);
+        const response = NextResponse.redirect(url);
+        setLocaleCookie(response, locale);
+        return response;
       }
 
-      if (onboarded && pathname === "/onboarding") {
-        const url = new URL(isAdmin ? "/admin/dashboard" : "/menu", request.url);
-        return NextResponse.redirect(url);
+      if (onboarded && normalizedPathname === "/onboarding") {
+        const url = new URL(request.url);
+        url.pathname = addLocaleToPath(
+          isAdmin ? "/admin/dashboard" : "/menu",
+          locale
+        );
+        const response = NextResponse.redirect(url);
+        setLocaleCookie(response, locale);
+        return response;
       }
 
-      if (onboarded && pathname === "/" && !isAdmin) {
-        const url = new URL("/menu", request.url);
-        return NextResponse.redirect(url);
+      if (onboarded && normalizedPathname === "/" && !isAdmin) {
+        const url = new URL(request.url);
+        url.pathname = addLocaleToPath("/menu", locale);
+        const response = NextResponse.redirect(url);
+        setLocaleCookie(response, locale);
+        return response;
       }
     }
   }
@@ -108,12 +185,27 @@ export async function proxy(request: NextRequest) {
   } else {
     requestHeaders.delete("x-feel-session");
   }
+  requestHeaders.set("x-feel-locale", locale);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+
+  if (!isApiRoute && shouldPersistLocale) {
+    setLocaleCookie(response, locale);
+  }
+
+  if (!request.cookies.get(MENU_LOCALE_COOKIE_NAME)) {
+    response.cookies.set(MENU_LOCALE_COOKIE_NAME, locale, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+  }
+
+  return response;
 }
 
 export const config = {

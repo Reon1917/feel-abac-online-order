@@ -1,0 +1,10 @@
+{
+  "header": {
+    "title": "Menu",
+    "description": "Reachable at"
+  },
+  "emptyState": {
+    "heading": "No menu items yet",
+    "body": "Check back soon as the kitchen adds new dishes throughout the day."
+  }
+}

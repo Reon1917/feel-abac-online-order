@@ -2,9 +2,23 @@ import { unstable_noStore as noStore } from "next/cache";
 import { AdminMenuManager } from "@/components/admin/menu/menu-manager";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { getAdminMenuHierarchy } from "@/lib/menu/queries";
+import { getDictionary } from "@/lib/i18n/dictionaries";
+import type { Locale } from "@/lib/i18n/config";
+import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 
-export default async function AdminMenuPage() {
+type PageProps = {
+  params: Promise<{
+    lang: string;
+  }>;
+};
+
+export default async function AdminMenuPage({ params }: PageProps) {
   noStore();
+
+  const { lang } = await params;
+  const locale = lang as Locale;
+  const dict = getDictionary(locale, "adminMenu");
+  const common = getDictionary(locale, "common");
 
   await requireActiveAdmin();
 
@@ -63,7 +77,14 @@ export default async function AdminMenuPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <>
+      <nav className="flex items-center justify-end bg-white px-6 py-4 text-slate-900 sm:px-10 lg:px-12">
+        <UiLanguageSwitcher
+          locale={locale}
+          labels={common.languageSwitcher}
+        />
+      </nav>
+      <main className="min-h-screen bg-slate-100 text-slate-900">
       <section className="border-b border-slate-200 bg-linear-to-r from-white via-emerald-50 to-white">
         <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8 px-6 py-12 lg:px-12">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -72,10 +93,10 @@ export default async function AdminMenuPage() {
                 Menu workspace
               </span>
               <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
-                Craft your digital lineup
+                {dict.header.title}
               </h1>
               <p className="max-w-3xl text-sm text-slate-600">
-                Keep categories, dishes, choice groups, and pricing aligned. Review progress at a glance and publish updates when everything looks perfect.
+                {dict.header.subtitle}
               </p>
             </div>
             <div className="rounded-2xl border border-white/40 bg-white/70 p-5 shadow-sm backdrop-blur">
@@ -126,5 +147,6 @@ export default async function AdminMenuPage() {
         <AdminMenuManager initialMenu={menu} variant="workspace" />
       </section>
     </main>
+    </>
   );
 }
