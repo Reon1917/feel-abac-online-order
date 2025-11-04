@@ -121,6 +121,7 @@ export const menuItems = pgTable("menu_items", {
   imageUrl: text("image_url"),
   hasImage: boolean("has_image").default(false).notNull(),
   placeholderIcon: text("placeholder_icon"),
+  menuCode: text("menu_code"),
   descriptionEn: text("description_en"),
   descriptionMm: text("description_mm"),
   isAvailable: boolean("is_available").default(true).notNull(),

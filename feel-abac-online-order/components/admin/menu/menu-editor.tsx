@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import Image from "next/image";
+import { ChevronDownIcon } from "lucide-react";
 import {
   Controller,
   useFieldArray,
@@ -64,7 +65,7 @@ type MenuEditorProps = {
 type MenuOptionFormValue = {
   id?: string;
   nameEn: string;
-  nameMm?: string;
+  nameMm: string;
   extraPrice: string;
   isAvailable: boolean;
 };
@@ -72,7 +73,7 @@ type MenuOptionFormValue = {
 type MenuChoiceGroupFormValue = {
   id?: string;
   titleEn: string;
-  titleMm?: string;
+  titleMm: string;
   minSelect: number;
   maxSelect: number;
   isRequired: boolean;
@@ -88,6 +89,7 @@ type MenuEditorFormValues = {
   descriptionEn?: string;
   descriptionMm?: string;
   placeholderIcon?: string;
+  menuCode?: string;
   price: string;
   isAvailable: boolean;
   allowUserNotes: boolean;
@@ -143,6 +145,7 @@ function itemToFormValues(
       descriptionEn: "",
       descriptionMm: "",
       placeholderIcon: "",
+      menuCode: "",
       price: "",
       isAvailable: true,
       allowUserNotes: false,
@@ -159,6 +162,7 @@ function itemToFormValues(
     descriptionEn: item.descriptionEn ?? "",
     descriptionMm: item.descriptionMm ?? "",
     placeholderIcon: item.placeholderIcon ?? "",
+    menuCode: item.menuCode ?? "",
     price: item.price ? item.price.toString() : "",
     isAvailable: item.isAvailable,
     allowUserNotes: item.allowUserNotes,
@@ -252,6 +256,14 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
       if (values.placeholderIcon !== undefined) {
         payload.placeholderIcon = values.placeholderIcon?.trim() || undefined;
       }
+      if (values.menuCode !== undefined) {
+        const trimmedCode = values.menuCode.trim();
+        const normalizedCode = trimmedCode.length ? trimmedCode : "";
+        const existingCode = selectedItem.menuCode?.trim() ?? "";
+        if (normalizedCode !== existingCode) {
+          payload.menuCode = normalizedCode;
+        }
+      }
 
       if (values.price?.trim()) {
         const parsedPrice = Number.parseFloat(values.price);
@@ -294,6 +306,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
         form.reset(
           {
             ...values,
+            menuCode: item.menuCode ?? "",
             price:
               payload.price !== undefined
                 ? String(payload.price)
@@ -917,7 +930,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
                 />
               </FieldBlock>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <FieldBlock label="Price" description="Enter numbers only" required>
                 <Input
                   type="number"
@@ -925,6 +938,16 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
                   step="0.01"
                   {...form.register("price")}
                   placeholder="0.00"
+                />
+              </FieldBlock>
+              <FieldBlock
+                label="Menu code"
+                description="Shows on orders like A-12"
+              >
+                <Input
+                  {...form.register("menuCode")}
+                  placeholder="e.g. A-12"
+                  maxLength={32}
                 />
               </FieldBlock>
               <FieldBlock label="Placeholder icon" description="Optional emoji or letters">
@@ -1596,197 +1619,260 @@ function ChoiceGroupCard({
     }
   };
 
+  const groupValues = useWatch({
+    control: form.control,
+    name: `choiceGroups.${index}` as const,
+  }) as MenuChoiceGroupFormValue | undefined;
+
+  const summaryTitle = groupValues?.titleEn?.trim() || `Choices section ${index + 1}`;
+  const summaryTitleMm = groupValues?.titleMm?.trim();
+  const typeLabel = CHOICE_TYPE_LABEL[groupValues?.type ?? "single"];
+  const choiceCountLabel = `${optionFields.length} ${optionFields.length === 1 ? "choice" : "choices"}`;
+  const requirementLabel = groupValues?.isRequired ? "Required" : "Optional";
+  const summaryMeta = `${typeLabel} • ${choiceCountLabel} • ${requirementLabel}`;
+  const [isExpanded, setIsExpanded] = useState(true);
+  const toggleLabel = isExpanded ? "Close section" : "Open section";
+
   return (
     <div
       draggable
       onDragStart={handleGroupDragStart}
       onDragOver={handleGroupDragOver}
       onDrop={() => handleGroupDrop(index)}
-      className="space-y-6 rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm transition hover:border-emerald-300"
+      className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition hover:border-emerald-300"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="grid w-full gap-4 md:grid-cols-2">
-          <FieldBlock label="Section title" required>
-            <Input
-              className={COMPACT_INPUT_CLASS}
-              {...form.register(`choiceGroups.${index}.titleEn` as const)}
-              placeholder="e.g. Choose your protein"
-              onBlur={handleGroupBlur}
-            />
-          </FieldBlock>
-          <FieldBlock label="Selection style" required>
-            <Controller
-              control={form.control}
-              name={`choiceGroups.${index}.type` as const}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={(value: MenuChoiceGroupType) => {
-                    field.onChange(value);
-                    void handleGroupBlur();
-                  }}
-                >
-                  <SelectTrigger className={cn("w-full", COMPACT_SELECT_TRIGGER_CLASS)}>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MENU_CHOICE_GROUP_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {CHOICE_TYPE_LABEL[type]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <div className="flex flex-wrap items-start justify-between gap-3 px-6 py-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{summaryTitle}</p>
+          {summaryTitleMm ? (
+            <p className="text-xs text-slate-500">{summaryTitleMm}</p>
+          ) : null}
+          <p className="mt-1 text-xs text-slate-500">{summaryMeta}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-expanded={isExpanded}
+            className={cn(
+              PRIMARY_BUTTON_CLASS,
+              "flex items-center gap-2 px-4 py-2 text-sm font-semibold"
+            )}
+          >
+            <span>{toggleLabel}</span>
+            <ChevronDownIcon
+              className={cn(
+                "size-4 transition-transform duration-200",
+                isExpanded ? "-rotate-180" : "rotate-0"
               )}
             />
-          </FieldBlock>
-        </div>
-        <Button
-          variant="ghost"
-          className="self-start text-rose-600 hover:text-rose-700"
-          type="button"
-          onClick={() => {
-            const normalizedId = groupField.id?.trim();
-            if (!normalizedId) return;
-            void onDeleteGroup(normalizedId, index);
-          }}
-        >
-          Delete section
-        </Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <FieldBlock label="Minimum picks">
-          <Input
-            type="number"
-            min={0}
-            className={COMPACT_INPUT_CLASS}
-            {...form.register(`choiceGroups.${index}.minSelect` as const, {
-              valueAsNumber: true,
-            })}
-            onBlur={handleGroupBlur}
-          />
-        </FieldBlock>
-        <FieldBlock label="Maximum picks" required>
-          <Input
-            type="number"
-            min={1}
-            className={COMPACT_INPUT_CLASS}
-            {...form.register(`choiceGroups.${index}.maxSelect` as const, {
-              valueAsNumber: true,
-            })}
-            onBlur={handleGroupBlur}
-          />
-        </FieldBlock>
-        <ToggleBlock label="Make this required?">
-          <Controller
-            control={form.control}
-            name={`choiceGroups.${index}.isRequired` as const}
-            render={({ field }) => (
-              <Switch
-                checked={field.value}
-                onCheckedChange={(checked) => {
-                  field.onChange(checked);
-                  void handleGroupBlur();
-                }}
-                className={SWITCH_TONE_CLASS}
-              />
-            )}
-          />
-        </ToggleBlock>
-      </div>
-
-      <div className="space-y-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 pb-3">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
-              Choices in this section
-            </h4>
-            <p className="text-xs text-emerald-700/80">
-              Drag cards to reorder or toggle availability on the right.
-            </p>
-          </div>
+          </Button>
           <Button
-            size="sm"
+            variant="ghost"
+            className="text-rose-600 hover:text-rose-700"
             type="button"
-            onClick={() => void handleAddOption()}
-            className={PRIMARY_BUTTON_CLASS}
+            onClick={() => {
+              const normalizedId = groupField.id?.trim();
+              if (!normalizedId) return;
+              void onDeleteGroup(normalizedId, index);
+            }}
           >
-            Add choice
+            Delete section
           </Button>
         </div>
-
-        {optionFields.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-emerald-200 bg-white p-5 text-sm text-emerald-700">
-            No choices yet. Add portion sizes, toppings, or upgrades for diners to pick.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {optionFields.map((option, optionIndex) => (
-              <div
-                key={option.id ?? option.fieldId}
-                draggable
-                onDragStart={() => handleOptionDragStart(optionIndex)}
-                onDragOver={handleGroupDragOver}
-                onDrop={() => handleOptionDrop(optionIndex)}
-                className="space-y-4 rounded-xl border border-transparent bg-white p-4 shadow-xs transition hover:shadow-sm"
-              >
-                <div className="grid gap-4 md:grid-cols-3">
-                  <FieldBlock label="Choice name" required>
-                    <Input
-                      className={COMPACT_INPUT_CLASS}
-                      {...form.register(
-                        `choiceGroups.${index}.options.${optionIndex}.nameEn` as const
-                      )}
-                      placeholder="e.g. Extra spicy"
-                      onBlur={() => handleOptionBlur(optionIndex)}
-                    />
-                  </FieldBlock>
-                  <FieldBlock label="Extra price (optional)">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className={COMPACT_INPUT_CLASS}
-                      {...form.register(
-                        `choiceGroups.${index}.options.${optionIndex}.extraPrice` as const
-                      )}
-                      onBlur={() => handleOptionBlur(optionIndex)}
-                    />
-                  </FieldBlock>
-                  <ToggleBlock label="Show to diners">
-                    <Controller
-                      control={form.control}
-                      name={`choiceGroups.${index}.options.${optionIndex}.isAvailable` as const}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            void handleOptionBlur(optionIndex);
-                          }}
-                          className={SWITCH_TONE_CLASS}
-                        />
-                      )}
-                    />
-                  </ToggleBlock>
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-rose-600 hover:text-rose-700"
-                    type="button"
-                    onClick={() => void handleDeleteOption(optionIndex)}
-                  >
-                    Remove choice
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {isExpanded ? (
+        <div className="space-y-6 border-t border-emerald-100 px-6 pb-6 pt-4">
+          <div className="grid w-full gap-4 md:grid-cols-3">
+            <FieldBlock label="Section title" required>
+              <Input
+                className={COMPACT_INPUT_CLASS}
+                {...form.register(`choiceGroups.${index}.titleEn` as const)}
+                placeholder="e.g. Choose your protein"
+                onBlur={handleGroupBlur}
+              />
+            </FieldBlock>
+            <FieldBlock label="Section title (Burmese)">
+              <Input
+                className={COMPACT_INPUT_CLASS}
+                {...form.register(`choiceGroups.${index}.titleMm` as const)}
+                placeholder="မြန်မာလို အခန်း"
+                onBlur={handleGroupBlur}
+              />
+            </FieldBlock>
+            <FieldBlock label="Selection style" required>
+              <Controller
+                control={form.control}
+                name={`choiceGroups.${index}.type` as const}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(value: MenuChoiceGroupType) => {
+                      field.onChange(value);
+                      void handleGroupBlur();
+                    }}
+                  >
+                    <SelectTrigger className={cn("w-full", COMPACT_SELECT_TRIGGER_CLASS)}>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MENU_CHOICE_GROUP_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {CHOICE_TYPE_LABEL[type]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </FieldBlock>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <FieldBlock label="Minimum picks">
+              <Input
+                type="number"
+                min={0}
+                className={COMPACT_INPUT_CLASS}
+                {...form.register(`choiceGroups.${index}.minSelect` as const, {
+                  valueAsNumber: true,
+                })}
+                onBlur={handleGroupBlur}
+              />
+            </FieldBlock>
+            <FieldBlock label="Maximum picks" required>
+              <Input
+                type="number"
+                min={1}
+                className={COMPACT_INPUT_CLASS}
+                {...form.register(`choiceGroups.${index}.maxSelect` as const, {
+                  valueAsNumber: true,
+                })}
+                onBlur={handleGroupBlur}
+              />
+            </FieldBlock>
+            <ToggleBlock label="Make this required?">
+              <Controller
+                control={form.control}
+                name={`choiceGroups.${index}.isRequired` as const}
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      void handleGroupBlur();
+                    }}
+                    className={SWITCH_TONE_CLASS}
+                  />
+                )}
+              />
+            </ToggleBlock>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 pb-3">
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">
+                  Choices in this section
+                </h4>
+                <p className="text-xs text-emerald-700/80">
+                  Drag cards to reorder or toggle availability on the right.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                type="button"
+                onClick={() => void handleAddOption()}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Add choice
+              </Button>
+            </div>
+
+            {optionFields.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-emerald-200 bg-white p-5 text-sm text-emerald-700">
+                No choices yet. Add portion sizes, toppings, or upgrades for diners to pick.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {optionFields.map((option, optionIndex) => (
+                  <div
+                    key={option.id ?? option.fieldId}
+                    draggable
+                    onDragStart={() => handleOptionDragStart(optionIndex)}
+                    onDragOver={handleGroupDragOver}
+                    onDrop={() => handleOptionDrop(optionIndex)}
+                    className="space-y-4 rounded-xl border border-transparent bg-white p-4 shadow-xs transition hover:shadow-sm"
+                  >
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <FieldBlock label="Choice name" required>
+                        <Input
+                          className={COMPACT_INPUT_CLASS}
+                          {...form.register(
+                            `choiceGroups.${index}.options.${optionIndex}.nameEn` as const
+                          )}
+                          placeholder="e.g. Extra spicy"
+                          onBlur={() => handleOptionBlur(optionIndex)}
+                        />
+                      </FieldBlock>
+                      <FieldBlock label="Choice name (Burmese)">
+                        <Input
+                          className={COMPACT_INPUT_CLASS}
+                          {...form.register(
+                            `choiceGroups.${index}.options.${optionIndex}.nameMm` as const
+                          )}
+                          placeholder="မြန်မာလို ရွေးချယ်မှု"
+                          onBlur={() => handleOptionBlur(optionIndex)}
+                        />
+                      </FieldBlock>
+                      <FieldBlock label="Extra price (optional)">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className={COMPACT_INPUT_CLASS}
+                          {...form.register(
+                            `choiceGroups.${index}.options.${optionIndex}.extraPrice` as const
+                          )}
+                          onBlur={() => handleOptionBlur(optionIndex)}
+                        />
+                      </FieldBlock>
+                      <ToggleBlock label="Show to diners">
+                        <Controller
+                          control={form.control}
+                          name={`choiceGroups.${index}.options.${optionIndex}.isAvailable` as const}
+                          render={({ field }) => (
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked);
+                                void handleOptionBlur(optionIndex);
+                              }}
+                              className={SWITCH_TONE_CLASS}
+                            />
+                          )}
+                        />
+                      </ToggleBlock>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-rose-600 hover:text-rose-700"
+                        type="button"
+                        onClick={() => void handleDeleteOption(optionIndex)}
+                      >
+                        Remove choice
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

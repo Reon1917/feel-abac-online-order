@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       descriptionEn: values.descriptionEn ?? null,
       descriptionMm: values.descriptionMm ?? null,
       placeholderIcon: values.placeholderIcon ?? null,
+      menuCode: values.menuCode ?? null,
       imageUrl: values.imageUrl ?? null,
       price: toDecimalString(values.price),
       isAvailable: values.isAvailable ?? true,

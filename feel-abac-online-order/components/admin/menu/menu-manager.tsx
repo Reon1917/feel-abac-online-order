@@ -520,7 +520,7 @@ function CategoryPanel({
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-sm">
+      <Card className="shadow-sm flex flex-col md:h-[560px]">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold text-slate-900">
             Step 1 · Pick a category
@@ -529,7 +529,7 @@ function CategoryPanel({
             Categories keep your menu tidy. Choose one to see its dishes.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex h-full flex-col gap-4 overflow-hidden">
           <div className="flex justify-end">
             <Button
               type="button"
@@ -541,94 +541,96 @@ function CategoryPanel({
               Create category
             </Button>
           </div>
-          {menu.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-              No categories yet. Create one to begin building your menu.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {menu.map((category) => {
-                const isSelected = category.id === selectedCategoryId;
-                return (
-                  <div
-                    key={category.id}
-                    className={cn(
-                      "rounded-lg border p-3 transition hover:border-emerald-300",
-                      isSelected
-                        ? "border-emerald-400 bg-emerald-50 shadow-sm"
-                        : "border-slate-200 bg-white"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onSelectCategory(category.id)}
-                      className="w-full text-left"
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {menu.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                No categories yet. Create one to begin building your menu.
+              </div>
+            ) : (
+              <div className="space-y-3 pr-1">
+                {menu.map((category) => {
+                  const isSelected = category.id === selectedCategoryId;
+                  return (
+                    <div
+                      key={category.id}
+                      className={cn(
+                        "rounded-lg border p-3 transition hover:border-emerald-300",
+                        isSelected
+                          ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                          : "border-slate-200 bg-white"
+                      )}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {category.nameEn}
-                          </p>
-                          {category.nameMm && (
-                            <p className="text-xs text-slate-500">
-                              {category.nameMm}
+                      <button
+                        type="button"
+                        onClick={() => onSelectCategory(category.id)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {category.nameEn}
                             </p>
-                          )}
-                        </div>
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-xs font-semibold",
-                            category.isActive
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-200 text-slate-600"
-                          )}
-                        >
-                          {category.isActive ? "Active" : "Hidden"}
-                        </span>
-                      </div>
-                    </button>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                      <span>{category.items.length} items</span>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-slate-600">
-                            Visible
+                            {category.nameMm && (
+                              <p className="text-xs text-slate-500">
+                                {category.nameMm}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-xs font-semibold",
+                              category.isActive
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-slate-200 text-slate-600"
+                            )}
+                          >
+                            {category.isActive ? "Active" : "Hidden"}
                           </span>
-                          <Switch
-                            checked={category.isActive}
-                            onCheckedChange={(checked) =>
-                              onUpdateCategory(category.id, {
-                                isActive: checked,
-                              })
-                            }
-                            className={switchToneClassName}
-                          />
                         </div>
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
-                          onClick={() => setDialogState({ mode: "edit", category })}
-                        >
-                          Rename
-                        </button>
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-rose-600 hover:text-rose-700"
-                          onClick={() => void onDeleteCategory(category.id)}
-                        >
-                          Delete category
-                        </button>
+                      </button>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <span>{category.items.length} items</span>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-slate-600">
+                              Visible
+                            </span>
+                            <Switch
+                              checked={category.isActive}
+                              onCheckedChange={(checked) =>
+                                onUpdateCategory(category.id, {
+                                  isActive: checked,
+                                })
+                              }
+                              className={switchToneClassName}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                            onClick={() => setDialogState({ mode: "edit", category })}
+                          >
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                            onClick={() => void onDeleteCategory(category.id)}
+                          >
+                            Delete category
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card className="shadow-sm flex flex-col md:h-[560px]">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold text-slate-900">
             Step 2 · Add dishes & drinks
@@ -639,7 +641,7 @@ function CategoryPanel({
               : "Choose a category first, then start adding dishes and drinks here."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex h-full flex-col gap-4 overflow-hidden">
           <div className="flex justify-end">
             <Button
               size="sm"
@@ -652,57 +654,59 @@ function CategoryPanel({
               Add menu item
             </Button>
           </div>
-          {selectedCategory ? (
-            selectedCategory.items.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                No items yet. Click “Add menu item” to start filling this category.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {selectedCategory.items.map((item) => {
-                  const isActive = item.id === selectedItemId;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => onSelectItem(item.id)}
-                      className={cn(
-                        "w-full rounded-lg border px-3 py-2 text-left transition hover:border-emerald-300",
-                        isActive
-                          ? "border-emerald-400 bg-emerald-50 shadow-sm"
-                          : "border-slate-200 bg-white"
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {item.nameEn}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {item.descriptionEn
-                              ? item.descriptionEn.slice(0, 60)
-                              : "No description yet"}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-semibold text-slate-600">
-                            {item.status === "published" ? "Live" : "Draft"}
-                          </span>
-                          <div className="text-xs text-slate-500">
-                            {formatMoney(item.price)}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {selectedCategory ? (
+              selectedCategory.items.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                  No items yet. Click “Add menu item” to start filling this category.
+                </div>
+              ) : (
+                <div className="space-y-2 pr-1">
+                  {selectedCategory.items.map((item) => {
+                    const isActive = item.id === selectedItemId;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onSelectItem(item.id)}
+                        className={cn(
+                          "w-full rounded-lg border px-3 py-2 text-left transition hover:border-emerald-300",
+                          isActive
+                            ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                            : "border-slate-200 bg-white"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {item.nameEn}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {item.descriptionEn
+                                ? item.descriptionEn.slice(0, 60)
+                                : "No description yet"}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-semibold text-slate-600">
+                              {item.status === "published" ? "Live" : "Draft"}
+                            </span>
+                            <div className="text-xs text-slate-500">
+                              {formatMoney(item.price)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                Choose a category above to see its items.
               </div>
-            )
-          ) : (
-            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-              Choose a category above to see its items.
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
 
