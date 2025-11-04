@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LOCALE_COOKIE_NAME,
@@ -36,7 +36,7 @@ export function UiLanguageSwitcher({
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = React.useTransition();
+  const [isPending, startTransition] = useTransition();
 
   const handleLocaleChange = (nextValue: string) => {
     if (!SUPPORTED_LOCALES.includes(nextValue as Locale)) return;
@@ -53,20 +53,16 @@ export function UiLanguageSwitcher({
     });
   };
 
+  const activeLabel = locale === "en" ? labels.english : labels.burmese;
+
   return (
     <div className={className}>
       <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
         {labels.label}
       </label>
-      <Select
-        value={locale}
-        onValueChange={handleLocaleChange}
-        disabled={isPending}
-      >
+      <Select value={locale} onValueChange={handleLocaleChange} disabled={isPending}>
         <SelectTrigger className="w-40">
-          <SelectValue aria-label={locale}>
-            {locale === "en" ? labels.english : labels.burmese}
-          </SelectValue>
+          <SelectValue aria-label={activeLabel}>{activeLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="en">{labels.english}</SelectItem>

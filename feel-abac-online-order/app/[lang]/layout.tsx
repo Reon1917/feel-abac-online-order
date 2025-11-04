@@ -28,14 +28,8 @@ export default async function LangLayout({ children, params }: LayoutProps) {
   const locale = lang as Locale;
   let menuLocale: Locale = locale;
   try {
-    const cookieStore = cookies();
-    const rawValue =
-      typeof (cookieStore as unknown as { get?: (name: string) => { value?: string } | undefined }).get ===
-      "function"
-        ? (cookieStore as unknown as { get: (name: string) => { value?: string } | undefined })
-            .get(MENU_LOCALE_COOKIE_NAME)
-            ?.value
-        : undefined;
+    const cookieStore = await cookies();
+    const rawValue = cookieStore.get(MENU_LOCALE_COOKIE_NAME)?.value;
     const cookieLocale = mapToSupportedLocale(rawValue);
     if (cookieLocale) {
       menuLocale = cookieLocale;
