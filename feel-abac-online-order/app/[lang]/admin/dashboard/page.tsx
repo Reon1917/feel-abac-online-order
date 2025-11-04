@@ -67,7 +67,7 @@ export default async function AdminDashboard({ params }: PageProps) {
           <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Admin workspace
+                {dict.workspace.badge}
               </span>
               <h1 className="text-3xl font-semibold">{dict.header.title}</h1>
               <p className="text-sm text-slate-600">{dict.header.subtitle}</p>

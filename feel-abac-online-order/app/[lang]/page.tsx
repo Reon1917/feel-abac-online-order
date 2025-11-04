@@ -35,7 +35,7 @@ export default async function Home({ params }: PageProps) {
           <p className="max-w-2xl text-base text-slate-600 sm:text-lg">
             {dict.hero.subheadline}
           </p>
-          <LoginModal />
+          <LoginModal locale={locale} />
         </header>
 
         <section className="space-y-5 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6">

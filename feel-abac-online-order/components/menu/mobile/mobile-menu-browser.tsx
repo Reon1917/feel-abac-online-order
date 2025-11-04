@@ -158,11 +158,10 @@ type MobileMenuCardProps = {
 
 function MobileMenuListItem({ item, locale }: MobileMenuCardProps) {
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
-  const descriptionCopy = item.description
-    ? locale === "my"
-      ? item.descriptionMm ?? item.description
-      : item.description
-    : null;
+  const descriptionCopy =
+    locale === "my"
+      ? item.descriptionMm ?? item.description ?? null
+      : item.description ?? item.descriptionMm ?? null;
 
   return (
     <div className={styles.listInner}>

@@ -47,33 +47,34 @@ export default async function AdminMenuPage({ params }: PageProps) {
 
   const stats = [
     {
-      label: "Categories",
+      label: dict.stats.categories.label,
       value: totalCategories,
       detail:
         hiddenCategories === 0
-          ? "All visible to diners"
-          : `${formatNumber(hiddenCategories)} hidden from diners`,
+          ? dict.stats.categories.allVisible
+          : dict.stats.categories.hidden.replace("%s", formatNumber(hiddenCategories)),
     },
     {
-      label: "Menu items",
+      label: dict.stats.menuItems.label,
       value: totalItems,
       detail:
         unavailableItems === 0
-          ? "All marked available"
-          : `${formatNumber(unavailableItems)} unavailable right now`,
+          ? dict.stats.menuItems.allAvailable
+          : dict.stats.menuItems.unavailable.replace("%s", formatNumber(unavailableItems)),
     },
     {
-      label: "Published",
+      label: dict.stats.published.label,
       value: publishedItems,
-      detail: publishedItems === 0 ? "Nothing live yet" : "Live for diners",
+      detail:
+        publishedItems === 0 ? dict.stats.published.nothingLive : dict.stats.published.liveForDiners,
     },
     {
-      label: "Drafts",
+      label: dict.stats.drafts.label,
       value: draftItems,
       detail:
         draftItems === 0
-          ? "Nothing pending"
-          : `${formatNumber(draftItems)} awaiting review`,
+          ? dict.stats.drafts.nothingPending
+          : dict.stats.drafts.awaitingReview.replace("%s", formatNumber(draftItems)),
     },
   ];
 
@@ -93,7 +94,7 @@ export default async function AdminMenuPage({ params }: PageProps) {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Menu workspace
+                {dict.header.workspaceLabel}
               </span>
               <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
                 {dict.header.title}
@@ -104,25 +105,15 @@ export default async function AdminMenuPage({ params }: PageProps) {
             </div>
             <div className="rounded-2xl border border-white/40 bg-white/70 p-5 shadow-sm backdrop-blur">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-700">
-                Publish checklist
+                {dict.header.publishChecklist.title}
               </h2>
               <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full bg-emerald-500" />
-                  <span>Confirm Burmese names so diners see localized copy.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full bg-emerald-500" />
-                  <span>Hide categories until they’re ready with the visibility toggle.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full bg-emerald-500" />
-                  <span>Save new dishes as drafts while pricing or notes are still in progress.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full bg-emerald-500" />
-                  <span>Use refresh after bulk edits to pull the latest menu tree.</span>
-                </li>
+                {dict.header.publishChecklist.items.map((item, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full bg-emerald-500" />
+                    <span>{item}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
