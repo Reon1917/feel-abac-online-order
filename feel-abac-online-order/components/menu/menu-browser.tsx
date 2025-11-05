@@ -11,6 +11,7 @@ import type { Locale } from "@/lib/i18n/config";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
+type ItemCountDictionary = NonNullable<MenuDictionary["browser"]["itemCount"]>;
 
 type MenuBrowserProps = {
   categories: PublicMenuCategory[];
@@ -86,8 +87,12 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
           secondaryName: null,
           itemCountLabel: (() => {
             const count = items.length;
+            const pluralKey = pluralRules.select(count);
+            const itemCountTemplates = browser.itemCount as ItemCountDictionary | undefined;
             const template =
-              browser.itemCount?.[pluralRules.select(count)] ?? "{{count}}";
+              itemCountTemplates?.[pluralKey as keyof ItemCountDictionary] ??
+              itemCountTemplates?.other ??
+              "{{count}}";
             return template.replace("{{count}}", String(count));
           })(),
           items,
