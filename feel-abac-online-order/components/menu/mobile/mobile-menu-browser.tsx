@@ -42,30 +42,46 @@ export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenu
     [menuLocale]
   );
 
-  const filteredItems = useMemo(() => {
+  const filteredCategories = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
-    return categories.flatMap((category) => {
-      if (activeCategory !== "all" && category.id !== activeCategory) {
-        return [] as PublicMenuItem[];
-      }
+    return categories
+      .map((category) => {
+        if (activeCategory !== "all" && category.id !== activeCategory) {
+          return null;
+        }
 
-      return category.items.filter((item) => {
-        if (!query) return true;
+        const items = category.items.filter((item) => {
+          if (!query) return true;
 
-        const haystack = [
-          item.name,
-          item.nameMm ?? "",
-          item.description ?? "",
-          item.descriptionMm ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
+          const haystack = [
+            item.name,
+            item.nameMm ?? "",
+            item.description ?? "",
+            item.descriptionMm ?? "",
+          ]
+            .join(" ")
+            .toLowerCase();
 
-        return haystack.includes(query);
-      });
-    });
-  }, [activeCategory, categories, searchTerm]);
+          return haystack.includes(query);
+        });
+
+        if (items.length === 0) {
+          return null;
+        }
+
+        return {
+          id: category.id,
+          name: localize(category.name, category.nameMm),
+          items,
+        };
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      name: string;
+      items: PublicMenuItem[];
+    }>;
+  }, [activeCategory, categories, localize, searchTerm]);
 
   const categoryTabs = useMemo(() => {
     const allLabel = browser.categoryAll;
@@ -135,16 +151,23 @@ export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenu
       </div>
 
       <div>
-        {filteredItems.length === 0 ? (
+        {filteredCategories.length === 0 ? (
           <div className={styles.emptyState}>{browser.empty}</div>
         ) : (
-          <ul className={styles.listRoot}>
-            {filteredItems.map((item) => (
-              <li key={item.id} className={styles.listItem}>
-                <MobileMenuListItem item={item} locale={menuLocale} />
-              </li>
+          <div className={styles.listRoot}>
+            {filteredCategories.map((category) => (
+              <section key={category.id} className={styles.categorySection}>
+                <h2 className={styles.categoryHeading}>{category.name}</h2>
+                <ul className={styles.sectionList}>
+                  {category.items.map((item) => (
+                    <li key={item.id} className={styles.listItem}>
+                      <MobileMenuListItem item={item} locale={menuLocale} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
