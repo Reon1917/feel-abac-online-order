@@ -249,18 +249,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-radius: 0.75rem;
-  background: #10b981;
-  color: #ffffff;
+  border: 1px solid #059669;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #047857;
   font-weight: 600;
   font-size: 0.85rem;
-  padding: 0.55rem 0.75rem;
-  transition: background 150ms ease, transform 150ms ease;
+  padding: 0.55rem 0.9rem;
+  transition: background-color 150ms ease, color 150ms ease,
+    box-shadow 150ms ease, transform 150ms ease;
+}
+
+.addButton:hover {
+  background: #047857;
+  color: #ffffff;
 }
 
 .addButton:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .addButton:focus-visible {
