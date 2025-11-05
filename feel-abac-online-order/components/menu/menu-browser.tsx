@@ -78,14 +78,10 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
         }
 
         const displayName = localize(category.name, category.nameMm);
-        const secondaryName =
-          menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
-
         return {
           id: category.id,
           displayName,
-          secondaryName:
-            secondaryName && secondaryName !== displayName ? secondaryName : null,
+          secondaryName: null,
           items,
         };
       })
@@ -264,8 +260,7 @@ function MenuItemCard({
   locale: Locale;
 }) {
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
-  const alternateName =
-    locale === "my" ? item.name ?? null : item.nameMm ?? null;
+  const alternateName = null;
   const descriptionCopy =
     locale === "my"
       ? item.descriptionMm ?? item.description
@@ -327,8 +322,7 @@ function MenuItemRow({
   locale: Locale;
 }) {
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
-  const alternateName =
-    locale === "my" ? item.name ?? null : item.nameMm ?? null;
+  const alternateName = null;
   const descriptionCopy =
     locale === "my"
       ? item.descriptionMm ?? item.description
