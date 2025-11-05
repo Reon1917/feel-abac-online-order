@@ -1247,11 +1247,12 @@ type FieldBlockProps = {
   required?: boolean;
   description?: string;
   children: React.ReactNode;
+  className?: string;
 };
 
-function FieldBlock({ label, required, description, children }: FieldBlockProps) {
+function FieldBlock({ label, required, description, children, className }: FieldBlockProps) {
   return (
-    <label className="flex flex-col gap-2">
+    <label className={cn("flex flex-col gap-2", className)}>
       <span className="text-sm font-semibold text-slate-800">
         {label}
         {required ? <span className="ml-1 text-rose-500">*</span> : null}
@@ -1275,17 +1276,17 @@ function ToggleBlock({ label, description, children, className }: ToggleBlockPro
   return (
     <div
       className={cn(
-        "flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5",
+        "flex w-full flex-col gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4",
         className
       )}
     >
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-slate-800 md:whitespace-nowrap">{label}</p>
+      <div className="w-full space-y-1 sm:w-auto">
+        <p className="text-sm font-semibold text-slate-800">{label}</p>
         {description ? (
           <p className="text-xs text-slate-500">{description}</p>
         ) : null}
       </div>
-      {children}
+      <div className="sm:self-center">{children}</div>
     </div>
   );
 }
@@ -1393,7 +1394,7 @@ function ChoiceGroupPanel({
                 <Input
                   className={cn(COMPACT_INPUT_CLASS, "border-slate-200 bg-white text-slate-900")}
                   {...newGroupForm.register("titleMm")}
-                  placeholder="မြန်မာလို အမည်"
+                  placeholder="အမည်"
                 />
               </FieldBlock>
               <FieldBlock label="Selection style" required>
@@ -1684,8 +1685,8 @@ function ChoiceGroupCard({
 
       {isExpanded ? (
         <div className="space-y-6 border-t border-emerald-100 px-6 pb-6 pt-4">
-          <div className="grid w-full gap-4 md:grid-cols-3">
-            <FieldBlock label="Section title" required>
+          <div className="grid w-full gap-4 md:grid-cols-12">
+            <FieldBlock label="Section title" required className="md:col-span-5 lg:col-span-5">
               <Input
                 className={COMPACT_INPUT_CLASS}
                 {...form.register(`choiceGroups.${index}.titleEn` as const)}
@@ -1693,15 +1694,18 @@ function ChoiceGroupCard({
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <FieldBlock label="Section title (Burmese)">
+            <FieldBlock
+              label="Section title (Burmese)"
+              className="md:col-span-4 lg:col-span-4"
+            >
               <Input
                 className={COMPACT_INPUT_CLASS}
                 {...form.register(`choiceGroups.${index}.titleMm` as const)}
-                placeholder="မြန်မာလို အခန်း"
+                placeholder="အမည်"
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <FieldBlock label="Selection style" required>
+            <FieldBlock label="Selection style" required className="md:col-span-3 lg:col-span-3">
               <Controller
                 control={form.control}
                 name={`choiceGroups.${index}.type` as const}
@@ -1729,8 +1733,8 @@ function ChoiceGroupCard({
             </FieldBlock>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <FieldBlock label="Minimum picks">
+          <div className="grid gap-4 md:grid-cols-12">
+            <FieldBlock label="Minimum picks" className="md:col-span-4">
               <Input
                 type="number"
                 min={0}
@@ -1741,7 +1745,7 @@ function ChoiceGroupCard({
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <FieldBlock label="Maximum picks" required>
+            <FieldBlock label="Maximum picks" required className="md:col-span-4">
               <Input
                 type="number"
                 min={1}
@@ -1752,7 +1756,7 @@ function ChoiceGroupCard({
                 onBlur={handleGroupBlur}
               />
             </FieldBlock>
-            <ToggleBlock label="Make this required?">
+            <ToggleBlock label="Make this required?" className="md:col-span-4 h-full">
               <Controller
                 control={form.control}
                 name={`choiceGroups.${index}.isRequired` as const}
@@ -1805,8 +1809,8 @@ function ChoiceGroupCard({
                     onDrop={() => handleOptionDrop(optionIndex)}
                     className="space-y-4 rounded-xl border border-transparent bg-white p-4 shadow-xs transition hover:shadow-sm"
                   >
-                    <div className="grid gap-4 md:grid-cols-4">
-                      <FieldBlock label="Choice name" required>
+                    <div className="grid gap-4 md:grid-cols-12">
+                      <FieldBlock label="Choice name" required className="md:col-span-4">
                         <Input
                           className={COMPACT_INPUT_CLASS}
                           {...form.register(
@@ -1816,29 +1820,40 @@ function ChoiceGroupCard({
                           onBlur={() => handleOptionBlur(optionIndex)}
                         />
                       </FieldBlock>
-                      <FieldBlock label="Choice name (Burmese)">
+                      <FieldBlock
+                        label="Choice name (Burmese)"
+                        className="md:col-span-4"
+                      >
                         <Input
                           className={COMPACT_INPUT_CLASS}
                           {...form.register(
                             `choiceGroups.${index}.options.${optionIndex}.nameMm` as const
                           )}
-                          placeholder="မြန်မာလို ရွေးချယ်မှု"
+                          placeholder="ရွေးချယ်မှု"
                           onBlur={() => handleOptionBlur(optionIndex)}
                         />
                       </FieldBlock>
-                      <FieldBlock label="Extra price (optional)">
+                      <FieldBlock
+                        label="Extra price"
+                        className="md:col-span-3 lg:col-span-2"
+                      >
                         <Input
                           type="number"
                           step="0.01"
                           min="0"
-                          className={COMPACT_INPUT_CLASS}
+                          className={cn(COMPACT_INPUT_CLASS, "md:max-w-40")}
                           {...form.register(
                             `choiceGroups.${index}.options.${optionIndex}.extraPrice` as const
                           )}
                           onBlur={() => handleOptionBlur(optionIndex)}
                         />
                       </FieldBlock>
-                      <ToggleBlock label="Show to diners">
+                    </div>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <ToggleBlock
+                        label="Show to diners"
+                        className="max-w-md border-slate-200 bg-slate-50 md:w-auto"
+                      >
                         <Controller
                           control={form.control}
                           name={`choiceGroups.${index}.options.${optionIndex}.isAvailable` as const}
@@ -1854,17 +1869,17 @@ function ChoiceGroupCard({
                           )}
                         />
                       </ToggleBlock>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-rose-600 hover:text-rose-700"
-                        type="button"
-                        onClick={() => void handleDeleteOption(optionIndex)}
-                      >
-                        Remove choice
-                      </Button>
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-rose-600 hover:text-rose-700"
+                          type="button"
+                          onClick={() => void handleDeleteOption(optionIndex)}
+                        >
+                          Remove choice
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
