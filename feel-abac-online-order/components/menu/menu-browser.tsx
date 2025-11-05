@@ -86,7 +86,7 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
         };
       })
       .filter(Boolean) as DisplayCategory[];
-  }, [activeCategory, categories, localize, menuLocale, searchTerm]);
+  }, [activeCategory, categories, localize, searchTerm]);
 
   const categoryTabs = useMemo(() => {
     const allLabel = browser.categoryAll;
@@ -260,7 +260,6 @@ function MenuItemCard({
   locale: Locale;
 }) {
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
-  const alternateName = null;
   const descriptionCopy =
     locale === "my"
       ? item.descriptionMm ?? item.description
@@ -288,9 +287,6 @@ function MenuItemCard({
       <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-slate-900">{displayName}</h3>
-          {alternateName && alternateName !== displayName ? (
-            <p className="text-sm text-slate-500">{alternateName}</p>
-          ) : null}
           {descriptionCopy ? (
             <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
               {descriptionCopy}
@@ -322,7 +318,6 @@ function MenuItemRow({
   locale: Locale;
 }) {
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
-  const alternateName = null;
   const descriptionCopy =
     locale === "my"
       ? item.descriptionMm ?? item.description
@@ -352,9 +347,6 @@ function MenuItemRow({
           <h3 className="text-base font-semibold text-slate-900">
             {displayName}
           </h3>
-          {alternateName && alternateName !== displayName ? (
-            <p className="text-xs text-slate-500">{alternateName}</p>
-          ) : null}
           {descriptionCopy ? (
             <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
               {descriptionCopy}
