@@ -21,6 +21,15 @@ import {
   PublicMenuOption,
 } from "@/lib/menu/types";
 
+export type PublicMenuItemWithCategory = {
+  item: PublicMenuItem;
+  category: {
+    id: string;
+    name: string;
+    nameMm: string | null;
+  };
+};
+
 function numericToNumber(value: string | null): number {
   if (!value) return 0;
   const parsed = Number(value);
@@ -271,4 +280,104 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
     displayOrder: category.displayOrder,
     items: itemsByCategory.get(category.id) ?? [],
   }));
+}
+
+export async function getPublicMenuItemById(
+  itemId: string
+): Promise<PublicMenuItemWithCategory | null> {
+  const itemRecord = await db
+    .select()
+    .from(menuItems)
+    .where(eq(menuItems.id, itemId))
+    .limit(1);
+
+  const item = itemRecord[0];
+  if (!item || !item.isAvailable || item.status !== "published") {
+    return null;
+  }
+
+  const categoryRecord = await db
+    .select()
+    .from(menuCategories)
+    .where(eq(menuCategories.id, item.categoryId))
+    .limit(1);
+
+  const category = categoryRecord[0];
+  if (!category || !category.isActive) {
+    return null;
+  }
+
+  const groups = await db
+    .select()
+    .from(menuChoiceGroups)
+    .where(eq(menuChoiceGroups.menuItemId, item.id))
+    .orderBy(
+      asc(menuChoiceGroups.displayOrder),
+      asc(menuChoiceGroups.createdAt)
+    );
+
+  const groupIds = groups.map((group) => group.id);
+
+  const options = groupIds.length
+    ? await db
+        .select()
+        .from(menuChoiceOptions)
+        .where(inArray(menuChoiceOptions.choiceGroupId, groupIds))
+        .orderBy(
+          asc(menuChoiceOptions.displayOrder),
+          asc(menuChoiceOptions.createdAt)
+        )
+    : [];
+
+  const optionsByGroup = new Map<string, PublicMenuOption[]>();
+  for (const option of options) {
+    if (!option.isAvailable) continue;
+    const mapped: PublicMenuOption = {
+      id: option.id,
+      name: option.nameEn,
+      nameMm: option.nameMm,
+      extraPrice: numericToNumber(option.extraPrice),
+      isAvailable: option.isAvailable,
+      displayOrder: option.displayOrder,
+    };
+    const current = optionsByGroup.get(option.choiceGroupId) ?? [];
+    current.push(mapped);
+    optionsByGroup.set(option.choiceGroupId, current);
+  }
+
+  const mappedGroups: PublicMenuChoiceGroup[] = groups.map((group) => ({
+    id: group.id,
+    title: group.titleEn,
+    titleMm: group.titleMm,
+    minSelect: group.minSelect,
+    maxSelect: group.maxSelect,
+    isRequired: group.isRequired,
+    type: group.type as MenuChoiceGroupType,
+    displayOrder: group.displayOrder,
+    options: optionsByGroup.get(group.id) ?? [],
+  }));
+
+  const mappedItem: PublicMenuItem = {
+    id: item.id,
+    name: item.nameEn,
+    nameMm: item.nameMm,
+    description: item.descriptionEn,
+    descriptionMm: item.descriptionMm,
+    price: numericToNumber(item.price),
+    imageUrl: item.imageUrl,
+    placeholderIcon: item.placeholderIcon,
+    menuCode: item.menuCode,
+    allowUserNotes: item.allowUserNotes,
+    choiceGroups: mappedGroups,
+    displayOrder: item.displayOrder,
+  };
+
+  return {
+    item: mappedItem,
+    category: {
+      id: category.id,
+      name: category.nameEn,
+      nameMm: category.nameMm,
+    },
+  };
 }

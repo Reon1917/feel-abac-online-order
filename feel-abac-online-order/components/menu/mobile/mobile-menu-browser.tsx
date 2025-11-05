@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import clsx from "clsx";
 
 import styles from "./mobile-menu.module.css";
@@ -161,7 +162,11 @@ export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenu
                 <ul className={styles.sectionList}>
                   {category.items.map((item) => (
                     <li key={item.id} className={styles.listItem}>
-                      <MobileMenuListItem item={item} locale={menuLocale} />
+                      <MobileMenuListItem
+                        item={item}
+                        locale={menuLocale}
+                        actionLabel={dictionary.browser.viewDetails}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -177,17 +182,19 @@ export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenu
 type MobileMenuCardProps = {
   item: PublicMenuItem;
   locale: Locale;
+  actionLabel: string;
 };
 
-function MobileMenuListItem({ item, locale }: MobileMenuCardProps) {
+function MobileMenuListItem({ item, locale, actionLabel }: MobileMenuCardProps) {
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
     locale === "my"
       ? item.descriptionMm ?? item.description ?? null
       : item.description ?? item.descriptionMm ?? null;
+  const detailHref = `/${locale}/menu/items/${item.id}`;
 
   return (
-    <div className={styles.listInner}>
+    <Link href={detailHref} className={styles.listInner}>
       <div className={styles.listImage}>
         {item.imageUrl ? (
           <Image
@@ -207,12 +214,14 @@ function MobileMenuListItem({ item, locale }: MobileMenuCardProps) {
         {descriptionCopy && <p className={styles.listDescription}>{descriptionCopy}</p>}
         <div className={styles.listFooter}>
           <span className={styles.price}>฿{formatPrice(item.price)}</span>
-          <button type="button" className={styles.addButton}>
-            + Add
-          </button>
+          <span className={styles.addButton}>
+            +
+            <span className="sr-only">{actionLabel}</span>
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
+
   );
 }
 

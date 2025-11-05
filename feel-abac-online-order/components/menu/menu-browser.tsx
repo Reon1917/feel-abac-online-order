@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import clsx from "clsx";
 import { LayoutGrid, List } from "lucide-react";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
@@ -81,10 +82,13 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
         }
 
         const displayName = localize(category.name, category.nameMm);
+        const secondaryName =
+          menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
         return {
           id: category.id,
           displayName,
-          secondaryName: null,
+          secondaryName:
+            secondaryName && secondaryName !== displayName ? secondaryName : null,
           itemCountLabel: (() => {
             const count = items.length;
             const pluralKey = pluralRules.select(count);
@@ -99,7 +103,7 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
         };
       })
       .filter(Boolean) as DisplayCategory[];
-  }, [activeCategory, browser.itemCount, categories, localize, pluralRules, searchTerm]);
+  }, [activeCategory, browser.itemCount, categories, localize, menuLocale, pluralRules, searchTerm]);
 
   const categoryTabs = useMemo(() => {
     const allLabel = browser.categoryAll;
@@ -209,6 +213,7 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
                 category={category}
                 locale={menuLocale}
                 compact={isCompact}
+                actionLabel={browser.viewDetails}
               />
             ))}
           </div>
@@ -222,10 +227,12 @@ function MenuCategorySection({
   category,
   locale,
   compact,
+  actionLabel,
 }: {
   category: DisplayCategory;
   locale: Locale;
   compact?: boolean;
+  actionLabel: string;
 }) {
   const isCompact = !!compact;
   const itemCountLabel = category.itemCountLabel;
@@ -249,13 +256,23 @@ function MenuCategorySection({
       {isCompact ? (
         <div className="space-y-3">
           {category.items.map((item) => (
-            <MenuItemRow key={item.id} item={item} locale={locale} />
+            <MenuItemRow
+              key={item.id}
+              item={item}
+              locale={locale}
+              actionLabel={actionLabel}
+            />
           ))}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {category.items.map((item) => (
-            <MenuItemCard key={item.id} item={item} locale={locale} />
+            <MenuItemCard
+              key={item.id}
+              item={item}
+              locale={locale}
+              actionLabel={actionLabel}
+            />
           ))}
         </div>
       )}
@@ -266,10 +283,13 @@ function MenuCategorySection({
 function MenuItemCard({
   item,
   locale,
+  actionLabel,
 }: {
   item: PublicMenuItem;
   locale: Locale;
+  actionLabel: string;
 }) {
+  const detailHref = `/${locale}/menu/items/${item.id}`;
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
     locale === "my"
@@ -277,57 +297,63 @@ function MenuItemCard({
       : item.description;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
-      <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-40") }>
-        {item.imageUrl ? (
-          <Image
-            src={item.imageUrl}
-            alt={displayName}
-            fill
-            className="object-cover transition duration-500 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 400px"
-            priority={false}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-4xl">
-            {item.placeholderIcon ?? "🍽️"}
+    <Link
+      href={detailHref}
+      className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
+    >
+      <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg">
+        <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-40")}>
+          {item.imageUrl ? (
+            <Image
+              src={item.imageUrl}
+              alt={displayName}
+              fill
+              className="object-cover transition duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 400px"
+              priority={false}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-4xl">
+              {item.placeholderIcon ?? "🍽️"}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4 p-5">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-slate-900">{displayName}</h3>
+            {descriptionCopy ? (
+              <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
+                {descriptionCopy}
+              </p>
+            ) : null}
           </div>
-        )}
-      </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-5">
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-slate-900">{displayName}</h3>
-          {descriptionCopy ? (
-            <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
-              {descriptionCopy}
-            </p>
-          ) : null}
+          <div className="mt-auto flex items-center justify-between gap-3">
+            <span className="text-lg font-semibold text-emerald-600">
+              ฿{formatPrice(item.price)}
+            </span>
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-xl font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white">
+              +
+              <span className="sr-only">{actionLabel}</span>
+            </span>
+          </div>
         </div>
-
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <span className="text-lg font-semibold text-emerald-600">
-            ฿{formatPrice(item.price)}
-          </span>
-          <button
-            type="button"
-            className="rounded-full border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-          >
-            + Add
-          </button>
-        </div>
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }
 
 function MenuItemRow({
   item,
   locale,
+  actionLabel,
 }: {
   item: PublicMenuItem;
   locale: Locale;
+  actionLabel: string;
 }) {
+  const detailHref = `/${locale}/menu/items/${item.id}`;
   const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
     locale === "my"
@@ -335,48 +361,51 @@ function MenuItemRow({
       : item.description;
 
   return (
-    <article className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md">
-      <div className="relative h-20 w-28 overflow-hidden rounded-xl bg-emerald-50">
-        {item.imageUrl ? (
-          <Image
-            src={item.imageUrl}
-            alt={displayName}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 40vw, 200px"
-            priority={false}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-3xl">
-            {item.placeholderIcon ?? "🍽️"}
+    <Link
+      href={detailHref}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
+    >
+      <article className="relative flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition group-hover:border-emerald-300 group-hover:shadow-md">
+        <div className="relative h-20 w-28 overflow-hidden rounded-xl bg-emerald-50">
+          {item.imageUrl ? (
+            <Image
+              src={item.imageUrl}
+              alt={displayName}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 40vw, 200px"
+              priority={false}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-3xl">
+              {item.placeholderIcon ?? "🍽️"}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 items-start justify-between gap-4">
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-base font-semibold text-slate-900">
+              {displayName}
+            </h3>
+            {descriptionCopy ? (
+              <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
+                {descriptionCopy}
+              </p>
+            ) : null}
           </div>
-        )}
-      </div>
 
-      <div className="flex flex-1 items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h3 className="text-base font-semibold text-slate-900">
-            {displayName}
-          </h3>
-          {descriptionCopy ? (
-            <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
-              {descriptionCopy}
-            </p>
-          ) : null}
+          <div className="flex flex-col items-end gap-2 text-right">
+            <span className="text-lg font-semibold text-emerald-600">
+              ฿{formatPrice(item.price)}
+            </span>
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white">
+              +
+              <span className="sr-only">{actionLabel}</span>
+            </span>
+          </div>
         </div>
-
-        <div className="flex flex-col items-end gap-2 text-right">
-          <span className="text-lg font-semibold text-emerald-600">
-            ฿{formatPrice(item.price)}
-          </span>
-          <button
-            type="button"
-            className="rounded-full border border-emerald-600 px-3 py-1 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-600 hover:text-white"
-          >
-            + Add
-          </button>
-        </div>
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }

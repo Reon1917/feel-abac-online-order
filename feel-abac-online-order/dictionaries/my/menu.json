@@ -13,10 +13,29 @@
     "viewLabel": "မြင်ကွင်းရွေးချယ်မှု",
     "viewCards": "ကဒ်မြင်ကွင်း",
     "viewList": "စာရင်းမြင်ကွင်း",
+  "viewDetails": "အသေးစိတ်ကြည့်ရှုရန်",
     "itemCount": {
       "one": "{{count}} ဟင်းပွဲ",
       "other": "{{count}} ဟင်းပွဲများ"
     }
+  },
+  "detail": {
+    "back": "မီနူးသို့ ပြန်သွားရန်",
+    "categoryPrefix": "အမျိုးအစား",
+    "basePrice": "အခြေခံစျေးနှုန်း",
+    "choicesHeading": "ရွေးချယ်စရာများနှင့် အထူးထည့်စရာများ",
+    "required": "လိုအပ်သည်",
+    "optional": "မလိုအပ်နိုင်",
+    "chooseOne": "တစ်ခု ရွေးပါ",
+    "chooseUpTo": "အများဆုံး {{count}} ခုအထိ ရွေးပါ",
+    "chooseBetween": "{{min}} မှ {{max}} ထိ ရွေးပါ",
+    "chooseAtLeast": "အနည်းဆုံး {{min}} ခု ရွေးပါ",
+    "noteLabel": "အထူးညွှန်ကြားချက်များ",
+  "notePlaceholder": "မီးဖိုချုပ်အတွက် မှတ်ချက်ရေးသားပါ...",
+    "totalLabel": "စုစုပေါင်း",
+    "addonsLabel": "အထူးထည့်စရာများ",
+    "included": "အပါအဝင်",
+    "button": "အော်ဒါထဲသို့ ထည့်ရန်"
   },
   "emptyState": {
     "heading": "မီနူးအချက်အလက် မရှိသေးပါ",
