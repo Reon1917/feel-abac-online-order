@@ -12,7 +12,11 @@
     "categoryAll": "All",
     "viewLabel": "View mode",
     "viewCards": "Card view",
-    "viewList": "List view"
+    "viewList": "List view",
+    "itemCount": {
+      "one": "{{count}} item",
+      "other": "{{count}} items"
+    }
   },
   "emptyState": {
     "heading": "No menu items yet",

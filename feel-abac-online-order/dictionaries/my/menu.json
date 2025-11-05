@@ -12,7 +12,11 @@
     "categoryAll": "အားလုံး",
     "viewLabel": "မြင်ကွင်းရွေးချယ်မှု",
     "viewCards": "ကဒ်မြင်ကွင်း",
-    "viewList": "စာရင်းမြင်ကွင်း"
+    "viewList": "စာရင်းမြင်ကွင်း",
+    "itemCount": {
+      "one": "{{count}} ဟင်းပွဲ",
+      "other": "{{count}} ဟင်းပွဲများ"
+    }
   },
   "emptyState": {
     "heading": "မီနူးအချက်အလက် မရှိသေးပါ",

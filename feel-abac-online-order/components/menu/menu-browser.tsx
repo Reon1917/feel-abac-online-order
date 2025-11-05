@@ -24,6 +24,7 @@ type DisplayCategory = {
   displayName: string;
   secondaryName?: string | null;
   items: PublicMenuItem[];
+  itemCountLabel: string;
 };
 
 function formatPrice(value: number) {
@@ -40,6 +41,7 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
+  const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
 
   const localize = useCallback(
     (en: string | null | undefined, mm?: string | null) => {
@@ -82,11 +84,17 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
           id: category.id,
           displayName,
           secondaryName: null,
+          itemCountLabel: (() => {
+            const count = items.length;
+            const template =
+              browser.itemCount?.[pluralRules.select(count)] ?? "{{count}}";
+            return template.replace("{{count}}", String(count));
+          })(),
           items,
         };
       })
       .filter(Boolean) as DisplayCategory[];
-  }, [activeCategory, categories, localize, searchTerm]);
+  }, [activeCategory, browser.itemCount, categories, localize, pluralRules, searchTerm]);
 
   const categoryTabs = useMemo(() => {
     const allLabel = browser.categoryAll;
@@ -215,9 +223,7 @@ function MenuCategorySection({
   compact?: boolean;
 }) {
   const isCompact = !!compact;
-  const itemCountLabel = `${category.items.length} ${
-    category.items.length === 1 ? "item" : "items"
-  }`;
+  const itemCountLabel = category.itemCountLabel;
 
   return (
     <section className="space-y-5">
