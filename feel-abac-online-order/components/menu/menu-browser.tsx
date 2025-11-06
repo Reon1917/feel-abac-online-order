@@ -302,7 +302,7 @@ function MenuItemCard({
       className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
       <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg">
-        <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-40")}>
+        <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-36 sm:h-40")}>
           {item.imageUrl ? (
             <Image
               src={item.imageUrl}
@@ -319,9 +319,9 @@ function MenuItemCard({
           )}
         </div>
 
-        <div className="flex flex-1 flex-col gap-4 p-5">
+        <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-slate-900">{displayName}</h3>
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{displayName}</h3>
             {descriptionCopy ? (
               <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
                 {descriptionCopy}
@@ -330,10 +330,10 @@ function MenuItemCard({
           </div>
 
           <div className="mt-auto flex items-center justify-between gap-3">
-            <span className="text-lg font-semibold text-emerald-600">
+            <span className="text-base font-semibold text-emerald-600 sm:text-lg">
               ฿{formatPrice(item.price)}
             </span>
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-xl font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white sm:h-9 sm:w-9 sm:text-xl">
               +
               <span className="sr-only">{actionLabel}</span>
             </span>
@@ -365,8 +365,8 @@ function MenuItemRow({
       href={detailHref}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
-      <article className="relative flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition group-hover:border-emerald-300 group-hover:shadow-md">
-        <div className="relative h-20 w-28 overflow-hidden rounded-xl bg-emerald-50">
+      <article className="relative flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition group-hover:border-emerald-300 group-hover:shadow-md sm:gap-4 sm:p-4">
+        <div className="relative h-20 w-24 overflow-hidden rounded-xl bg-emerald-50 sm:w-28">
           {item.imageUrl ? (
             <Image
               src={item.imageUrl}
@@ -383,9 +383,9 @@ function MenuItemRow({
           )}
         </div>
 
-        <div className="flex flex-1 items-start justify-between gap-4">
+        <div className="flex flex-1 items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 space-y-1">
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
               {displayName}
             </h3>
             {descriptionCopy ? (
@@ -396,10 +396,10 @@ function MenuItemRow({
           </div>
 
           <div className="flex flex-col items-end gap-2 text-right">
-            <span className="text-lg font-semibold text-emerald-600">
+            <span className="text-base font-semibold text-emerald-600 sm:text-lg">
               ฿{formatPrice(item.price)}
             </span>
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white sm:h-8 sm:w-8 sm:text-lg">
               +
               <span className="sr-only">{actionLabel}</span>
             </span>

@@ -101,6 +101,9 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
   }, [optionPriceLookup, selections]);
 
   const totalPrice = basePrice + extrasTotal;
+  const formattedBasePrice = formatPrice(basePrice);
+  const formattedExtrasTotal = formatPrice(extrasTotal);
+  const formattedTotalPrice = formatPrice(totalPrice);
 
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
@@ -109,6 +112,16 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
       : item.description ?? item.descriptionMm ?? null;
   const categoryLabel =
     menuLocale === "my" ? category.nameMm ?? category.name : category.name;
+
+  const addToOrderButton = (
+    <button
+      type="button"
+      className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 lg:py-3.5 lg:text-base"
+    >
+      <span>{detail.button}</span>
+      <span>· ฿{formattedTotalPrice}</span>
+    </button>
+  );
 
   const handleSelect = (group: ChoiceGroupWithState, optionId: string) => {
     setSelections((prev) => {
@@ -151,10 +164,11 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
   };
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1.2fr_1fr] lg:gap-12">
-      <section className="space-y-6">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="relative h-72 w-full overflow-hidden bg-emerald-50">
+    <>
+      <div className="grid gap-8 pb-24 sm:gap-10 lg:grid-cols-[1.2fr_1fr] lg:gap-12 lg:pb-0">
+        <section className="space-y-6">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:rounded-3xl">
+          <div className="relative h-52 w-full overflow-hidden bg-emerald-50 sm:h-60 lg:h-72">
             {item.imageUrl ? (
               <Image
                 src={item.imageUrl}
@@ -164,40 +178,40 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
                 sizes="(max-width: 1024px) 100vw, 640px"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-6xl">
+              <div className="flex h-full w-full items-center justify-center text-5xl sm:text-6xl">
                 {item.placeholderIcon ?? "🍽️"}
               </div>
             )}
           </div>
 
-          <div className="space-y-4 p-8">
-            <div className="space-y-2">
-              <div className="text-sm font-medium uppercase tracking-wide text-emerald-600">
-                {detail.categoryPrefix}: {categoryLabel}
+            <div className="space-y-4 p-6 sm:p-8">
+              <div className="space-y-2">
+                <div className="text-sm font-medium uppercase tracking-wide text-emerald-600">
+                  {detail.categoryPrefix}: {categoryLabel}
+                </div>
+                <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{displayName}</h1>
+                {descriptionCopy ? (
+                  <p className="text-sm text-slate-600 sm:text-base">{descriptionCopy}</p>
+                ) : null}
               </div>
-              <h1 className="text-3xl font-semibold text-slate-900">{displayName}</h1>
-              {descriptionCopy ? (
-                <p className="text-base text-slate-600">{descriptionCopy}</p>
-              ) : null}
-            </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              <strong className="font-semibold text-slate-900">
-                {detail.basePrice}:
-              </strong>{" "}
-              ฿{formatPrice(basePrice)}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-4">
+                <strong className="font-semibold text-slate-900">
+                  {detail.basePrice}:
+                </strong>{" "}
+                ฿{formattedBasePrice}
+              </div>
             </div>
           </div>
-        </div>
 
-        {enhancedGroups.length > 0 ? (
-          <section className="space-y-6">
-            <h2 className="text-xl font-semibold text-slate-900">
-              {detail.choicesHeading}
-            </h2>
+          {enhancedGroups.length > 0 ? (
+            <section className="space-y-6">
+              <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
+                {detail.choicesHeading}
+              </h2>
 
-            <div className="space-y-5">
-              {enhancedGroups.map((group) => {
+              <div className="space-y-5">
+                {enhancedGroups.map((group) => {
                 const selection = selections[group.id] ?? [];
                 const requirement = getRequirementLabel(group, detail);
                 const maxSelectable = group.maxSelectable;
@@ -209,11 +223,11 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
                 return (
                   <article
                     key={group.id}
-                    className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                   >
                     <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-slate-900">
+                        <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
                           {menuLocale === "my"
                             ? group.titleMm ?? group.title
                             : group.title}
@@ -251,7 +265,7 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
                           <label
                             key={option.id}
                             className={clsx(
-                              "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition",
+                              "flex items-center justify-between gap-3 rounded-xl border px-3 py-3 text-sm transition sm:px-4",
                               isChecked
                                 ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                                 : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300"
@@ -264,9 +278,7 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
                                 value={option.id}
                                 checked={isChecked}
                                 disabled={disableOption}
-                                onChange={() =>
-                                      handleSelect(group, option.id)
-                                }
+                                onChange={() => handleSelect(group, option.id)}
                                 className="h-4 w-4 accent-emerald-600"
                               />
                               <span className="font-medium">{optionLabel}</span>
@@ -290,23 +302,23 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
             </div>
           </section>
         ) : null}
-      </section>
+        </section>
 
-      <aside className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:rounded-3xl sm:p-6 lg:sticky lg:top-24">
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
             {detail.totalLabel}
           </h2>
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-slate-500">{detail.basePrice}</span>
             <span className="text-sm font-medium text-slate-700">
-              ฿{formatPrice(basePrice)}
+              ฿{formattedBasePrice}
             </span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-slate-500">{detail.addonsLabel}</span>
             <span className="text-sm font-medium text-slate-700">
-              ฿{formatPrice(extrasTotal)}
+              ฿{formattedExtrasTotal}
             </span>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
@@ -314,7 +326,7 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
               {detail.totalLabel}
             </span>
             <span className="text-2xl font-semibold text-emerald-600">
-              ฿{formatPrice(totalPrice)}
+              ฿{formattedTotalPrice}
             </span>
           </div>
         </div>
@@ -329,18 +341,18 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder={detail.notePlaceholder}
-              className="min-h-[120px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="min-h-[110px] w-full rounded-2xl border border-slate-200 px-3 py-3 text-sm text-slate-700 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:px-4"
             />
           </div>
         ) : null}
 
-        <button
-          type="button"
-          className="w-full rounded-full bg-emerald-600 py-3 text-base font-semibold text-white shadow-md transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-        >
-          {detail.button} · ฿{formatPrice(totalPrice)}
-        </button>
-      </aside>
-    </div>
+        <div className="hidden lg:block">{addToOrderButton}</div>
+        </aside>
+      </div>
+
+      <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
+        {addToOrderButton}
+      </div>
+    </>
   );
 }
