@@ -13,7 +13,8 @@
     "viewLabel": "View mode",
     "viewCards": "Card view",
     "viewList": "List view",
-  "viewDetails": "View item details",
+    "viewDetails": "View item details",
+    "loadingMore": "Loading more dishes…",
     "itemCount": {
       "one": "{{count}} item",
       "other": "{{count}} items"

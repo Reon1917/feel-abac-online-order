@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
@@ -31,6 +31,9 @@ type DisplayCategory = {
   itemCountLabel: string;
 };
 
+const INITIAL_CATEGORY_BATCH = 3;
+const CATEGORY_BATCH_SIZE = 2;
+
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -49,6 +52,9 @@ export function MenuBrowser({
   const isCompact = viewMode === "compact";
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(
+    INITIAL_CATEGORY_BATCH
+  );
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
@@ -113,6 +119,40 @@ export function MenuBrowser({
       .filter(Boolean) as DisplayCategory[];
   }, [activeCategory, browser.itemCount, categories, localize, menuLocale, pluralRules, searchTerm]);
 
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (visibleCategoryCount >= filteredCategories.length) {
+      return;
+    }
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCategoryCount((prev) =>
+            Math.min(
+              filteredCategories.length,
+              prev + CATEGORY_BATCH_SIZE
+            )
+          );
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [filteredCategories.length, visibleCategoryCount]);
+
+  const renderedCategories = filteredCategories.slice(
+    0,
+    visibleCategoryCount
+  );
+
   const categoryTabs = useMemo(() => {
     const allLabel = browser.categoryAll;
     return [
@@ -123,6 +163,9 @@ export function MenuBrowser({
       })),
     ];
   }, [browser.categoryAll, categories, localize]);
+
+  const prioritizedItemId =
+    renderedCategories[0]?.items[0]?.id ?? null;
 
   return (
     <div className="space-y-10">
@@ -215,7 +258,7 @@ export function MenuBrowser({
           </div>
         ) : (
           <div className="space-y-12">
-            {filteredCategories.map((category) => (
+            {renderedCategories.map((category) => (
               <MenuCategorySection
                 key={category.id}
                 category={category}
@@ -223,11 +266,21 @@ export function MenuBrowser({
                 appLocale={appLocale}
                 compact={isCompact}
                 actionLabel={browser.viewDetails}
+                priorityItemId={prioritizedItemId}
               />
             ))}
           </div>
         )}
       </div>
+      {visibleCategoryCount < filteredCategories.length ? (
+        <div
+          ref={loadMoreRef}
+          aria-hidden="true"
+          className="flex items-center justify-center py-6 text-sm text-slate-400"
+        >
+          Loading menu…
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -238,12 +291,14 @@ function MenuCategorySection({
   appLocale,
   compact,
   actionLabel,
+  priorityItemId = null,
 }: {
   category: DisplayCategory;
   menuLocale: Locale;
   appLocale: Locale;
   compact?: boolean;
   actionLabel: string;
+  priorityItemId?: string | null;
 }) {
   const isCompact = !!compact;
   const itemCountLabel = category.itemCountLabel;
@@ -273,6 +328,7 @@ function MenuCategorySection({
                 menuLocale={menuLocale}
                 appLocale={appLocale}
                 actionLabel={actionLabel}
+                priority={priorityItemId === item.id}
               />
             ))}
           </div>
@@ -285,9 +341,10 @@ function MenuCategorySection({
                 menuLocale={menuLocale}
                 appLocale={appLocale}
                 actionLabel={actionLabel}
+                priority={priorityItemId === item.id}
               />
             ))}
-        </div>
+          </div>
       )}
     </section>
   );
@@ -298,11 +355,13 @@ function MenuItemCard({
   menuLocale,
   appLocale,
   actionLabel,
+  priority,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
   appLocale: Locale;
   actionLabel: string;
+  priority?: boolean;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -325,7 +384,8 @@ function MenuItemCard({
               fill
               className="object-cover transition duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, 400px"
-              priority={false}
+              priority={priority}
+              loading={priority ? "eager" : undefined}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-4xl">
@@ -364,11 +424,13 @@ function MenuItemRow({
   menuLocale,
   appLocale,
   actionLabel,
+  priority,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
   appLocale: Locale;
   actionLabel: string;
+  priority?: boolean;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -391,7 +453,8 @@ function MenuItemRow({
               fill
               className="object-cover"
               sizes="(max-width: 768px) 40vw, 200px"
-              priority={false}
+              priority={priority}
+              loading={priority ? "eager" : undefined}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-3xl">

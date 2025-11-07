@@ -187,6 +187,8 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
                 fill
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 640px"
+                loading="eager"
+                priority
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-5xl sm:text-6xl">

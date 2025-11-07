@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
@@ -22,6 +22,9 @@ type MobileMenuBrowserProps = {
   appLocale: Locale;
 };
 
+const INITIAL_CATEGORY_BATCH = 4;
+const CATEGORY_BATCH_SIZE = 3;
+
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -32,8 +35,12 @@ function formatPrice(value: number) {
 export function MobileMenuBrowser({ categories, dictionary, common, appLocale }: MobileMenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(
+    INITIAL_CATEGORY_BATCH
+  );
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const localize = useCallback(
     (en: string | null | undefined, mm?: string | null) => {
@@ -114,6 +121,38 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
     queueMicrotask(() => setActiveCategory(fallback));
   }, [activeCategory, categoryTabs]);
 
+  useEffect(() => {
+    if (visibleCategoryCount >= filteredCategories.length) {
+      return;
+    }
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCategoryCount((prev) =>
+            Math.min(
+              filteredCategories.length,
+              prev + CATEGORY_BATCH_SIZE
+            )
+          );
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [filteredCategories.length, visibleCategoryCount]);
+
+  const renderedCategories = filteredCategories.slice(
+    0,
+    visibleCategoryCount
+  );
+
   return (
     <div className={styles.mobileRoot}>
       <header>
@@ -154,11 +193,11 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
       </div>
 
       <div>
-        {filteredCategories.length === 0 ? (
+        {renderedCategories.length === 0 ? (
           <div className={styles.emptyState}>{browser.empty}</div>
         ) : (
           <div className={styles.listRoot}>
-            {filteredCategories.map((category) => (
+            {renderedCategories.map((category) => (
               <section key={category.id} className={styles.categorySection}>
                 <h2 className={styles.categoryHeading}>{category.name}</h2>
                 <ul className={styles.sectionList}>
@@ -177,6 +216,15 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
             ))}
           </div>
         )}
+        {visibleCategoryCount < filteredCategories.length ? (
+          <div
+            ref={loadMoreRef}
+            className={styles.lazyLoader}
+            aria-hidden="true"
+          >
+            {dictionary.browser?.loadingMore ?? "Loading…"}
+          </div>
+        ) : null}
       </div>
     </div>
   );
