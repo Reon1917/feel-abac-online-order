@@ -148,9 +148,28 @@
   overflow: hidden;
   border: 1px solid #e2e8f0;
   background: #ffffff;
-  padding: 0.9rem;
-  min-height: 7.5rem;
+  padding: 0.8rem;
+  padding-right: 3.4rem;
+  padding-bottom: 1.35rem;
+  min-height: 6.85rem;
   box-shadow: rgba(15, 23, 42, 0.04) 0px 6px 12px -8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 150ms ease, box-shadow 150ms ease,
+    transform 150ms ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.listInner:hover {
+  border-color: #10b981;
+  box-shadow: rgba(16, 185, 129, 0.18) 0px 8px 16px -10px;
+  transform: translateY(-1px);
+}
+
+.listInner:focus-visible {
+  outline: 2px solid #a7f3d0;
+  outline-offset: 3px;
 }
 
 .listImage {
@@ -175,10 +194,10 @@
 .listFooter {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
   margin-top: auto;
-  padding-top: 0.4rem;
+  padding-top: 0.35rem;
 }
 
 .listDescription {
@@ -203,6 +222,13 @@
   color: #64748b;
 }
 
+.lazyLoader {
+  padding: 1.5rem 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -212,7 +238,7 @@
   background: #ffffff;
   box-shadow: rgba(15, 23, 42, 0.06) 0px 10px 20px -12px;
   transition: transform 180ms ease, box-shadow 180ms ease;
-  min-height: 11rem;
+  min-height: 10.25rem;
 }
 
 .card:hover {
@@ -271,32 +297,26 @@
 }
 
 .addButton {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.85rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #059669;
+  width: 2.6rem;
+  height: 2.6rem;
   border-radius: 9999px;
-  background: #ffffff;
-  color: #047857;
-  font-weight: 600;
-  font-size: 0.85rem;
-  padding: 0.55rem 0.9rem;
-  transition: background-color 150ms ease, color 150ms ease,
-    box-shadow 150ms ease, transform 150ms ease;
-}
-
-.addButton:hover {
-  background: #047857;
+  background: #059669;
   color: #ffffff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  box-shadow: rgba(15, 23, 42, 0.08) 0px 6px 14px -6px;
+  transition: transform 150ms ease, background-color 150ms ease;
+  pointer-events: none;
 }
 
-.addButton:active {
-  transform: scale(0.98);
-}
-
-.addButton:focus-visible {
-  outline: 2px solid #a7f3d0;
-  outline-offset: 2px;
+.listInner:hover .addButton {
+  background: #047857;
 }
 
 @media (max-width: 540px) {
@@ -322,6 +342,13 @@
 
   .price {
     font-size: 1.05rem;
+  }
+
+  .listInner {
+    padding: 0.75rem;
+    padding-right: 3.1rem;
+    padding-bottom: 1.2rem;
+    gap: 0.75rem;
   }
 
   .categoryHeading {
@@ -370,8 +397,11 @@
   }
 
   .addButton {
-    font-size: 0.8rem;
-    padding: 0.5rem 0.7rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 1.1rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
   }
 
   .cardFooter {
@@ -420,23 +450,11 @@
   }
 
   .addButton {
-    font-size: 0.78rem;
-    padding: 0.45rem 0.65rem;
-  }
-
-  .imageArea {
-    aspect-ratio: 5 / 4;
-  }
-
-  .cardFooter {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.45rem;
-  }
-
-  .addButton {
-    width: 100%;
-    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    font-size: 1rem;
+    right: 0.65rem;
+    bottom: 0.65rem;
   }
 
   .categoryHeading {
@@ -504,8 +522,11 @@
   }
 
   .addButton {
-    font-size: 0.72rem;
-    padding: 0.42rem 0.6rem;
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.95rem;
+    right: 0.6rem;
+    bottom: 0.6rem;
   }
 
   .imageArea {

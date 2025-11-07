@@ -13,10 +13,31 @@
     "viewLabel": "View mode",
     "viewCards": "Card view",
     "viewList": "List view",
+    "viewDetails": "View item details",
+    "loadingMore": "Loading more dishes…",
     "itemCount": {
       "one": "{{count}} item",
       "other": "{{count}} items"
     }
+  },
+  "detail": {
+    "back": "Back to menu",
+    "categoryPrefix": "Category",
+    "basePrice": "Base price",
+    "choicesHeading": "Choices & add-ons",
+    "required": "Required",
+    "optional": "Optional",
+    "chooseOne": "Choose 1",
+    "chooseUpTo": "Choose up to {{count}}",
+    "chooseBetween": "Choose between {{min}} and {{max}}",
+    "chooseAtLeast": "Choose at least {{min}}",
+    "noteLabel": "Special instructions",
+  "notePlaceholder": "Add a note for the kitchen...",
+    "totalLabel": "Total",
+    "addonsLabel": "Add-ons",
+    "included": "Included",
+    "button": "Add to order",
+    "mobileButton": "Add to cart"
   },
   "emptyState": {
     "heading": "No menu items yet",

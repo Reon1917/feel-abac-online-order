@@ -74,6 +74,7 @@ export default async function MenuPage({ params }: PageProps) {
               categories={menuCategories}
               dictionary={dict}
               common={common}
+              appLocale={locale}
             />
           ) : (
             <section className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">

@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import clsx from "clsx";
 import { LayoutGrid, List } from "lucide-react";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -18,6 +20,7 @@ type MenuBrowserProps = {
   layout?: "default" | "compact";
   dictionary: MenuDictionary;
   common: CommonDictionary;
+  appLocale: Locale;
 };
 
 type DisplayCategory = {
@@ -28,6 +31,9 @@ type DisplayCategory = {
   itemCountLabel: string;
 };
 
+const INITIAL_CATEGORY_BATCH = 3;
+const CATEGORY_BATCH_SIZE = 2;
+
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -35,11 +41,20 @@ function formatPrice(value: number) {
   });
 }
 
-export function MenuBrowser({ categories, layout = "default", dictionary, common }: MenuBrowserProps) {
+export function MenuBrowser({
+  categories,
+  layout = "default",
+  dictionary,
+  common,
+  appLocale,
+}: MenuBrowserProps) {
   const [viewMode, setViewMode] = useState<MenuBrowserProps["layout"]>(layout);
   const isCompact = viewMode === "compact";
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(
+    INITIAL_CATEGORY_BATCH
+  );
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
@@ -81,10 +96,13 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
         }
 
         const displayName = localize(category.name, category.nameMm);
+        const secondaryName =
+          menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
         return {
           id: category.id,
           displayName,
-          secondaryName: null,
+          secondaryName:
+            secondaryName && secondaryName !== displayName ? secondaryName : null,
           itemCountLabel: (() => {
             const count = items.length;
             const pluralKey = pluralRules.select(count);
@@ -99,7 +117,41 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
         };
       })
       .filter(Boolean) as DisplayCategory[];
-  }, [activeCategory, browser.itemCount, categories, localize, pluralRules, searchTerm]);
+  }, [activeCategory, browser.itemCount, categories, localize, menuLocale, pluralRules, searchTerm]);
+
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (visibleCategoryCount >= filteredCategories.length) {
+      return;
+    }
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCategoryCount((prev) =>
+            Math.min(
+              filteredCategories.length,
+              prev + CATEGORY_BATCH_SIZE
+            )
+          );
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [filteredCategories.length, visibleCategoryCount]);
+
+  const renderedCategories = filteredCategories.slice(
+    0,
+    visibleCategoryCount
+  );
 
   const categoryTabs = useMemo(() => {
     const allLabel = browser.categoryAll;
@@ -111,6 +163,9 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
       })),
     ];
   }, [browser.categoryAll, categories, localize]);
+
+  const prioritizedItemId =
+    renderedCategories[0]?.items[0]?.id ?? null;
 
   return (
     <div className="space-y-10">
@@ -203,29 +258,47 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
           </div>
         ) : (
           <div className="space-y-12">
-            {filteredCategories.map((category) => (
+            {renderedCategories.map((category) => (
               <MenuCategorySection
                 key={category.id}
                 category={category}
-                locale={menuLocale}
+                menuLocale={menuLocale}
+                appLocale={appLocale}
                 compact={isCompact}
+                actionLabel={browser.viewDetails}
+                priorityItemId={prioritizedItemId}
               />
             ))}
           </div>
         )}
       </div>
+      {visibleCategoryCount < filteredCategories.length ? (
+        <div
+          ref={loadMoreRef}
+          aria-hidden="true"
+          className="flex items-center justify-center py-6 text-sm text-slate-400"
+        >
+          {browser.loadingMore ?? "Loading…"}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function MenuCategorySection({
   category,
-  locale,
+  menuLocale,
+  appLocale,
   compact,
+  actionLabel,
+  priorityItemId = null,
 }: {
   category: DisplayCategory;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
   compact?: boolean;
+  actionLabel: string;
+  priorityItemId?: string | null;
 }) {
   const isCompact = !!compact;
   const itemCountLabel = category.itemCountLabel;
@@ -249,15 +322,29 @@ function MenuCategorySection({
       {isCompact ? (
         <div className="space-y-3">
           {category.items.map((item) => (
-            <MenuItemRow key={item.id} item={item} locale={locale} />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {category.items.map((item) => (
-            <MenuItemCard key={item.id} item={item} locale={locale} />
-          ))}
-        </div>
+              <MenuItemRow
+                key={item.id}
+                item={item}
+                menuLocale={menuLocale}
+                appLocale={appLocale}
+                actionLabel={actionLabel}
+                priority={priorityItemId === item.id}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {category.items.map((item) => (
+              <MenuItemCard
+                key={item.id}
+                item={item}
+                menuLocale={menuLocale}
+                appLocale={appLocale}
+                actionLabel={actionLabel}
+                priority={priorityItemId === item.id}
+              />
+            ))}
+          </div>
       )}
     </section>
   );
@@ -265,118 +352,140 @@ function MenuCategorySection({
 
 function MenuItemCard({
   item,
-  locale,
+  menuLocale,
+  appLocale,
+  actionLabel,
+  priority,
 }: {
   item: PublicMenuItem;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
+  actionLabel: string;
+  priority?: boolean;
 }) {
-  const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
+  const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
+  const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
-    locale === "my"
+    menuLocale === "my"
       ? item.descriptionMm ?? item.description
       : item.description;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
-      <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-40") }>
-        {item.imageUrl ? (
-          <Image
-            src={item.imageUrl}
-            alt={displayName}
-            fill
-            className="object-cover transition duration-500 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 400px"
-            priority={false}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-4xl">
-            {item.placeholderIcon ?? "🍽️"}
+    <Link
+      href={detailHref}
+      className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
+    >
+      <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg">
+        <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-36 sm:h-40")}>
+          {item.imageUrl ? (
+            <Image
+              src={item.imageUrl}
+              alt={displayName}
+              fill
+              className="object-cover transition duration-500 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, 400px"
+              priority={priority}
+              loading={priority ? "eager" : undefined}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-4xl">
+              {item.placeholderIcon ?? "🍽️"}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{displayName}</h3>
+            {descriptionCopy ? (
+              <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
+                {descriptionCopy}
+              </p>
+            ) : null}
           </div>
-        )}
-      </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-5">
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-slate-900">{displayName}</h3>
-          {descriptionCopy ? (
-            <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
-              {descriptionCopy}
-            </p>
-          ) : null}
+          <div className="mt-auto flex items-center justify-between gap-3">
+            <span className="text-base font-semibold text-emerald-600 sm:text-lg">
+              ฿{formatPrice(item.price)}
+            </span>
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white sm:h-9 sm:w-9 sm:text-xl">
+              +
+              <span className="sr-only">{actionLabel}</span>
+            </span>
+          </div>
         </div>
-
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <span className="text-lg font-semibold text-emerald-600">
-            ฿{formatPrice(item.price)}
-          </span>
-          <button
-            type="button"
-            className="rounded-full border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-          >
-            + Add
-          </button>
-        </div>
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }
 
 function MenuItemRow({
   item,
-  locale,
+  menuLocale,
+  appLocale,
+  actionLabel,
+  priority,
 }: {
   item: PublicMenuItem;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
+  actionLabel: string;
+  priority?: boolean;
 }) {
-  const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
+  const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
+  const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
-    locale === "my"
+    menuLocale === "my"
       ? item.descriptionMm ?? item.description
       : item.description;
 
   return (
-    <article className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md">
-      <div className="relative h-20 w-28 overflow-hidden rounded-xl bg-emerald-50">
-        {item.imageUrl ? (
-          <Image
-            src={item.imageUrl}
-            alt={displayName}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 40vw, 200px"
-            priority={false}
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-3xl">
-            {item.placeholderIcon ?? "🍽️"}
+    <Link
+      href={detailHref}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
+    >
+      <article className="relative flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition group-hover:border-emerald-300 group-hover:shadow-md sm:gap-4 sm:p-4">
+        <div className="relative h-20 w-24 overflow-hidden rounded-xl bg-emerald-50 sm:w-28">
+          {item.imageUrl ? (
+            <Image
+              src={item.imageUrl}
+              alt={displayName}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 40vw, 200px"
+              priority={priority}
+              loading={priority ? "eager" : undefined}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-3xl">
+              {item.placeholderIcon ?? "🍽️"}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-1 items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
+              {displayName}
+            </h3>
+            {descriptionCopy ? (
+              <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
+                {descriptionCopy}
+              </p>
+            ) : null}
           </div>
-        )}
-      </div>
 
-      <div className="flex flex-1 items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h3 className="text-base font-semibold text-slate-900">
-            {displayName}
-          </h3>
-          {descriptionCopy ? (
-            <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
-              {descriptionCopy}
-            </p>
-          ) : null}
+          <div className="flex flex-col items-end gap-2 text-right">
+            <span className="text-base font-semibold text-emerald-600 sm:text-lg">
+              ฿{formatPrice(item.price)}
+            </span>
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white sm:h-8 sm:w-8 sm:text-lg">
+              +
+              <span className="sr-only">{actionLabel}</span>
+            </span>
+          </div>
         </div>
-
-        <div className="flex flex-col items-end gap-2 text-right">
-          <span className="text-lg font-semibold text-emerald-600">
-            ฿{formatPrice(item.price)}
-          </span>
-          <button
-            type="button"
-            className="rounded-full border border-emerald-600 px-3 py-1 text-sm font-semibold text-emerald-600 transition hover:bg-emerald-600 hover:text-white"
-          >
-            + Add
-          </button>
-        </div>
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }

@@ -19,7 +19,13 @@ import {
   parseAcceptLanguage,
 } from "./lib/i18n/utils";
 
-const AUTH_REQUIRED_PATHS = ["/menu", "/onboarding", "/admin"];
+const PROTECTED_PATHS = new Set(["/menu", "/onboarding", "/admin"]);
+const COOKIE_OPTIONS = {
+  path: "/",
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+};
 
 async function resolveSession(request: NextRequest) {
   try {
@@ -45,24 +51,37 @@ async function hasCompletedOnboarding(userId: string) {
 }
 
 function setLocaleCookie(response: NextResponse, locale: Locale) {
-  response.cookies.set(LOCALE_COOKIE_NAME, locale, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-  });
+  response.cookies.set(LOCALE_COOKIE_NAME, locale, COOKIE_OPTIONS);
+}
+
+function redirectTo(
+  request: NextRequest,
+  locale: Locale,
+  pathname: string
+): NextResponse {
+  const url = new URL(request.url);
+  url.pathname = addLocaleToPath(pathname, locale);
+  const response = NextResponse.redirect(url);
+  setLocaleCookie(response, locale);
+  return response;
+}
+
+function pathRequiresAuth(pathname: string) {
+  if (PROTECTED_PATHS.has(pathname)) {
+    return true;
+  }
+  for (const entry of PROTECTED_PATHS) {
+    if (pathname.startsWith(`${entry}/`)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isApiRoute = pathname.startsWith("/api");
-  const isStatic =
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/static");
-  if (isStatic) {
-    return NextResponse.next();
-  }
 
   const headerList = request.headers;
   const cookieLocale = mapToSupportedLocale(
@@ -81,11 +100,7 @@ export async function proxy(request: NextRequest) {
     );
 
     if (!pathLocale) {
-      const url = request.nextUrl.clone();
-      url.pathname = addLocaleToPath(pathname, locale);
-      const response = NextResponse.redirect(url);
-      setLocaleCookie(response, locale);
-      return response;
+      return redirectTo(request, locale, pathname);
     }
 
     locale = pathLocale;
@@ -103,40 +118,28 @@ export async function proxy(request: NextRequest) {
   let isAdmin = false;
 
   if (isAuthenticated) {
-    onboarded = await hasCompletedOnboarding(session.user.id);
-    const admin = await getAdminByUserId(session.user.id);
+    const [hasOnboarded, admin] = await Promise.all([
+      hasCompletedOnboarding(session.user.id),
+      getAdminByUserId(session.user.id),
+    ]);
+    onboarded = hasOnboarded;
     isAdmin = !!admin?.isActive;
   }
 
   if (!isApiRoute) {
-    const requiresAuth = AUTH_REQUIRED_PATHS.some(
-      (path) =>
-        normalizedPathname === path ||
-        normalizedPathname.startsWith(`${path}/`)
-    );
+    const requiresAuth = pathRequiresAuth(normalizedPathname);
 
     if (!isAuthenticated && requiresAuth) {
-      const url = new URL(request.url);
-      url.pathname = addLocaleToPath("/", locale);
-      const response = NextResponse.redirect(url);
-      setLocaleCookie(response, locale);
-      return response;
+      return redirectTo(request, locale, "/");
     }
 
     if (normalizedPathname.startsWith("/admin") && !isAdmin) {
-      return NextResponse.json(
-        { error: "Access forbidden" },
-        { status: 403 }
-      );
+      return redirectTo(request, locale, "/");
     }
 
     if (isAuthenticated) {
       if (isAdmin && onboarded && normalizedPathname === "/") {
-        const url = new URL(request.url);
-        url.pathname = addLocaleToPath("/admin/dashboard", locale);
-        const response = NextResponse.redirect(url);
-        setLocaleCookie(response, locale);
-        return response;
+        return redirectTo(request, locale, "/admin/dashboard");
       }
 
       if (
@@ -144,30 +147,19 @@ export async function proxy(request: NextRequest) {
         normalizedPathname !== "/onboarding" &&
         normalizedPathname !== "/admin/dashboard"
       ) {
-        const url = new URL(request.url);
-        url.pathname = addLocaleToPath("/onboarding", locale);
-        const response = NextResponse.redirect(url);
-        setLocaleCookie(response, locale);
-        return response;
+        return redirectTo(request, locale, "/onboarding");
       }
 
       if (onboarded && normalizedPathname === "/onboarding") {
-        const url = new URL(request.url);
-        url.pathname = addLocaleToPath(
-          isAdmin ? "/admin/dashboard" : "/menu",
-          locale
+        return redirectTo(
+          request,
+          locale,
+          isAdmin ? "/admin/dashboard" : "/menu"
         );
-        const response = NextResponse.redirect(url);
-        setLocaleCookie(response, locale);
-        return response;
       }
 
       if (onboarded && normalizedPathname === "/" && !isAdmin) {
-        const url = new URL(request.url);
-        url.pathname = addLocaleToPath("/menu", locale);
-        const response = NextResponse.redirect(url);
-        setLocaleCookie(response, locale);
-        return response;
+        return redirectTo(request, locale, "/menu");
       }
     }
   }
@@ -197,12 +189,8 @@ export async function proxy(request: NextRequest) {
     setLocaleCookie(response, locale);
   }
 
-  if (!request.cookies.get(MENU_LOCALE_COOKIE_NAME)) {
-    response.cookies.set(MENU_LOCALE_COOKIE_NAME, locale, {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: "lax",
-    });
+  if (!isApiRoute && !request.cookies.get(MENU_LOCALE_COOKIE_NAME)) {
+    response.cookies.set(MENU_LOCALE_COOKIE_NAME, locale, COOKIE_OPTIONS);
   }
 
   return response;
