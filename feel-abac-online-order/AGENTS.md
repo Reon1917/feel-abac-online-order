@@ -15,6 +15,7 @@
 
 ## Important API Routes
 - Diner menu feed: `app/api/menu/route.ts`.
+- Item detail feed: `app/api/menu/items/[itemId]/route.ts` (returns a single item plus its category for the detail UI).
 - Admin CRUD: `app/api/admin/menu/{categories,items,choice-groups,choice-options}/route.ts` plus `/tree` for nested builders and `/images` for uploads.
 - User/account endpoints: `app/api/admin/{add,remove}`, `app/api/admin/list`, `app/api/user/phone`, and `app/api/auth/[...all]`.
 

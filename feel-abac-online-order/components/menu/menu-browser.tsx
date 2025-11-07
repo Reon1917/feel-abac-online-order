@@ -9,6 +9,7 @@ import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -19,6 +20,7 @@ type MenuBrowserProps = {
   layout?: "default" | "compact";
   dictionary: MenuDictionary;
   common: CommonDictionary;
+  appLocale: Locale;
 };
 
 type DisplayCategory = {
@@ -36,7 +38,13 @@ function formatPrice(value: number) {
   });
 }
 
-export function MenuBrowser({ categories, layout = "default", dictionary, common }: MenuBrowserProps) {
+export function MenuBrowser({
+  categories,
+  layout = "default",
+  dictionary,
+  common,
+  appLocale,
+}: MenuBrowserProps) {
   const [viewMode, setViewMode] = useState<MenuBrowserProps["layout"]>(layout);
   const isCompact = viewMode === "compact";
   const [searchTerm, setSearchTerm] = useState("");
@@ -211,7 +219,8 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
               <MenuCategorySection
                 key={category.id}
                 category={category}
-                locale={menuLocale}
+                menuLocale={menuLocale}
+                appLocale={appLocale}
                 compact={isCompact}
                 actionLabel={browser.viewDetails}
               />
@@ -225,12 +234,14 @@ export function MenuBrowser({ categories, layout = "default", dictionary, common
 
 function MenuCategorySection({
   category,
-  locale,
+  menuLocale,
+  appLocale,
   compact,
   actionLabel,
 }: {
   category: DisplayCategory;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
   compact?: boolean;
   actionLabel: string;
 }) {
@@ -256,24 +267,26 @@ function MenuCategorySection({
       {isCompact ? (
         <div className="space-y-3">
           {category.items.map((item) => (
-            <MenuItemRow
-              key={item.id}
-              item={item}
-              locale={locale}
-              actionLabel={actionLabel}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {category.items.map((item) => (
-            <MenuItemCard
-              key={item.id}
-              item={item}
-              locale={locale}
-              actionLabel={actionLabel}
-            />
-          ))}
+              <MenuItemRow
+                key={item.id}
+                item={item}
+                menuLocale={menuLocale}
+                appLocale={appLocale}
+                actionLabel={actionLabel}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {category.items.map((item) => (
+              <MenuItemCard
+                key={item.id}
+                item={item}
+                menuLocale={menuLocale}
+                appLocale={appLocale}
+                actionLabel={actionLabel}
+              />
+            ))}
         </div>
       )}
     </section>
@@ -282,17 +295,19 @@ function MenuCategorySection({
 
 function MenuItemCard({
   item,
-  locale,
+  menuLocale,
+  appLocale,
   actionLabel,
 }: {
   item: PublicMenuItem;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
   actionLabel: string;
 }) {
-  const detailHref = `/${locale}/menu/items/${item.id}`;
-  const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
+  const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
+  const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
-    locale === "my"
+    menuLocale === "my"
       ? item.descriptionMm ?? item.description
       : item.description;
 
@@ -346,17 +361,19 @@ function MenuItemCard({
 
 function MenuItemRow({
   item,
-  locale,
+  menuLocale,
+  appLocale,
   actionLabel,
 }: {
   item: PublicMenuItem;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
   actionLabel: string;
 }) {
-  const detailHref = `/${locale}/menu/items/${item.id}`;
-  const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
+  const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
+  const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
-    locale === "my"
+    menuLocale === "my"
       ? item.descriptionMm ?? item.description
       : item.description;
 

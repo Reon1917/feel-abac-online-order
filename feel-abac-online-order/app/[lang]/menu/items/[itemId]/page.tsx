@@ -26,6 +26,10 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
 
   const { lang, itemId } = await params;
   const locale = lang as Locale;
+  const normalizedItemId = itemId?.trim();
+  if (!normalizedItemId) {
+    notFound();
+  }
 
   const sessionData = await getSession();
   if (!sessionData?.session?.user) {
@@ -41,7 +45,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
   const dictionary = getDictionary(locale, "menu");
   const common = getDictionary(locale, "common");
 
-  const result = await getPublicMenuItemById(itemId);
+  const result = await getPublicMenuItemById(normalizedItemId);
   if (!result) {
     notFound();
   }

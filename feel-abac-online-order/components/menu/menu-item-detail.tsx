@@ -113,12 +113,23 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
   const categoryLabel =
     menuLocale === "my" ? category.nameMm ?? category.name : category.name;
 
-  const addToOrderButton = (
+  const mobileButtonLabel = detail.mobileButton ?? detail.button;
+
+  const desktopAddButton = (
     <button
       type="button"
       className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 lg:py-3.5 lg:text-base"
     >
       <span>{detail.button}</span>
+      <span>· ฿{formattedTotalPrice}</span>
+    </button>
+  );
+  const mobileAddButton = (
+    <button
+      type="button"
+      className="flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-emerald-500/35 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+    >
+      <span>{mobileButtonLabel}</span>
       <span>· ฿{formattedTotalPrice}</span>
     </button>
   );
@@ -346,12 +357,12 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
           </div>
         ) : null}
 
-        <div className="hidden lg:block">{addToOrderButton}</div>
+        <div className="hidden lg:block">{desktopAddButton}</div>
         </aside>
       </div>
 
-      <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
-        {addToOrderButton}
+      <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
+        <div className="flex justify-center">{mobileAddButton}</div>
       </div>
     </>
   );

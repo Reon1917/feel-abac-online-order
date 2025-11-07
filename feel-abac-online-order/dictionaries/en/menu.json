@@ -35,7 +35,8 @@
     "totalLabel": "Total",
     "addonsLabel": "Add-ons",
     "included": "Included",
-    "button": "Add to order"
+    "button": "Add to order",
+    "mobileButton": "Add to cart"
   },
   "emptyState": {
     "heading": "No menu items yet",

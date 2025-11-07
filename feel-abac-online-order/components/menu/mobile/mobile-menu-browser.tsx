@@ -10,6 +10,7 @@ import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -18,6 +19,7 @@ type MobileMenuBrowserProps = {
   categories: PublicMenuCategory[];
   dictionary: MenuDictionary;
   common: CommonDictionary;
+  appLocale: Locale;
 };
 
 function formatPrice(value: number) {
@@ -27,7 +29,7 @@ function formatPrice(value: number) {
   });
 }
 
-export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenuBrowserProps) {
+export function MobileMenuBrowser({ categories, dictionary, common, appLocale }: MobileMenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const { menuLocale } = useMenuLocale();
@@ -164,7 +166,8 @@ export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenu
                     <li key={item.id} className={styles.listItem}>
                       <MobileMenuListItem
                         item={item}
-                        locale={menuLocale}
+                        menuLocale={menuLocale}
+                        appLocale={appLocale}
                         actionLabel={dictionary.browser.viewDetails}
                       />
                     </li>
@@ -181,17 +184,18 @@ export function MobileMenuBrowser({ categories, dictionary, common }: MobileMenu
 
 type MobileMenuCardProps = {
   item: PublicMenuItem;
-  locale: Locale;
+  menuLocale: Locale;
+  appLocale: Locale;
   actionLabel: string;
 };
 
-function MobileMenuListItem({ item, locale, actionLabel }: MobileMenuCardProps) {
-  const displayName = locale === "my" ? item.nameMm ?? item.name : item.name;
+function MobileMenuListItem({ item, menuLocale, appLocale, actionLabel }: MobileMenuCardProps) {
+  const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
-    locale === "my"
+    menuLocale === "my"
       ? item.descriptionMm ?? item.description ?? null
       : item.description ?? item.descriptionMm ?? null;
-  const detailHref = `/${locale}/menu/items/${item.id}`;
+  const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
 
   return (
     <Link href={detailHref} className={styles.listInner}>
@@ -214,14 +218,13 @@ function MobileMenuListItem({ item, locale, actionLabel }: MobileMenuCardProps) 
         {descriptionCopy && <p className={styles.listDescription}>{descriptionCopy}</p>}
         <div className={styles.listFooter}>
           <span className={styles.price}>฿{formatPrice(item.price)}</span>
-          <span className={styles.addButton}>
-            +
-            <span className="sr-only">{actionLabel}</span>
-          </span>
         </div>
       </div>
+      <span className={styles.addButton}>
+        +
+        <span className="sr-only">{actionLabel}</span>
+      </span>
     </Link>
 
   );
 }
-

@@ -285,10 +285,15 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
 export async function getPublicMenuItemById(
   itemId: string
 ): Promise<PublicMenuItemWithCategory | null> {
+  const normalizedId = itemId.trim();
+  if (!normalizedId) {
+    return null;
+  }
+
   const itemRecord = await db
     .select()
     .from(menuItems)
-    .where(eq(menuItems.id, itemId))
+    .where(eq(menuItems.id, normalizedId))
     .limit(1);
 
   const item = itemRecord[0];
