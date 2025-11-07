@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getPublicMenuItemById } from "@/lib/menu/queries";
 
 export const revalidate = 300;
@@ -7,13 +7,14 @@ const CACHE_HEADER =
   "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     itemId: string;
-  };
+  }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const rawItemId = context.params?.itemId ?? "";
+export async function GET(_request: NextRequest, context: RouteContext) {
+  const { itemId } = await context.params;
+  const rawItemId = itemId ?? "";
   const normalizedId = rawItemId.trim();
 
   if (!normalizedId) {
@@ -40,4 +41,3 @@ export async function GET(_request: Request, context: RouteContext) {
     }
   );
 }
-
