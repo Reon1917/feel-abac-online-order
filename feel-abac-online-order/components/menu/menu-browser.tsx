@@ -278,7 +278,7 @@ export function MenuBrowser({
           aria-hidden="true"
           className="flex items-center justify-center py-6 text-sm text-slate-400"
         >
-          Loading menu…
+          {browser.loadingMore ?? "Loading…"}
         </div>
       ) : null}
     </div>
