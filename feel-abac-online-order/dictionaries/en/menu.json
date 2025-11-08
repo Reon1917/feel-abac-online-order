@@ -52,6 +52,7 @@
   },
   "cartPeek": {
     "button": "Check cart",
+    "processing": "Opening cart...",
     "itemsLabel": {
       "one": "1 item",
       "other": "{{count}} items"
