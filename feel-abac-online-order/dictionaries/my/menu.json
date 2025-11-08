@@ -42,7 +42,8 @@
     "quantityDecrease": "အရေအတွက် လျှော့ရန်",
     "quantityIncrease": "အရေအတွက် တိုးရန်",
     "missingRequired": "လိုအပ်သော ရွေးချယ်စရာများကို ဖြည့်စွက်ပြီးမှ တင်ပို့ပါ။",
-    "addedToCart": "အော်ဒါထဲ ထည့်ပြီးပါပြီ"
+    "addedToCart": "အော်ဒါထဲ ထည့်ပြီးပါပြီ",
+    "addingToCart": "ထည့်နေပါသည်..."
   },
   "emptyState": {
     "heading": "မီနူးအချက်အလက် မရှိသေးပါ",

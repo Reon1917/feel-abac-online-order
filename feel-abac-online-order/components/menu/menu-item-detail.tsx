@@ -69,6 +69,7 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
   });
   const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [queuedRequest, setQueuedRequest] = useState(false);
 
   const enhancedGroups = useMemo<ChoiceGroupWithState[]>(() => {
     return item.choiceGroups
@@ -151,6 +152,11 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
     const notePayload =
       item.allowUserNotes && trimmedNote.length > 0 ? trimmedNote : null;
 
+    if (isSubmitting) {
+      setQueuedRequest(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await fetch("/api/cart", {
@@ -183,12 +189,19 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
       toast.error(message);
     } finally {
       setIsSubmitting(false);
+
+      if (queuedRequest) {
+        setQueuedRequest(false);
+        void handleAddToCart();
+      }
     }
   };
 
   const renderAddButton = (variant: "desktop" | "mobile") => {
     const isMobileVariant = variant === "mobile";
     const label = isMobileVariant ? mobileButtonLabel : detail.button;
+    const busyLabel = detail.addingToCart ?? label;
+    const displayedLabel = isSubmitting ? busyLabel : label;
 
     return (
       <button
@@ -200,10 +213,19 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
           "flex w-full items-center justify-center gap-2 rounded-full font-semibold text-white shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
           isMobileVariant
             ? "max-w-sm bg-emerald-600 px-6 py-3 text-base shadow-xl shadow-emerald-500/35 hover:bg-emerald-500"
-            : "bg-emerald-600 py-3 text-sm shadow-md hover:bg-emerald-500 lg:py-3.5 lg:text-base"
+            : "bg-emerald-600 py-3 text-sm shadow-md hover:bg-emerald-500 lg:py-3.5 lg:text-base",
+          isSubmitting && "opacity-70"
         )}
       >
-        <span>{label}</span>
+        <span className="flex items-center gap-2">
+          {isSubmitting ? (
+            <span
+              aria-hidden="true"
+              className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
+            />
+          ) : null}
+          <span>{displayedLabel}</span>
+        </span>
         <span>· ฿{formattedTotalPrice}</span>
       </button>
     );

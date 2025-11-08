@@ -42,7 +42,8 @@
     "quantityDecrease": "Decrease quantity",
     "quantityIncrease": "Increase quantity",
     "missingRequired": "Please complete the required choices before adding this item to your cart.",
-    "addedToCart": "Added to cart"
+    "addedToCart": "Added to cart",
+    "addingToCart": "Adding…"
   },
   "emptyState": {
     "heading": "No menu items yet",
