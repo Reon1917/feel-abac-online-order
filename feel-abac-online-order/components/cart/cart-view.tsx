@@ -60,7 +60,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
 
   return (
     <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
-      <section className="space-y-4">
+      <section className="space-y-3.5">
         {cart.items.map((item) => {
           const displayName =
             menuLocale === "my"
@@ -74,31 +74,31 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
           return (
             <article
               key={item.id}
-              className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm"
+              className="space-y-2.5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm"
             >
-              <header className="flex items-start justify-between gap-4">
+              <header className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <h3 className="text-base font-semibold text-slate-900">
                     {displayName}
                   </h3>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">
                     {quantityLabel}: {item.quantity}
                   </p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-xs text-slate-500">
                     ฿{formatPrice(unitPrice)} / {quantityLabelLower}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                  <span className="text-[10px] uppercase tracking-wide text-slate-400">
                     {dictionary.items.priceLabel}
                   </span>
-                  <p className="text-lg font-semibold text-emerald-600">
+                  <p className="text-base font-semibold text-emerald-600">
                     ฿{formatPrice(item.totalPrice)}
                   </p>
                 </div>
               </header>
 
-              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-emerald-700">
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-emerald-700">
                 {groupedChoices.length > 0 ? (
                   <button
                     type="button"
@@ -108,7 +108,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                         [item.id]: !isExpanded,
                       }))
                     }
-                    className="rounded-full border border-emerald-200 px-3 py-1 transition hover:bg-emerald-50"
+                    className="rounded-full border border-emerald-200 px-2.5 py-0.5 transition hover:bg-emerald-50"
                   >
                     {isExpanded
                       ? dictionary.items.hideDetails
@@ -125,7 +125,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                         [item.id]: !noteVisible,
                       }))
                     }
-                    className="rounded-full border border-amber-200 px-3 py-1 text-amber-800 transition hover:bg-amber-50"
+                    className="rounded-full border border-amber-200 px-2.5 py-0.5 text-amber-800 transition hover:bg-amber-50"
                   >
                     {noteVisible
                       ? dictionary.items.hideNote
@@ -135,8 +135,8 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
               </div>
 
               {isExpanded && groupedChoices.length > 0 ? (
-                <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     {dictionary.items.choicesHeading}
                   </p>
                   <div className="space-y-2">
@@ -145,7 +145,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                         <p className="text-sm font-medium text-slate-700">
                           {group.label}
                         </p>
-                        <ul className="mt-1 space-y-1 text-sm text-slate-600">
+                        <ul className="mt-1 space-y-1 text-[13px] text-slate-600">
                           {group.options.map((option) => (
                             <li
                               key={option.id}
@@ -157,7 +157,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                                   +฿{formatPrice(option.extraPrice)}
                                 </span>
                               ) : (
-                                <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                                <span className="text-[10px] uppercase tracking-wide text-slate-400">
                                   +฿0.00
                                 </span>
                               )}
@@ -171,7 +171,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
               ) : null}
 
               {item.note && noteVisible ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-800">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800">
                   <p className="text-xs font-semibold uppercase tracking-wide">
                     {dictionary.items.noteLabel}
                   </p>
@@ -183,18 +183,18 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
         })}
       </section>
 
-      <aside className="space-y-5 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">
+      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+        <div className="space-y-2.5">
+          <h2 className="text-base font-semibold text-slate-900">
             {dictionary.summary.heading}
           </h2>
-          <div className="flex items-center justify-between text-sm text-slate-600">
+          <div className="flex items-center justify-between text-xs text-slate-600">
             <span>{itemCountLabel}</span>
             <span>
               {totalQuantity} {dictionary.items.quantityLabel}
             </span>
           </div>
-          <div className="flex items-center justify-between text-base font-semibold text-slate-900">
+          <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
             <span>{dictionary.summary.subtotal}</span>
             <span>฿{formatPrice(cart.subtotal)}</span>
           </div>
@@ -202,18 +202,18 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
 
         <button
           type="button"
-          className="flex w-full items-center justify-center rounded-full bg-slate-200 px-6 py-3 text-sm font-semibold text-slate-500"
+          className="flex w-full items-center justify-center rounded-full bg-slate-200 px-5 py-2.5 text-xs font-semibold text-slate-500"
           disabled
         >
           {dictionary.summary.checkoutCta}
         </button>
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-[11px] text-slate-400">
           {dictionary.summary.comingSoon}
         </p>
 
         <Link
           href={menuHref}
-          className="flex w-full items-center justify-center rounded-full border border-emerald-200 px-6 py-3 text-sm font-semibold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-50"
+          className="flex w-full items-center justify-center rounded-full border border-emerald-200 px-5 py-2.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-50"
         >
           {dictionary.empty.cta}
         </Link>
