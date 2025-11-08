@@ -29,7 +29,16 @@
     "confirmRemoveTitle": "ဖယ်ရှားချင်သလား?",
     "confirmRemoveBody": "ဤဟင်းပွဲကို သင့်အော်ဒါမှ ဖယ်ရှားပါမည်။",
     "confirmRemoveCancel": "ထားမည်",
-    "confirmRemoveConfirm": "ဖယ်ရှားမည်"
+    "confirmRemoveConfirm": "ဖယ်ရှားမည်",
+    "edit": "ပြင်ဆင်ရန်",
+    "editModalTitle": "အရေအတွက် ပြင်ဆင်ရန်",
+    "editModalBody": "ဤဟင်းပွဲကို ကတ်ထဲတွင် မည်မျှ ထားရမည်ကို ရွေးပါ။",
+    "editModalHint": "အရေအတွက်ကို 0 ထိ လျှော့ပါက ဤဟင်းပွဲကို ဖယ်ရှားပါမည်။",
+    "editModalLimit": "တစ်လိုင်းအတွက် အများဆုံး {{max}} ခုထိ။",
+    "editModalSave": "အသစ်ပြင်ဆင်မည်",
+    "editModalRemove": "ဖယ်ရှားမည်",
+    "editModalCancel": "မပြင်တော့ပါ",
+    "editModalSaving": "သိမ်းဆည်းနေသည်..."
   },
   "empty": {
     "heading": "အော်ဒါမရှိသေးပါ",

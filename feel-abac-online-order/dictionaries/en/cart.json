@@ -29,7 +29,16 @@
     "confirmRemoveTitle": "Remove item?",
     "confirmRemoveBody": "This dish will be removed from your cart.",
     "confirmRemoveCancel": "Keep item",
-    "confirmRemoveConfirm": "Remove"
+    "confirmRemoveConfirm": "Remove",
+    "edit": "Edit item",
+    "editModalTitle": "Update quantity",
+    "editModalBody": "Choose how many you'd like to keep in your cart.",
+    "editModalHint": "Set the quantity to 0 to remove this item.",
+    "editModalLimit": "Maximum {{max}} per line.",
+    "editModalSave": "Update item",
+    "editModalRemove": "Remove item",
+    "editModalCancel": "Cancel",
+    "editModalSaving": "Saving..."
   },
   "empty": {
     "heading": "Nothing here yet",

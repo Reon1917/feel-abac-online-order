@@ -17,6 +17,8 @@ type CartViewProps = {
   menuHref: string;
 };
 
+type CartItemRecord = CartRecord["items"][number];
+
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -30,16 +32,24 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [visibleNotes, setVisibleNotes] = useState<Record<string, boolean>>({});
   const [pendingItems, setPendingItems] = useState<Record<string, boolean>>({});
-  const [confirmingItemId, setConfirmingItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<CartItemRecord | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState(1);
   const quantityLabel = dictionary.items.quantityLabel;
   const quantityLabelLower = quantityLabel.toLowerCase();
   const decrementAria = dictionary.items.decrement;
   const incrementAria = dictionary.items.increment;
-  const removeLabel = dictionary.items.remove;
-  const confirmRemoveTitle = dictionary.items.confirmRemoveTitle;
-  const confirmRemoveBody = dictionary.items.confirmRemoveBody;
-  const confirmRemoveCancel = dictionary.items.confirmRemoveCancel;
-  const confirmRemoveConfirm = dictionary.items.confirmRemoveConfirm;
+  const editLabel = dictionary.items.edit;
+  const editModalTitle = dictionary.items.editModalTitle;
+  const editModalBody = dictionary.items.editModalBody;
+  const editModalLimit = dictionary.items.editModalLimit.replace(
+    "{{max}}",
+    String(MAX_QUANTITY_PER_LINE)
+  );
+  const editModalHint = dictionary.items.editModalHint;
+  const editModalSave = dictionary.items.editModalSave;
+  const editModalRemove = dictionary.items.editModalRemove;
+  const editModalCancel = dictionary.items.editModalCancel;
+  const editModalSaving = dictionary.items.editModalSaving;
 
   const setItemPending = (itemId: string, isPending: boolean) => {
     setPendingItems((prev) => ({
@@ -48,23 +58,39 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
     }));
   };
 
-  const cancelRemoval = () => {
-    setConfirmingItemId(null);
+  const openEditModal = (item: CartItemRecord) => {
+    setEditingItem(item);
+    setEditingQuantity(item.quantity);
   };
 
-  const handleQuantityChange = async (itemId: string, currentQuantity: number, nextQuantity: number) => {
-    if (nextQuantity === currentQuantity || nextQuantity < 1 || nextQuantity > MAX_QUANTITY_PER_LINE) {
+  const closeEditModal = () => {
+    setEditingItem(null);
+  };
+
+  const performQuantityUpdate = async (
+    item: CartItemRecord,
+    nextQuantity: number
+  ) => {
+    const normalizedQuantity = Math.max(
+      0,
+      Math.min(MAX_QUANTITY_PER_LINE, nextQuantity)
+    );
+
+    if (normalizedQuantity === item.quantity) {
+      closeEditModal();
       return;
     }
-    setItemPending(itemId, true);
+
+    setItemPending(item.id, true);
     try {
-      const response = await fetch(`/api/cart/items/${itemId}`, {
+      const response = await fetch(`/api/cart/items/${item.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ quantity: nextQuantity }),
+        body: JSON.stringify({ quantity: normalizedQuantity }),
       });
+
       if (!response.ok) {
         const data = await response.json().catch(() => null);
         const message =
@@ -73,39 +99,23 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
             : "Unable to update this item.";
         throw new Error(message);
       }
+
       router.refresh();
+      closeEditModal();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to update this item.";
       toast.error(message);
     } finally {
-      setItemPending(itemId, false);
+      setItemPending(item.id, false);
     }
   };
 
-  const handleRemoveItem = async (itemId: string) => {
-    setItemPending(itemId, true);
-    try {
-      const response = await fetch(`/api/cart/items/${itemId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message =
-          data && typeof data.error === "string"
-            ? data.error
-            : "Unable to remove this item.";
-        throw new Error(message);
-      }
-      router.refresh();
-      cancelRemoval();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to remove this item.";
-      toast.error(message);
-    } finally {
-      setItemPending(itemId, false);
+  const handleSaveEdit = async () => {
+    if (!editingItem) {
+      return;
     }
+    await performQuantityUpdate(editingItem, editingQuantity);
   };
 
   if (!cart || cart.items.length === 0) {
@@ -138,16 +148,23 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
           String(itemCount)
         );
 
+  const editingPending = editingItem ? !!pendingItems[editingItem.id] : false;
+  const editingDisplayName = editingItem
+    ? menuLocale === "my"
+      ? editingItem.menuItemNameMm ?? editingItem.menuItemName
+      : editingItem.menuItemName
+    : "";
+  const editingUnitPrice = editingItem
+    ? editingItem.basePrice + editingItem.addonsTotal
+    : 0;
+  const editingLineTotal = editingUnitPrice * editingQuantity;
+  const canSubmitEdit =
+    editingItem != null && editingQuantity !== editingItem.quantity;
+  const editPrimaryLabel =
+    editingQuantity === 0 ? editModalRemove : editModalSave;
+
   return (
     <>
-      {confirmingItemId ? (
-        <button
-          type="button"
-          aria-label={confirmRemoveCancel}
-          className="fixed inset-0 z-30 cursor-default"
-          onClick={cancelRemoval}
-        />
-      ) : null}
       <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
       <section className="space-y-3.5">
         {cart.items.map((item) => {
@@ -160,10 +177,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
           const isExpanded = !!expandedDetails[item.id];
           const noteVisible = !!visibleNotes[item.id];
           const isPending = !!pendingItems[item.id];
-          const isConfirming = confirmingItemId === item.id;
-          const canDecrement = item.quantity > 1 && !isPending;
-          const canIncrement =
-            item.quantity < MAX_QUANTITY_PER_LINE && !isPending;
+          const canEdit = !isPending;
 
           return (
             <article
@@ -193,43 +207,14 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
               </header>
 
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-emerald-700">
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label={decrementAria}
-                    disabled={!canDecrement}
-                    onClick={() =>
-                      handleQuantityChange(item.id, item.quantity, item.quantity - 1)
-                    }
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-base transition disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    -
-                  </button>
-                  <span className="w-7 text-center text-sm font-semibold text-slate-900">
-                    {item.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={incrementAria}
-                    disabled={!canIncrement}
-                    onClick={() =>
-                      handleQuantityChange(item.id, item.quantity, item.quantity + 1)
-                    }
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-base text-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingItemId(item.id)}
-                    disabled={isPending}
-                    className="rounded-full border border-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-500 disabled:opacity-40"
-                  >
-                    {removeLabel}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => openEditModal(item)}
+                  disabled={!canEdit}
+                  className="rounded-full border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {editLabel}
+                </button>
                 {groupedChoices.length > 0 ? (
                   <button
                     type="button"
@@ -301,31 +286,6 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                 </div>
               ) : null}
 
-              {isConfirming && !isPending ? (
-                <div className="relative z-40 space-y-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-[11px] text-slate-700 shadow-lg">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {confirmRemoveTitle}
-                  </p>
-                  <p>{confirmRemoveBody}</p>
-                  <div className="flex gap-2 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="flex-1 rounded-full bg-emerald-600 px-3 py-1 font-semibold text-white transition hover:bg-emerald-500"
-                    >
-                      {confirmRemoveConfirm}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelRemoval}
-                      className="flex-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-white"
-                    >
-                      {confirmRemoveCancel}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               {item.note && noteVisible ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800">
                   <p className="text-xs font-semibold uppercase tracking-wide">
@@ -375,6 +335,109 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
         </Link>
       </aside>
     </div>
+    {editingItem ? (
+      <>
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px]"
+          aria-hidden="true"
+          onClick={() => {
+            if (!editingPending) {
+              closeEditModal();
+            }
+          }}
+        />
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-6 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={editModalTitle}
+            className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                {editModalTitle}
+              </p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {editingDisplayName}
+              </h3>
+              <p className="text-xs text-slate-500">{editModalBody}</p>
+            </div>
+
+            <div className="mt-5 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                aria-label={decrementAria}
+                disabled={editingPending || editingQuantity <= 0}
+                onClick={() =>
+                  setEditingQuantity((prev) =>
+                    Math.max(0, prev - 1)
+                  )
+                }
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-xl text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                -
+              </button>
+              <div className="text-center">
+                <span
+                  className={`text-3xl font-semibold ${
+                    editingQuantity === 0 ? "text-rose-500" : "text-slate-900"
+                  }`}
+                >
+                  {editingQuantity}
+                </span>
+                <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                  {quantityLabel}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={incrementAria}
+                disabled={
+                  editingPending || editingQuantity >= MAX_QUANTITY_PER_LINE
+                }
+                onClick={() =>
+                  setEditingQuantity((prev) =>
+                    Math.min(MAX_QUANTITY_PER_LINE, prev + 1)
+                  )
+                }
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-xl text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">
+              {editModalHint}
+            </p>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+              <span>{editModalLimit}</span>
+              <span className="text-sm font-semibold text-slate-900">
+                ฿{formatPrice(editingLineTotal)}
+              </span>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={closeEditModal}
+                disabled={editingPending}
+                className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {editModalCancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!canSubmitEdit || editingPending}
+                className="flex-1 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {editingPending ? editModalSaving : editPrimaryLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    ) : null}
     </>
   );
 }

@@ -423,11 +423,13 @@ export async function updateCartItemQuantity(
   if (quantity <= 0) {
     await db.delete(cartItems).where(eq(cartItems.id, cartItemId));
   } else {
+    const cappedQuantity = Math.min(quantity, MAX_QUANTITY_PER_LINE);
+
     await db
       .update(cartItems)
       .set({
-        quantity,
-        totalPrice: toNumericString(unitPrice * quantity),
+        quantity: cappedQuantity,
+        totalPrice: toNumericString(unitPrice * cappedQuantity),
         updatedAt: new Date(),
       })
       .where(eq(cartItems.id, cartItemId));
