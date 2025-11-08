@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { auth } from "@/lib/auth";
 import { getSession } from "@/lib/session";
 import {
   addItemToCart,
@@ -8,19 +9,27 @@ import {
 } from "@/lib/cart/queries";
 import { addToCartSchema } from "@/lib/cart/validation";
 
-async function requireUser() {
+async function requireUser(request: NextRequest) {
   const session = await getSession();
   const userId = session?.session?.user?.id;
 
   if (!userId) {
-    return null;
+    const authSession = await auth.api.getSession({
+      headers: request.headers,
+      asResponse: false,
+      returnHeaders: false,
+    });
+    if (!authSession?.user?.id) {
+      return null;
+    }
+    return { userId: authSession.user.id };
   }
 
   return { userId };
 }
 
-export async function GET() {
-  const auth = await requireUser();
+export async function GET(request: NextRequest) {
+  const auth = await requireUser(request);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -32,7 +41,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireUser();
+  const auth = await requireUser(request);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

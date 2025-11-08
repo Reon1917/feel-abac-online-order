@@ -108,6 +108,7 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
   const baseSubtotal = basePrice * quantity;
   const extrasSubtotal = extrasPerUnit * quantity;
   const totalPrice = unitPrice * quantity;
+  const formattedBasePrice = formatPrice(basePrice);
   const formattedBaseSubtotal = formatPrice(baseSubtotal);
   const formattedExtrasSubtotal = formatPrice(extrasSubtotal);
   const formattedTotalPrice = formatPrice(totalPrice);
