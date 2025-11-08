@@ -6,6 +6,8 @@ import {
   uuid,
   integer,
   numeric,
+  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -171,4 +173,77 @@ export const menuChoiceOptions = pgTable("menu_choice_options", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+});
+
+export const carts = pgTable(
+  "carts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionToken: text("session_token"),
+    status: text("status").default("active").notNull(),
+    subtotal: numeric("subtotal", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    userIdx: index("carts_user_id_idx").on(table.userId),
+    sessionIdx: index("carts_session_token_idx").on(table.sessionToken),
+  })
+);
+
+export const cartItems = pgTable(
+  "cart_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    cartId: uuid("cart_id")
+      .notNull()
+      .references(() => carts.id, { onDelete: "cascade" }),
+    menuItemId: uuid("menu_item_id")
+      .notNull()
+      .references(() => menuItems.id, { onDelete: "cascade" }),
+    menuItemName: text("menu_item_name").notNull(),
+    menuItemNameMm: text("menu_item_name_mm"),
+    basePrice: numeric("base_price", { precision: 10, scale: 2 }).notNull(),
+    addonsTotal: numeric("addons_total", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    quantity: integer("quantity").default(1).notNull(),
+    note: text("note"),
+    hashKey: text("hash_key").notNull(),
+    totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    hashIdx: uniqueIndex("cart_items_cart_hash_unique").on(
+      table.cartId,
+      table.hashKey
+    ),
+  })
+);
+
+export const cartItemChoices = pgTable("cart_item_choices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  cartItemId: uuid("cart_item_id")
+    .notNull()
+    .references(() => cartItems.id, { onDelete: "cascade" }),
+  groupName: text("group_name").notNull(),
+  groupNameMm: text("group_name_mm"),
+  optionName: text("option_name").notNull(),
+  optionNameMm: text("option_name_mm"),
+  extraPrice: numeric("extra_price", { precision: 10, scale: 2 })
+    .default("0")
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });

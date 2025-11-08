@@ -1,0 +1,48 @@
+{
+  "header": {
+    "title": "သင်၏အော်ဒါစာရင်း",
+    "subtitle": "စတင်အော်ဒါပေးမီ ရွေးချယ်ထားသမျှကို ပြန်လည်စစ်ဆေးပါ။"
+  },
+  "summary": {
+    "heading": "အော်ဒါအကျဉ်းချုံး",
+    "itemsLabel": {
+      "one": "ဟင်းပွဲ 1 ခု",
+      "other": "{{count}} ဟင်းပွဲများ"
+    },
+    "subtotal": "စုစုပေါင်း",
+    "empty": "အော်ဒါမရှိသေးပါ",
+    "checkoutCta": "အော်ဒါတင်ရန်",
+    "comingSoon": "Checkout မကြာမီလာမည်"
+  },
+  "items": {
+    "choicesHeading": "ရွေးချယ်မှုများ",
+    "noteLabel": "မှတ်ချက်",
+    "quantityLabel": "အရေအတွက်",
+    "priceLabel": "စုစုပေါင်း",
+    "showDetails": "အသေးစိတ် ပြရန်",
+    "hideDetails": "အသေးစိတ် ဖျောက်ရန်",
+    "showNote": "မှတ်ချက် ပြရန်",
+    "hideNote": "မှတ်ချက် ဖျောက်ရန်",
+    "remove": "ဖယ်ရှားရန်",
+    "decrement": "အရေအတွက် လျှော့ရန်",
+    "increment": "အရေအတွက် တိုးရန်",
+    "confirmRemoveTitle": "ဖယ်ရှားချင်သလား?",
+    "confirmRemoveBody": "ဤဟင်းပွဲကို သင့်အော်ဒါမှ ဖယ်ရှားပါမည်။",
+    "confirmRemoveCancel": "ထားမည်",
+    "confirmRemoveConfirm": "ဖယ်ရှားမည်",
+    "edit": "ပြင်ဆင်ရန်",
+    "editModalTitle": "အရေအတွက် ပြင်ဆင်ရန်",
+    "editModalBody": "ဤဟင်းပွဲကို ကတ်ထဲတွင် မည်မျှ ထားရမည်ကို ရွေးပါ။",
+    "editModalHint": "အရေအတွက်ကို 0 ထိ လျှော့ပါက ဤဟင်းပွဲကို ဖယ်ရှားပါမည်။",
+    "editModalLimit": "တစ်လိုင်းအတွက် အများဆုံး {{max}} ခုထိ။",
+    "editModalSave": "အသစ်ပြင်ဆင်မည်",
+    "editModalRemove": "ဖယ်ရှားမည်",
+    "editModalCancel": "မပြင်တော့ပါ",
+    "editModalSaving": "သိမ်းဆည်းနေသည်..."
+  },
+  "empty": {
+    "heading": "အော်ဒါမရှိသေးပါ",
+    "body": "မီနူးသို့ ပြန်သွားပြီး ဟင်းပွဲများကို ဆက်လက်ထည့်သွင်းပါ။",
+    "cta": "မီနူးသို့သွားရန်"
+  }
+}

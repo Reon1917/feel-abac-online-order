@@ -12,6 +12,7 @@ import { withLocalePath } from "@/lib/i18n/path";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
+import { getActiveCartSummary } from "@/lib/cart/queries";
 
 type PageProps = {
   params: Promise<{
@@ -38,9 +39,11 @@ export default async function MenuPage({ params }: PageProps) {
   }
 
   const menuCategories = await getPublicMenuHierarchy();
+  const cartSummary = await getActiveCartSummary(sessionData.session.user.id);
   const hasMenu =
     menuCategories.length > 0 &&
     menuCategories.some((category) => category.items.length > 0);
+  const cartHref = withLocalePath(locale, "/cart");
 
   return (
     <>
@@ -75,6 +78,8 @@ export default async function MenuPage({ params }: PageProps) {
               dictionary={dict}
               common={common}
               appLocale={locale}
+              cartSummary={cartSummary}
+              cartHref={cartHref}
             />
           ) : (
             <section className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">

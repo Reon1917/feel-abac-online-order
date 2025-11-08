@@ -37,10 +37,25 @@
     "addonsLabel": "Add-ons",
     "included": "Included",
     "button": "Add to order",
-    "mobileButton": "Add to cart"
+    "mobileButton": "Add to cart",
+    "quantityLabel": "Quantity",
+    "quantityDecrease": "Decrease quantity",
+    "quantityIncrease": "Increase quantity",
+    "missingRequired": "Please complete the required choices before adding this item to your cart.",
+    "addedToCart": "Added to cart",
+    "addingToCart": "Adding…",
+    "addToCartError": "We couldn’t add this item right now. Please try again."
   },
   "emptyState": {
     "heading": "No menu items yet",
     "body": "Check back soon as the kitchen adds new dishes throughout the day."
+  },
+  "cartPeek": {
+    "button": "Check cart",
+    "itemsLabel": {
+      "one": "1 item",
+      "other": "{{count}} items"
+    },
+    "totalLabel": "Subtotal"
   }
 }
