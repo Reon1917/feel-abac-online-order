@@ -176,16 +176,14 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
         const data = await response.json().catch(() => null);
         const errorMessage =
           (data && typeof data.error === "string" && data.error) ||
-          "Unable to add this item to your cart.";
+          detail.addToCartError;
         throw new Error(errorMessage);
       }
 
       toast.success(detail.addedToCart);
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to add this item to your cart.";
+        error instanceof Error ? error.message : detail.addToCartError;
       toast.error(message);
     } finally {
       setIsSubmitting(false);

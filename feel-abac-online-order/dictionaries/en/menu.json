@@ -43,7 +43,8 @@
     "quantityIncrease": "Increase quantity",
     "missingRequired": "Please complete the required choices before adding this item to your cart.",
     "addedToCart": "Added to cart",
-    "addingToCart": "Adding…"
+    "addingToCart": "Adding…",
+    "addToCartError": "We couldn’t add this item right now. Please try again."
   },
   "emptyState": {
     "heading": "No menu items yet",
