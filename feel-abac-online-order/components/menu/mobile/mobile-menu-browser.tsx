@@ -246,7 +246,7 @@ function MobileMenuListItem({ item, menuLocale, appLocale, actionLabel }: Mobile
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
 
   return (
-    <Link href={detailHref} className={styles.listInner}>
+    <Link prefetch={false} href={detailHref} className={styles.listInner}>
       <div className={styles.listImage}>
         {item.imageUrl ? (
           <Image
