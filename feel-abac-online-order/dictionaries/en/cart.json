@@ -1,0 +1,28 @@
+{
+  "header": {
+    "title": "Your cart",
+    "subtitle": "Review your selections before placing an order."
+  },
+  "summary": {
+    "heading": "Order summary",
+    "itemsLabel": {
+      "one": "1 item",
+      "other": "{{count}} items"
+    },
+    "subtotal": "Subtotal",
+    "empty": "Your cart is empty",
+    "checkoutCta": "Place order",
+    "comingSoon": "Checkout is coming soon"
+  },
+  "items": {
+    "choicesHeading": "Choices",
+    "noteLabel": "Note",
+    "quantityLabel": "Quantity",
+    "priceLabel": "Line total"
+  },
+  "empty": {
+    "heading": "Nothing here yet",
+    "body": "Return to the menu to add dishes and build your cart.",
+    "cta": "Browse menu"
+  }
+}

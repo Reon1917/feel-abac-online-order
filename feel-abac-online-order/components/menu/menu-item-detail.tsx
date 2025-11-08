@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import clsx from "clsx";
+import { toast } from "sonner";
 import type { PublicMenuChoiceGroup, PublicMenuItem } from "@/lib/menu/types";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
+import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -65,6 +67,8 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
     const initialEntries = item.choiceGroups.map((group) => [group.id, []]);
     return Object.fromEntries(initialEntries);
   });
+  const [quantity, setQuantity] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const enhancedGroups = useMemo<ChoiceGroupWithState[]>(() => {
     return item.choiceGroups
@@ -90,7 +94,7 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
   }, [item.choiceGroups]);
 
   const basePrice = item.price;
-  const extrasTotal = useMemo(() => {
+  const extrasPerUnit = useMemo(() => {
     let total = 0;
     for (const groupSelections of Object.values(selections)) {
       for (const optionId of groupSelections) {
@@ -100,9 +104,12 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
     return total;
   }, [optionPriceLookup, selections]);
 
-  const totalPrice = basePrice + extrasTotal;
-  const formattedBasePrice = formatPrice(basePrice);
-  const formattedExtrasTotal = formatPrice(extrasTotal);
+  const unitPrice = basePrice + extrasPerUnit;
+  const baseSubtotal = basePrice * quantity;
+  const extrasSubtotal = extrasPerUnit * quantity;
+  const totalPrice = unitPrice * quantity;
+  const formattedBaseSubtotal = formatPrice(baseSubtotal);
+  const formattedExtrasSubtotal = formatPrice(extrasSubtotal);
   const formattedTotalPrice = formatPrice(totalPrice);
 
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -114,25 +121,92 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
     menuLocale === "my" ? category.nameMm ?? category.name : category.name;
 
   const mobileButtonLabel = detail.mobileButton ?? detail.button;
+  const canDecrease = quantity > 1;
+  const canIncrease = quantity < MAX_QUANTITY_PER_LINE;
+  const decreaseQuantity = () => setQuantity((prev) => Math.max(1, prev - 1));
+  const increaseQuantity = () =>
+    setQuantity((prev) => Math.min(MAX_QUANTITY_PER_LINE, prev + 1));
 
-  const desktopAddButton = (
-    <button
-      type="button"
-      className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 lg:py-3.5 lg:text-base"
-    >
-      <span>{detail.button}</span>
-      <span>· ฿{formattedTotalPrice}</span>
-    </button>
-  );
-  const mobileAddButton = (
-    <button
-      type="button"
-      className="flex w-full max-w-sm items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-emerald-500/35 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-    >
-      <span>{mobileButtonLabel}</span>
-      <span>· ฿{formattedTotalPrice}</span>
-    </button>
-  );
+  const handleAddToCart = async () => {
+    const missingRequired = enhancedGroups.find((group) => {
+      const required = Math.max(group.minSelect, group.isRequired ? 1 : 0);
+      const selected = selections[group.id]?.length ?? 0;
+      return required > 0 && selected < required;
+    });
+
+    if (missingRequired) {
+      toast.error(detail.missingRequired);
+      return;
+    }
+
+    const selectionPayload = enhancedGroups
+      .map((group) => ({
+        groupId: group.id,
+        optionIds: selections[group.id] ?? [],
+      }))
+      .filter((entry) => entry.optionIds.length > 0);
+
+    const trimmedNote = notes.trim();
+    const notePayload =
+      item.allowUserNotes && trimmedNote.length > 0 ? trimmedNote : null;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          menuItemId: item.id,
+          quantity,
+          note: notePayload,
+          selections: selectionPayload,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const errorMessage =
+          (data && typeof data.error === "string" && data.error) ||
+          "Unable to add this item to your cart.";
+        throw new Error(errorMessage);
+      }
+
+      toast.success(detail.addedToCart);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to add this item to your cart.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderAddButton = (variant: "desktop" | "mobile") => {
+    const isMobileVariant = variant === "mobile";
+    const label = isMobileVariant ? mobileButtonLabel : detail.button;
+
+    return (
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
+        className={clsx(
+          "flex w-full items-center justify-center gap-2 rounded-full font-semibold text-white shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
+          isMobileVariant
+            ? "max-w-sm bg-emerald-600 px-6 py-3 text-base shadow-xl shadow-emerald-500/35 hover:bg-emerald-500"
+            : "bg-emerald-600 py-3 text-sm shadow-md hover:bg-emerald-500 lg:py-3.5 lg:text-base"
+        )}
+      >
+        <span>{label}</span>
+        <span>· ฿{formattedTotalPrice}</span>
+      </button>
+    );
+  };
 
   const handleSelect = (group: ChoiceGroupWithState, optionId: string) => {
     setSelections((prev) => {
@@ -324,15 +398,21 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
           </h2>
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-slate-500">{detail.basePrice}</span>
-            <span className="text-sm font-medium text-slate-700">
-              ฿{formattedBasePrice}
-            </span>
+            <div className="text-right">
+              <span className="block text-sm font-medium text-slate-700">
+                ฿{formattedBaseSubtotal}
+              </span>
+              <span className="text-xs text-slate-400">× {quantity}</span>
+            </div>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-slate-500">{detail.addonsLabel}</span>
-            <span className="text-sm font-medium text-slate-700">
-              ฿{formattedExtrasTotal}
-            </span>
+            <div className="text-right">
+              <span className="block text-sm font-medium text-slate-700">
+                ฿{formattedExtrasSubtotal}
+              </span>
+              <span className="text-xs text-slate-400">× {quantity}</span>
+            </div>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
             <span className="text-base font-semibold text-emerald-700">
@@ -341,6 +421,47 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
             <span className="text-2xl font-semibold text-emerald-600">
               ฿{formattedTotalPrice}
             </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">
+              {detail.quantityLabel}
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={decreaseQuantity}
+                disabled={!canDecrease}
+                aria-label={detail.quantityDecrease}
+                className={clsx(
+                  "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
+                  canDecrease
+                    ? "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-600"
+                    : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
+                )}
+              >
+                -
+              </button>
+              <span className="w-10 text-center text-lg font-semibold text-slate-900">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={increaseQuantity}
+                disabled={!canIncrease}
+                aria-label={detail.quantityIncrease}
+                className={clsx(
+                  "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
+                  canIncrease
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100"
+                    : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
+                )}
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
@@ -359,12 +480,12 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
           </div>
         ) : null}
 
-        <div className="hidden lg:block">{desktopAddButton}</div>
+        <div className="hidden lg:block">{renderAddButton("desktop")}</div>
         </aside>
       </div>
 
       <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
-        <div className="flex justify-center">{mobileAddButton}</div>
+        <div className="flex justify-center">{renderAddButton("mobile")}</div>
       </div>
     </>
   );
