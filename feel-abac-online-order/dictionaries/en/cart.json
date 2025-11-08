@@ -18,7 +18,11 @@
     "choicesHeading": "Choices",
     "noteLabel": "Note",
     "quantityLabel": "Quantity",
-    "priceLabel": "Line total"
+    "priceLabel": "Line total",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "showNote": "Show note",
+    "hideNote": "Hide note"
   },
   "empty": {
     "heading": "Nothing here yet",

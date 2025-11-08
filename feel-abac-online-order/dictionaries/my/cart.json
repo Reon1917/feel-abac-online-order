@@ -18,7 +18,11 @@
     "choicesHeading": "ရွေးချယ်မှုများ",
     "noteLabel": "မှတ်ချက်",
     "quantityLabel": "အရေအတွက်",
-    "priceLabel": "စုစုပေါင်း"
+    "priceLabel": "စုစုပေါင်း",
+    "showDetails": "အသေးစိတ် ပြရန်",
+    "hideDetails": "အသေးစိတ် ဖျောက်ရန်",
+    "showNote": "မှတ်ချက် ပြရန်",
+    "hideNote": "မှတ်ချက် ဖျောက်ရန်"
   },
   "empty": {
     "heading": "အော်ဒါမရှိသေးပါ",

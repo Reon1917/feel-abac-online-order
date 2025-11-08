@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -22,6 +23,10 @@ function formatPrice(value: number) {
 
 export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
   const { menuLocale } = useMenuLocale();
+  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+  const [visibleNotes, setVisibleNotes] = useState<Record<string, boolean>>({});
+  const quantityLabel = dictionary.items.quantityLabel;
+  const quantityLabelLower = quantityLabel.toLowerCase();
 
   if (!cart || cart.items.length === 0) {
     return (
@@ -55,7 +60,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
 
   return (
     <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
-      <section className="space-y-5">
+      <section className="space-y-4">
         {cart.items.map((item) => {
           const displayName =
             menuLocale === "my"
@@ -63,37 +68,78 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
               : item.menuItemName;
           const unitPrice = item.basePrice + item.addonsTotal;
           const groupedChoices = groupChoices(item.choices, menuLocale);
+          const isExpanded = !!expandedDetails[item.id];
+          const noteVisible = !!visibleNotes[item.id];
 
           return (
             <article
               key={item.id}
-              className="space-y-4 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm"
+              className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm"
             >
-              <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
+              <header className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold text-slate-900">
                     {displayName}
                   </h3>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">
+                    {quantityLabel}: {item.quantity}
+                  </p>
                   <p className="text-sm text-slate-500">
-                    ฿{formatPrice(unitPrice)} · {dictionary.items.quantityLabel} {item.quantity}
+                    ฿{formatPrice(unitPrice)} / {quantityLabelLower}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs uppercase tracking-wide text-slate-400">
+                  <span className="text-[11px] uppercase tracking-wide text-slate-400">
                     {dictionary.items.priceLabel}
                   </span>
-                  <p className="text-xl font-semibold text-emerald-600">
+                  <p className="text-lg font-semibold text-emerald-600">
                     ฿{formatPrice(item.totalPrice)}
                   </p>
                 </div>
               </header>
 
-              {groupedChoices.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-emerald-700">
+                {groupedChoices.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedDetails((prev) => ({
+                        ...prev,
+                        [item.id]: !isExpanded,
+                      }))
+                    }
+                    className="rounded-full border border-emerald-200 px-3 py-1 transition hover:bg-emerald-50"
+                  >
+                    {isExpanded
+                      ? dictionary.items.hideDetails
+                      : dictionary.items.showDetails}
+                  </button>
+                ) : null}
+
+                {item.note ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisibleNotes((prev) => ({
+                        ...prev,
+                        [item.id]: !noteVisible,
+                      }))
+                    }
+                    className="rounded-full border border-amber-200 px-3 py-1 text-amber-800 transition hover:bg-amber-50"
+                  >
+                    {noteVisible
+                      ? dictionary.items.hideNote
+                      : dictionary.items.showNote}
+                  </button>
+                ) : null}
+              </div>
+
+              {isExpanded && groupedChoices.length > 0 ? (
                 <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {dictionary.items.choicesHeading}
                   </p>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {groupedChoices.map((group) => (
                       <div key={group.id}>
                         <p className="text-sm font-medium text-slate-700">
@@ -101,7 +147,10 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                         </p>
                         <ul className="mt-1 space-y-1 text-sm text-slate-600">
                           {group.options.map((option) => (
-                            <li key={option.id} className="flex items-center justify-between">
+                            <li
+                              key={option.id}
+                              className="flex items-center justify-between"
+                            >
                               <span>{option.label}</span>
                               {option.extraPrice > 0 ? (
                                 <span className="text-xs font-semibold text-emerald-600">
@@ -121,8 +170,8 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                 </div>
               ) : null}
 
-              {item.note ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-800">
+              {item.note && noteVisible ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-800">
                   <p className="text-xs font-semibold uppercase tracking-wide">
                     {dictionary.items.noteLabel}
                   </p>

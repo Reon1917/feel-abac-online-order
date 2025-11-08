@@ -37,17 +37,17 @@ export function CartPeekButton({
         );
 
   return (
-    <div className="pointer-events-none fixed bottom-6 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4 sm:px-0">
+    <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-full max-w-sm -translate-x-1/2 px-3 sm:px-0">
       <Link
         href={cartHref}
-        className="pointer-events-auto flex items-center justify-between rounded-full bg-slate-900 px-6 py-4 text-white shadow-2xl shadow-emerald-600/20 transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/60"
+        className="pointer-events-auto flex items-center justify-between rounded-full bg-emerald-600 px-5 py-3 text-white shadow-xl shadow-emerald-500/30 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/60"
       >
         <div>
           <p className="text-sm font-semibold">{dictionary.button}</p>
-          <p className="text-xs text-slate-300">{itemsLabel}</p>
+          <p className="text-xs text-emerald-100">{itemsLabel}</p>
         </div>
         <div className="text-right">
-          <span className="text-xs uppercase tracking-wide text-slate-400">
+          <span className="text-[10px] uppercase tracking-wide text-emerald-100">
             {dictionary.totalLabel}
           </span>
           <p className="text-lg font-semibold text-white">
