@@ -432,13 +432,17 @@ export async function updateCartItemQuantity(
   if (quantity <= 0) {
     await db.delete(cartItems).where(eq(cartItems.id, cartItemId));
   } else {
-    const cappedQuantity = Math.min(quantity, MAX_QUANTITY_PER_LINE);
+    if (quantity > MAX_QUANTITY_PER_LINE) {
+      throw new Error(
+        `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+      );
+    }
 
     await db
       .update(cartItems)
       .set({
-        quantity: cappedQuantity,
-        totalPrice: toNumericString(unitPrice * cappedQuantity),
+        quantity,
+        totalPrice: toNumericString(unitPrice * quantity),
         updatedAt: new Date(),
       })
       .where(eq(cartItems.id, cartItemId));
