@@ -30,7 +30,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [visibleNotes, setVisibleNotes] = useState<Record<string, boolean>>({});
   const [pendingItems, setPendingItems] = useState<Record<string, boolean>>({});
-  const [confirmingRemoval, setConfirmingRemoval] = useState<Record<string, boolean>>({});
+  const [confirmingItemId, setConfirmingItemId] = useState<string | null>(null);
   const quantityLabel = dictionary.items.quantityLabel;
   const quantityLabelLower = quantityLabel.toLowerCase();
   const decrementAria = dictionary.items.decrement;
@@ -48,12 +48,8 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
     }));
   };
 
-  const cancelRemoval = (itemId: string) => {
-    setConfirmingRemoval((prev) => {
-      const next = { ...prev };
-      delete next[itemId];
-      return next;
-    });
+  const cancelRemoval = () => {
+    setConfirmingItemId(null);
   };
 
   const handleQuantityChange = async (itemId: string, currentQuantity: number, nextQuantity: number) => {
@@ -102,7 +98,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
         throw new Error(message);
       }
       router.refresh();
-      cancelRemoval(itemId);
+      cancelRemoval();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to remove this item.";
@@ -143,7 +139,16 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
         );
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
+    <>
+      {confirmingItemId ? (
+        <button
+          type="button"
+          aria-label={confirmRemoveCancel}
+          className="fixed inset-0 z-30 cursor-default"
+          onClick={cancelRemoval}
+        />
+      ) : null}
+      <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
       <section className="space-y-3.5">
         {cart.items.map((item) => {
           const displayName =
@@ -155,7 +160,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
           const isExpanded = !!expandedDetails[item.id];
           const noteVisible = !!visibleNotes[item.id];
           const isPending = !!pendingItems[item.id];
-          const isConfirming = !!confirmingRemoval[item.id];
+          const isConfirming = confirmingItemId === item.id;
           const canDecrement = item.quantity > 1 && !isPending;
           const canIncrement =
             item.quantity < MAX_QUANTITY_PER_LINE && !isPending;
@@ -218,12 +223,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() =>
-                      setConfirmingRemoval((prev) => ({
-                        ...prev,
-                        [item.id]: true,
-                      }))
-                    }
+                    onClick={() => setConfirmingItemId(item.id)}
                     disabled={isPending}
                     className="rounded-full border border-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-500 disabled:opacity-40"
                   >
@@ -302,7 +302,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
               ) : null}
 
               {isConfirming && !isPending ? (
-                <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-[11px] text-slate-700">
+                <div className="relative z-40 space-y-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-[11px] text-slate-700 shadow-lg">
                   <p className="text-sm font-semibold text-slate-800">
                     {confirmRemoveTitle}
                   </p>
@@ -317,7 +317,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => cancelRemoval(item.id)}
+                      onClick={cancelRemoval}
                       className="flex-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-white"
                     >
                       {confirmRemoveCancel}
@@ -375,6 +375,7 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
         </Link>
       </aside>
     </div>
+    </>
   );
 }
 
