@@ -372,6 +372,7 @@ function MenuItemCard({
 
   return (
     <Link
+      prefetch={false}
       href={detailHref}
       className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
@@ -441,6 +442,7 @@ function MenuItemRow({
 
   return (
     <Link
+      prefetch={false}
       href={detailHref}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >

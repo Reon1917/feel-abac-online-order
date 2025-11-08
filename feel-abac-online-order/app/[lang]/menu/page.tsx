@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AdminBar } from "@/components/admin/admin-bar";
 import { ResponsiveMenuBrowser } from "@/components/menu/responsive-menu-browser";
-import { PhoneEditModal } from "@/components/menu/phone-edit-modal";
+import { PhoneEditModalClient } from "@/components/menu/phone-edit-modal-client";
 import { getPublicMenuHierarchy } from "@/lib/menu/queries";
 import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
@@ -33,13 +33,17 @@ export default async function MenuPage({ params }: PageProps) {
     redirect(withLocalePath(locale, "/"));
   }
 
-  const profile = await getUserProfile(sessionData.session.user.id);
+  const userId = sessionData.session.user.id;
+
+  const [profile, menuCategories, cartSummary] = await Promise.all([
+    getUserProfile(userId),
+    getPublicMenuHierarchy(),
+    getActiveCartSummary(userId),
+  ]);
+
   if (!profile) {
     redirect(withLocalePath(locale, "/onboarding"));
   }
-
-  const menuCategories = await getPublicMenuHierarchy();
-  const cartSummary = await getActiveCartSummary(sessionData.session.user.id);
   const hasMenu =
     menuCategories.length > 0 &&
     menuCategories.some((category) => category.items.length > 0);
@@ -62,13 +66,15 @@ export default async function MenuPage({ params }: PageProps) {
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{dict.header.title}</h1>
               <p className="flex items-center gap-1 text-sm text-slate-600">
-                {dict.header.description}{" "}
-                <strong className="font-semibold text-slate-800">
-                  {profile.phoneNumber}
-                </strong>
-                <PhoneEditModal currentPhone={profile.phoneNumber} />
-              </p>
-            </div>
+              {dict.header.description}{" "}
+              <strong className="font-semibold text-slate-800">
+                {profile.phoneNumber}
+              </strong>
+              <Suspense fallback={null}>
+                <PhoneEditModalClient currentPhone={profile.phoneNumber} />
+              </Suspense>
+            </p>
+          </div>
             <SignOutButton />
           </header>
 
