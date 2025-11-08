@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -162,6 +162,14 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
     editingItem != null && editingQuantity !== editingItem.quantity;
   const editPrimaryLabel =
     editingQuantity === 0 ? editModalRemove : editModalSave;
+
+  const handleModalBackgroundClick = (
+    event: MouseEvent<HTMLDivElement>
+  ) => {
+    if (event.target === event.currentTarget && !editingPending) {
+      closeEditModal();
+    }
+  };
 
   return (
     <>
@@ -340,13 +348,11 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
         <div
           className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px]"
           aria-hidden="true"
-          onClick={() => {
-            if (!editingPending) {
-              closeEditModal();
-            }
-          }}
         />
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-6 sm:items-center">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center px-4 py-6 sm:items-center"
+          onClick={handleModalBackgroundClick}
+        >
           <div
             role="dialog"
             aria-modal="true"

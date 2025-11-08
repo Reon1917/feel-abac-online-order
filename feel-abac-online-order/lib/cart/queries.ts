@@ -384,16 +384,25 @@ export async function addItemToCart(input: AddToCartInput) {
     }
 
     if (choiceDetails.length > 0) {
-      await db.insert(cartItemChoices).values(
-        choiceDetails.map((choice) => ({
-          cartItemId: insertedItem.id,
-          groupName: choice.groupName,
-          groupNameMm: choice.groupNameMm,
-          optionName: choice.optionName,
-          optionNameMm: choice.optionNameMm,
-          extraPrice: String(choice.extraPrice),
-        }))
-      );
+      try {
+        await db.insert(cartItemChoices).values(
+          choiceDetails.map((choice) => ({
+            cartItemId: insertedItem.id,
+            groupName: choice.groupName,
+            groupNameMm: choice.groupNameMm,
+            optionName: choice.optionName,
+            optionNameMm: choice.optionNameMm,
+            extraPrice: String(choice.extraPrice),
+          }))
+        );
+      } catch (error) {
+        await db.delete(cartItems).where(eq(cartItems.id, insertedItem.id));
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : "Unable to add item to cart."
+        );
+      }
     }
   }
 
