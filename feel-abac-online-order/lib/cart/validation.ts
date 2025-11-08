@@ -20,3 +20,7 @@ export const addToCartSchema = z.object({
 });
 
 export type AddToCartPayload = z.infer<typeof addToCartSchema>;
+
+export const updateCartItemSchema = z.object({
+  quantity: z.number().int().min(0).max(MAX_QUANTITY_PER_LINE),
+});

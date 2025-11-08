@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { CartRecord } from "@/lib/cart/types";
+import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -23,10 +26,91 @@ function formatPrice(value: number) {
 
 export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
   const { menuLocale } = useMenuLocale();
+  const router = useRouter();
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [visibleNotes, setVisibleNotes] = useState<Record<string, boolean>>({});
+  const [pendingItems, setPendingItems] = useState<Record<string, boolean>>({});
+  const [confirmingRemoval, setConfirmingRemoval] = useState<Record<string, boolean>>({});
   const quantityLabel = dictionary.items.quantityLabel;
   const quantityLabelLower = quantityLabel.toLowerCase();
+  const decrementAria = dictionary.items.decrement;
+  const incrementAria = dictionary.items.increment;
+  const removeLabel = dictionary.items.remove;
+  const confirmRemoveTitle = dictionary.items.confirmRemoveTitle;
+  const confirmRemoveBody = dictionary.items.confirmRemoveBody;
+  const confirmRemoveCancel = dictionary.items.confirmRemoveCancel;
+  const confirmRemoveConfirm = dictionary.items.confirmRemoveConfirm;
+
+  const setItemPending = (itemId: string, isPending: boolean) => {
+    setPendingItems((prev) => ({
+      ...prev,
+      [itemId]: isPending,
+    }));
+  };
+
+  const cancelRemoval = (itemId: string) => {
+    setConfirmingRemoval((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  };
+
+  const handleQuantityChange = async (itemId: string, currentQuantity: number, nextQuantity: number) => {
+    if (nextQuantity === currentQuantity || nextQuantity < 1 || nextQuantity > MAX_QUANTITY_PER_LINE) {
+      return;
+    }
+    setItemPending(itemId, true);
+    try {
+      const response = await fetch(`/api/cart/items/${itemId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quantity: nextQuantity }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message =
+          data && typeof data.error === "string"
+            ? data.error
+            : "Unable to update this item.";
+        throw new Error(message);
+      }
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to update this item.";
+      toast.error(message);
+    } finally {
+      setItemPending(itemId, false);
+    }
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    setItemPending(itemId, true);
+    try {
+      const response = await fetch(`/api/cart/items/${itemId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message =
+          data && typeof data.error === "string"
+            ? data.error
+            : "Unable to remove this item.";
+        throw new Error(message);
+      }
+      router.refresh();
+      cancelRemoval(itemId);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to remove this item.";
+      toast.error(message);
+    } finally {
+      setItemPending(itemId, false);
+    }
+  };
 
   if (!cart || cart.items.length === 0) {
     return (
@@ -70,6 +154,11 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
           const groupedChoices = groupChoices(item.choices, menuLocale);
           const isExpanded = !!expandedDetails[item.id];
           const noteVisible = !!visibleNotes[item.id];
+          const isPending = !!pendingItems[item.id];
+          const isConfirming = !!confirmingRemoval[item.id];
+          const canDecrement = item.quantity > 1 && !isPending;
+          const canIncrement =
+            item.quantity < MAX_QUANTITY_PER_LINE && !isPending;
 
           return (
             <article
@@ -99,6 +188,48 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
               </header>
 
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={decrementAria}
+                    disabled={!canDecrement}
+                    onClick={() =>
+                      handleQuantityChange(item.id, item.quantity, item.quantity - 1)
+                    }
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-base transition disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    -
+                  </button>
+                  <span className="w-7 text-center text-sm font-semibold text-slate-900">
+                    {item.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={incrementAria}
+                    disabled={!canIncrement}
+                    onClick={() =>
+                      handleQuantityChange(item.id, item.quantity, item.quantity + 1)
+                    }
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-base text-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfirmingRemoval((prev) => ({
+                        ...prev,
+                        [item.id]: true,
+                      }))
+                    }
+                    disabled={isPending}
+                    className="rounded-full border border-slate-200 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-500 disabled:opacity-40"
+                  >
+                    {removeLabel}
+                  </button>
+                </div>
                 {groupedChoices.length > 0 ? (
                   <button
                     type="button"
@@ -166,6 +297,31 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
                         </ul>
                       </div>
                     ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {isConfirming && !isPending ? (
+                <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 text-[11px] text-slate-700">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {confirmRemoveTitle}
+                  </p>
+                  <p>{confirmRemoveBody}</p>
+                  <div className="flex gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(item.id)}
+                      className="flex-1 rounded-full bg-emerald-600 px-3 py-1 font-semibold text-white transition hover:bg-emerald-500"
+                    >
+                      {confirmRemoveConfirm}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => cancelRemoval(item.id)}
+                      className="flex-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 transition hover:bg-white"
+                    >
+                      {confirmRemoveCancel}
+                    </button>
                   </div>
                 </div>
               ) : null}

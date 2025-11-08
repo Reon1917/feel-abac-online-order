@@ -58,3 +58,14 @@ export type AddToCartInput = {
 };
 
 export const MAX_QUANTITY_PER_LINE = 20;
+
+export type UpdateCartItemInput = {
+  userId: string;
+  cartItemId: string;
+  quantity: number;
+};
+
+export type RemoveCartItemInput = {
+  userId: string;
+  cartItemId: string;
+};

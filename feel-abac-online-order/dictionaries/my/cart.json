@@ -22,7 +22,14 @@
     "showDetails": "အသေးစိတ် ပြရန်",
     "hideDetails": "အသေးစိတ် ဖျောက်ရန်",
     "showNote": "မှတ်ချက် ပြရန်",
-    "hideNote": "မှတ်ချက် ဖျောက်ရန်"
+    "hideNote": "မှတ်ချက် ဖျောက်ရန်",
+    "remove": "ဖယ်ရှားရန်",
+    "decrement": "အရေအတွက် လျှော့ရန်",
+    "increment": "အရေအတွက် တိုးရန်",
+    "confirmRemoveTitle": "ဖယ်ရှားချင်သလား?",
+    "confirmRemoveBody": "ဤဟင်းပွဲကို သင့်အော်ဒါမှ ဖယ်ရှားပါမည်။",
+    "confirmRemoveCancel": "ထားမည်",
+    "confirmRemoveConfirm": "ဖယ်ရှားမည်"
   },
   "empty": {
     "heading": "အော်ဒါမရှိသေးပါ",

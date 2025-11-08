@@ -22,7 +22,14 @@
     "showDetails": "Show details",
     "hideDetails": "Hide details",
     "showNote": "Show note",
-    "hideNote": "Hide note"
+    "hideNote": "Hide note",
+    "remove": "Remove",
+    "decrement": "Decrease quantity",
+    "increment": "Increase quantity",
+    "confirmRemoveTitle": "Remove item?",
+    "confirmRemoveBody": "This dish will be removed from your cart.",
+    "confirmRemoveCancel": "Keep item",
+    "confirmRemoveConfirm": "Remove"
   },
   "empty": {
     "heading": "Nothing here yet",

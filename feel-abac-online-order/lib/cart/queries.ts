@@ -14,6 +14,8 @@ import {
   CartRecord,
   CartSummary,
   MAX_QUANTITY_PER_LINE,
+  RemoveCartItemInput,
+  UpdateCartItemInput,
 } from "./types";
 
 function numericToNumber(value: string | null): number {
@@ -182,6 +184,26 @@ async function recalculateCartTotals(cartId: string) {
       updatedAt: new Date(),
     })
     .where(eq(carts.id, cartId));
+}
+
+async function getCartItemForUser(userId: string, cartItemId: string) {
+  const [record] = await db
+    .select({
+      item: cartItems,
+      cart: carts,
+    })
+    .from(cartItems)
+    .innerJoin(carts, eq(cartItems.cartId, carts.id))
+    .where(
+      and(
+        eq(cartItems.id, cartItemId),
+        eq(carts.userId, userId),
+        eq(carts.status, "active")
+      )
+    )
+    .limit(1);
+
+  return record ?? null;
 }
 
 function validateSelections(selections: AddToCartSelection[]) {
@@ -383,4 +405,56 @@ export async function addItemToCart(input: AddToCartInput) {
   }
 
   return summarizeCartRecord(refreshedCart);
+}
+
+export async function updateCartItemQuantity(
+  input: UpdateCartItemInput
+) {
+  const { userId, cartItemId, quantity } = input;
+  const record = await getCartItemForUser(userId, cartItemId);
+  if (!record) {
+    throw new Error("Cart item not found.");
+  }
+
+  const unitPrice =
+    numericToNumber(record.item.basePrice) +
+    numericToNumber(record.item.addonsTotal);
+
+  if (quantity <= 0) {
+    await db.delete(cartItems).where(eq(cartItems.id, cartItemId));
+  } else {
+    await db
+      .update(cartItems)
+      .set({
+        quantity,
+        totalPrice: toNumericString(unitPrice * quantity),
+        updatedAt: new Date(),
+      })
+      .where(eq(cartItems.id, cartItemId));
+  }
+
+  await recalculateCartTotals(record.cart.id);
+
+  const refreshed = await getActiveCartForUser(userId);
+  if (!refreshed) {
+    throw new Error("Unable to refresh cart.");
+  }
+  return refreshed;
+}
+
+export async function removeCartItem(input: RemoveCartItemInput) {
+  const { userId, cartItemId } = input;
+  const record = await getCartItemForUser(userId, cartItemId);
+  if (!record) {
+    throw new Error("Cart item not found.");
+  }
+
+  await db.delete(cartItems).where(eq(cartItems.id, cartItemId));
+  await recalculateCartTotals(record.cart.id);
+
+  const refreshed = await getActiveCartForUser(userId);
+  if (!refreshed) {
+    throw new Error("Unable to refresh cart.");
+  }
+  return refreshed;
 }

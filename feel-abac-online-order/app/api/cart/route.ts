@@ -1,48 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
-import { getSession } from "@/lib/session";
 import {
   addItemToCart,
   getActiveCartForUser,
   summarizeCartRecord,
 } from "@/lib/cart/queries";
 import { addToCartSchema } from "@/lib/cart/validation";
-
-async function requireUser(request: NextRequest) {
-  const session = await getSession();
-  const userId = session?.session?.user?.id;
-
-  if (!userId) {
-    const authSession = await auth.api.getSession({
-      headers: request.headers,
-      asResponse: false,
-      returnHeaders: false,
-    });
-    if (!authSession?.user?.id) {
-      return null;
-    }
-    return { userId: authSession.user.id };
-  }
-
-  return { userId };
-}
+import { resolveUserId } from "@/lib/api/require-user";
 
 export async function GET(request: NextRequest) {
-  const auth = await requireUser(request);
-  if (!auth) {
+  const userId = await resolveUserId(request);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cart = await getActiveCartForUser(auth.userId);
+  const cart = await getActiveCartForUser(userId);
   const summary = cart ? summarizeCartRecord(cart) : null;
 
   return NextResponse.json({ cart, summary });
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireUser(request);
-  if (!auth) {
+  const userId = await resolveUserId(request);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -59,7 +39,7 @@ export async function POST(request: NextRequest) {
   try {
     const summary = await addItemToCart({
       ...parsed.data,
-      userId: auth.userId,
+      userId,
     });
     return NextResponse.json({
       summary,
