@@ -1081,8 +1081,8 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
           >
             <div className="grid gap-4 md:grid-cols-2">
               <ToggleBlock
-                label="Visible to diners"
-                description="Hide temporarily while you polish the item."
+                label="In stock"
+                description="Turn off when the kitchen runs out—diners will see it grayed out."
               >
                 <Controller
                   control={form.control}

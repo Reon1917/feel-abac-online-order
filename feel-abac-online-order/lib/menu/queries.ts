@@ -187,10 +187,8 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
     .where(inArray(menuItems.categoryId, categoryIds))
     .orderBy(asc(menuItems.displayOrder), asc(menuItems.createdAt));
 
-  const activeItems = items.filter(
-    (item) => item.isAvailable && item.status === "published"
-  );
-  const itemIds = activeItems.map((item) => item.id);
+  const publishedItems = items.filter((item) => item.status === "published");
+  const itemIds = publishedItems.map((item) => item.id);
 
   const groups = itemIds.length
     ? await db
@@ -252,7 +250,7 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
   }
 
   const itemsByCategory = new Map<string, PublicMenuItem[]>();
-  for (const item of activeItems) {
+  for (const item of publishedItems) {
     const mapped: PublicMenuItem = {
       id: item.id,
       name: item.nameEn,
@@ -264,6 +262,7 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
       placeholderIcon: item.placeholderIcon,
       menuCode: item.menuCode,
       allowUserNotes: item.allowUserNotes,
+      isAvailable: item.isAvailable,
       choiceGroups: groupsByItem.get(item.id) ?? [],
       displayOrder: item.displayOrder,
     };
@@ -373,6 +372,7 @@ export async function getPublicMenuItemById(
     placeholderIcon: item.placeholderIcon,
     menuCode: item.menuCode,
     allowUserNotes: item.allowUserNotes,
+    isAvailable: item.isAvailable,
     choiceGroups: mappedGroups,
     displayOrder: item.displayOrder,
   };

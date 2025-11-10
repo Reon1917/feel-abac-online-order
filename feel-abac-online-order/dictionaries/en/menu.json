@@ -15,6 +15,7 @@
     "viewList": "List view",
     "viewDetails": "View item details",
     "loadingMore": "Loading more dishes…",
+    "outOfStock": "Out of stock",
     "itemCount": {
       "one": "{{count}} item",
       "other": "{{count}} items"

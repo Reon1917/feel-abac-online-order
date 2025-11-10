@@ -15,6 +15,7 @@
     "viewList": "စာရင်းမြင်ကွင်း",
     "viewDetails": "အသေးစိတ်ကြည့်ရှုရန်",
     "loadingMore": "ဟင်းပွဲများကို ထည့်ဆဲ...",
+    "outOfStock": "လက်ရှိ မရရှိနိုင်ပါ",
     "itemCount": {
       "one": "{{count}} ဟင်းပွဲ",
       "other": "{{count}} ဟင်းပွဲများ"

@@ -184,6 +184,18 @@
   outline-offset: 3px;
 }
 
+.listInnerDisabled {
+  cursor: not-allowed;
+  filter: grayscale(0.65);
+  opacity: 0.75;
+}
+
+.listInnerDisabled:hover {
+  border-color: #e2e8f0;
+  box-shadow: rgba(15, 23, 42, 0.04) 0px 6px 12px -8px;
+  transform: none;
+}
+
 .listImage {
   position: relative;
   width: 4.75rem;
@@ -324,6 +336,22 @@
   font-size: 1.25rem;
   box-shadow: rgba(15, 23, 42, 0.08) 0px 6px 14px -6px;
   transition: transform 150ms ease, background-color 150ms ease;
+  pointer-events: none;
+}
+
+.outOfStockOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
   pointer-events: none;
 }
 
