@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, Search } from "lucide-react";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -169,7 +169,7 @@ export function MenuBrowser({
 
   return (
     <div className="space-y-10">
-      <section className="relative rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+  <section className="sticky top-4 z-30 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-lg backdrop-blur supports-backdrop-filter:bg-white/75 sm:top-6 sm:p-6">
   <div className="absolute right-4 top-6 flex items-center sm:right-6">
           <span className="sr-only">{browser.viewLabel}</span>
           <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
@@ -222,7 +222,7 @@ export function MenuBrowser({
         </div>
 
         <label className="mt-6 flex w-full items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm shadow-inner transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100">
-          <span className="text-base">🔍</span>
+          <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+
 import clsx from "clsx";
+import { Search } from "lucide-react";
 
 import styles from "./mobile-menu.module.css";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
@@ -162,7 +164,7 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
 
       <div className={styles.controlRow}>
         <label className={styles.searchField}>
-          <span className={styles.searchIcon}>🔍</span>
+          <Search className={styles.searchIcon} aria-hidden="true" />
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}

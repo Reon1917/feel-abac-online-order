@@ -60,6 +60,7 @@ import { MENU_CHOICE_GROUP_TYPES } from "@/lib/menu/validators";
 type MenuEditorProps = {
   refreshMenu: (opts?: { categoryId?: string | null; itemId?: string | null }) => Promise<void>;
   onDirtyChange: (dirty: boolean) => void;
+  onPreviewChange?: (snapshot: MenuEditorPreviewSnapshot | null) => void;
 };
 
 type MenuOptionFormValue = {
@@ -95,6 +96,38 @@ type MenuEditorFormValues = {
   allowUserNotes: boolean;
   status: MenuItemStatus;
   choiceGroups: MenuChoiceGroupFormValue[];
+};
+
+export type MenuEditorPreviewSnapshot = {
+  itemId: string | null;
+  categoryId: string | null;
+  categoryNameEn: string;
+  categoryNameMm: string | null;
+  nameEn: string;
+  nameMm?: string;
+  descriptionEn?: string;
+  descriptionMm?: string;
+  price: number;
+  menuCode?: string;
+  placeholderIcon?: string | null;
+  imageUrl: string | null;
+  allowUserNotes: boolean;
+  choiceGroups: Array<{
+    id?: string;
+    titleEn: string;
+    titleMm?: string;
+    isRequired: boolean;
+    minSelect: number;
+    maxSelect: number;
+    type: MenuChoiceGroupType;
+    options: Array<{
+      id?: string;
+      nameEn: string;
+      nameMm?: string;
+      extraPrice: number;
+      isAvailable: boolean;
+    }>;
+  }>;
 };
 
 const FALLBACK_IMAGE = "/menu-placeholders/placeholder-img-1.png";
@@ -188,7 +221,7 @@ function itemToFormValues(
 
 type ChoiceGroupField = MenuChoiceGroupFormValue & { fieldId: string };
 
-export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
+export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: MenuEditorProps) {
   const menu = useAdminMenuStore((state) => state.menu);
   const selectedCategoryId = useAdminMenuStore((state) => state.selectedCategoryId);
   const selectedItemId = useAdminMenuStore((state) => state.selectedItemId);
@@ -337,8 +370,68 @@ export function MenuEditor({ refreshMenu, onDirtyChange }: MenuEditorProps) {
   const watchedValues =
     (useWatch<MenuEditorFormValues>({ control: form.control }) ??
       form.getValues()) as MenuEditorFormValues;
-  const watchedChoiceGroups = watchedValues.choiceGroups ?? [];
+  const watchedChoiceGroups = useMemo(
+    () => watchedValues.choiceGroups ?? [],
+    [watchedValues.choiceGroups]
+  );
   const currentStatus = watchedValues.status ?? "draft";
+
+  const previewSnapshot = useMemo<MenuEditorPreviewSnapshot | null>(() => {
+    if (!selectedCategory && !selectedItem && !watchedValues.nameEn?.trim()) {
+      return null;
+    }
+
+    const parsedPrice = Number.parseFloat(watchedValues.price ?? "");
+    const price = Number.isFinite(parsedPrice) ? parsedPrice : 0;
+    const placeholderIconValue = watchedValues.placeholderIcon ?? "";
+    const placeholderIcon = placeholderIconValue.trim() || selectedItem?.placeholderIcon || null;
+
+    const groups = (watchedChoiceGroups ?? []).map((group) => {
+      const minSelect = Number.isFinite(group.minSelect) ? group.minSelect : 0;
+      const maxSelect = Number.isFinite(group.maxSelect) ? group.maxSelect : 0;
+
+      return {
+        id: group.id,
+        titleEn: group.titleEn ?? "",
+        titleMm: group.titleMm ?? "",
+        isRequired: !!group.isRequired,
+        minSelect,
+        maxSelect,
+        type: group.type ?? "single",
+        options: (group.options ?? []).map((option) => {
+          const parsedExtra = Number.parseFloat(option.extraPrice ?? "0");
+          return {
+            id: option.id,
+            nameEn: option.nameEn ?? "",
+            nameMm: option.nameMm ?? "",
+            extraPrice: Number.isFinite(parsedExtra) ? parsedExtra : 0,
+            isAvailable: option.isAvailable ?? true,
+          };
+        }),
+      } satisfies MenuEditorPreviewSnapshot["choiceGroups"][number];
+    });
+
+    return {
+      itemId: selectedItem?.id ?? null,
+      categoryId: selectedCategory?.id ?? null,
+      categoryNameEn: selectedCategory?.nameEn ?? "",
+      categoryNameMm: selectedCategory?.nameMm ?? null,
+      nameEn: watchedValues.nameEn ?? "",
+      nameMm: watchedValues.nameMm ?? "",
+      descriptionEn: watchedValues.descriptionEn ?? "",
+      descriptionMm: watchedValues.descriptionMm ?? "",
+      price,
+      menuCode: watchedValues.menuCode ?? "",
+      placeholderIcon,
+      imageUrl: selectedItem?.imageUrl ?? null,
+      allowUserNotes: !!watchedValues.allowUserNotes,
+      choiceGroups: groups,
+    } satisfies MenuEditorPreviewSnapshot;
+  }, [selectedCategory, selectedItem, watchedChoiceGroups, watchedValues]);
+
+  useEffect(() => {
+    onPreviewChange?.(previewSnapshot);
+  }, [previewSnapshot, onPreviewChange]);
 
   useEffect(() => {
     const subscription = form.watch((values, info) => {
