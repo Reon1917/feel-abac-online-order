@@ -359,7 +359,7 @@ function itemToFormValues(
     isAvailable: item.isAvailable,
     allowUserNotes: item.allowUserNotes,
     status: item.status,
-    choiceGroups: item.choiceGroups.map((group) => ({
+    choiceGroups: (item.choiceGroups ?? []).map((group) => ({
       id: group.id,
       titleEn: group.titleEn,
       titleMm: group.titleMm ?? "",
@@ -367,7 +367,7 @@ function itemToFormValues(
       maxSelect: group.maxSelect,
       isRequired: group.isRequired,
       type: group.type,
-      options: group.options.map((option) => ({
+      options: (group.options ?? []).map((option) => ({
         id: option.id,
         nameEn: option.nameEn,
         nameMm: option.nameMm ?? "",
