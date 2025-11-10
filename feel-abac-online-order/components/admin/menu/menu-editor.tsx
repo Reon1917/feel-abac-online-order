@@ -156,6 +156,165 @@ const DANGER_BUTTON_CLASS =
 const COMPACT_INPUT_CLASS = "h-9";
 const COMPACT_SELECT_TRIGGER_CLASS = "h-9";
 
+const PLACEHOLDER_ICON_OPTIONS = [
+  { value: "🍜", label: "Noodle bowl" },
+  { value: "🍣", label: "Sushi roll" },
+  { value: "🍔", label: "Burger" },
+  { value: "🥗", label: "Fresh salad" },
+  { value: "🍕", label: "Pizza slice" },
+  { value: "🍤", label: "Seafood" },
+  { value: "🍛", label: "Curry" },
+  { value: "🍱", label: "Bento" },
+  { value: "🥟", label: "Dumplings" },
+] as const;
+
+const DRAFT_STORAGE_PREFIX = "menu-editor-draft:";
+const PERSISTABLE_FIELDS: Array<keyof MenuEditorFormValues> = [
+  "nameEn",
+  "nameMm",
+  "descriptionEn",
+  "descriptionMm",
+  "placeholderIcon",
+  "menuCode",
+  "price",
+  "isAvailable",
+  "allowUserNotes",
+];
+
+type DraftDiff = {
+  payload: Record<string, unknown>;
+  changedFields: Set<string>;
+  hasChanges: boolean;
+};
+
+type StoredDraftPayload = {
+  values: Partial<MenuEditorFormValues>;
+  updatedAt: number;
+};
+
+function getDraftStorageKey(itemId: string) {
+  return `${DRAFT_STORAGE_PREFIX}${itemId}`;
+}
+
+function loadDraftFromStorage(itemId: string): Partial<MenuEditorFormValues> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getDraftStorageKey(itemId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredDraftPayload | undefined;
+    if (parsed && parsed.values && typeof parsed.values === "object") {
+      return parsed.values;
+    }
+  } catch (error) {
+    console.warn("Failed to load menu draft", error);
+  }
+  return null;
+}
+
+function saveDraftToStorage(itemId: string, values: Partial<MenuEditorFormValues>) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: StoredDraftPayload = {
+      values,
+      updatedAt: Date.now(),
+    };
+    window.localStorage.setItem(getDraftStorageKey(itemId), JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Failed to persist menu draft", error);
+  }
+}
+
+function clearDraftFromStorage(itemId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(getDraftStorageKey(itemId));
+  } catch (error) {
+    console.warn("Failed to clear menu draft", error);
+  }
+}
+
+function pickPersistableValues(values: MenuEditorFormValues): Partial<MenuEditorFormValues> {
+  return PERSISTABLE_FIELDS.reduce<Partial<MenuEditorFormValues>>((acc, field) => {
+    const value = values[field];
+    if (value !== undefined) {
+      acc[field] = value;
+    }
+    return acc;
+  }, {});
+}
+
+function buildDraftDiff(
+  item: MenuItemRecord | null,
+  values: MenuEditorFormValues
+): DraftDiff {
+  if (!item) {
+    return { payload: {}, changedFields: new Set(), hasChanges: false };
+  }
+
+  const payload: Record<string, unknown> = {};
+  const changedFields = new Set<string>();
+
+  const normalizedNameEn = values.nameEn?.trim() ?? "";
+  if (normalizedNameEn && normalizedNameEn !== item.nameEn) {
+    payload.nameEn = normalizedNameEn;
+    changedFields.add("nameEn");
+  }
+
+  const normalizedNameMm = values.nameMm?.trim() ?? "";
+  if ((item.nameMm ?? "") !== normalizedNameMm) {
+    payload.nameMm = normalizedNameMm || undefined;
+    changedFields.add("nameMm");
+  }
+
+  const normalizedDescriptionEn = values.descriptionEn?.trim() ?? "";
+  if ((item.descriptionEn ?? "") !== normalizedDescriptionEn) {
+    payload.descriptionEn = normalizedDescriptionEn || undefined;
+    changedFields.add("descriptionEn");
+  }
+
+  const normalizedDescriptionMm = values.descriptionMm?.trim() ?? "";
+  if ((item.descriptionMm ?? "") !== normalizedDescriptionMm) {
+    payload.descriptionMm = normalizedDescriptionMm || undefined;
+    changedFields.add("descriptionMm");
+  }
+
+  const normalizedPlaceholder = values.placeholderIcon?.trim() ?? "";
+  if ((item.placeholderIcon ?? "") !== normalizedPlaceholder) {
+    payload.placeholderIcon = normalizedPlaceholder || undefined;
+    changedFields.add("placeholderIcon");
+  }
+
+  const normalizedMenuCode = values.menuCode?.trim() ?? "";
+  if ((item.menuCode ?? "") !== normalizedMenuCode) {
+    payload.menuCode = normalizedMenuCode || undefined;
+    changedFields.add("menuCode");
+  }
+
+  const priceInput = values.price?.trim() ?? "";
+  if (priceInput.length > 0) {
+    const parsedPrice = Number.parseFloat(priceInput);
+    if (!Number.isNaN(parsedPrice) && parsedPrice >= 0) {
+      if (item.price !== parsedPrice) {
+        payload.price = parsedPrice;
+        changedFields.add("price");
+      }
+    }
+  }
+
+  if (values.isAvailable !== item.isAvailable) {
+    payload.isAvailable = values.isAvailable;
+    changedFields.add("isAvailable");
+  }
+
+  if (values.allowUserNotes !== item.allowUserNotes) {
+    payload.allowUserNotes = values.allowUserNotes;
+    changedFields.add("allowUserNotes");
+  }
+
+  const hasChanges = changedFields.size > 0;
+  return { payload, changedFields, hasChanges };
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -239,6 +398,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
     );
   }, [selectedCategory, selectedItemId]);
 
+  const computeDraftDiff = useCallback(
+    (values: MenuEditorFormValues): DraftDiff =>
+      buildDraftDiff(selectedItem, values),
+    [selectedItem]
+  );
+
   const form = useForm<MenuEditorFormValues>({
     mode: "onChange",
     defaultValues: itemToFormValues(selectedItem, selectedCategory?.id ?? null),
@@ -257,115 +422,23 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isChoiceMutating, setIsChoiceMutating] = useState(false);
-  const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    form.reset(itemToFormValues(selectedItem, selectedCategory?.id ?? null));
+    const baseValues = itemToFormValues(selectedItem, selectedCategory?.id ?? null);
+    let nextValues = baseValues;
+    if (selectedItem?.id) {
+      const storedDraft = loadDraftFromStorage(selectedItem.id);
+      if (storedDraft) {
+        nextValues = {
+          ...baseValues,
+          ...storedDraft,
+        };
+      }
+    }
+    form.reset(nextValues);
     setAutosaveError(null);
     setLastSavedAt(null);
-  }, [selectedItem, selectedCategory?.id, form]);
-
-  const persistItemDraft = useCallback(
-    async (values: MenuEditorFormValues) => {
-      if (!selectedItem) {
-        setIsAutosaving(false);
-        return;
-      }
-
-      const payload: Record<string, unknown> = {};
-
-      if (values.nameEn?.trim()) {
-        payload.nameEn = values.nameEn.trim();
-      }
-      if (values.nameMm !== undefined) {
-        payload.nameMm = values.nameMm?.trim() || undefined;
-      }
-      if (values.descriptionEn !== undefined) {
-        payload.descriptionEn = values.descriptionEn?.trim() || undefined;
-      }
-      if (values.descriptionMm !== undefined) {
-        payload.descriptionMm = values.descriptionMm?.trim() || undefined;
-      }
-      if (values.placeholderIcon !== undefined) {
-        payload.placeholderIcon = values.placeholderIcon?.trim() || undefined;
-      }
-      if (values.menuCode !== undefined) {
-        const trimmedCode = values.menuCode.trim();
-        const normalizedCode = trimmedCode.length ? trimmedCode : "";
-        const existingCode = selectedItem.menuCode?.trim() ?? "";
-        if (normalizedCode !== existingCode) {
-          payload.menuCode = normalizedCode;
-        }
-      }
-
-      if (values.price?.trim()) {
-        const parsedPrice = Number.parseFloat(values.price);
-        if (!Number.isNaN(parsedPrice) && parsedPrice >= 0) {
-          payload.price = parsedPrice;
-        }
-      }
-
-      payload.isAvailable = values.isAvailable;
-      payload.allowUserNotes = values.allowUserNotes;
-      payload.status = values.status;
-
-      if (Object.keys(payload).length === 0) {
-        setIsAutosaving(false);
-        return;
-      }
-
-      try {
-        const itemId = selectedItem.id?.trim();
-        if (!itemId) {
-          throw new Error("Invalid menu item ID");
-        }
-
-        const { item } = await fetchJSON<{ item: MenuItemRecord }>(
-          `/api/admin/menu/items/${itemId}`,
-          {
-            method: "PATCH",
-            headers: defaultHeaders,
-            body: JSON.stringify(payload),
-          }
-        );
-
-        updateItem({
-          itemId: item.id,
-          categoryId: item.categoryId,
-          updates: item,
-        });
-
-        setLastSavedAt(new Date());
-        form.reset(
-          {
-            ...values,
-            menuCode: item.menuCode ?? "",
-            price:
-              payload.price !== undefined
-                ? String(payload.price)
-                : values.price,
-            status: item.status,
-          },
-          {
-            keepValues: true,
-            keepDefaultValues: false,
-            keepDirty: false,
-            keepTouched: true,
-            keepErrors: true,
-          }
-        );
-      } catch (error) {
-        console.error(error);
-        const message =
-          error instanceof Error ? error.message : "Failed to autosave draft";
-        setAutosaveError(message);
-        toast.error(message);
-      } finally {
-        setIsAutosaving(false);
-      }
-    },
-    [form, selectedItem, updateItem]
-  );
+  }, [selectedCategory?.id, selectedItem, form]);
 
   const watchedValues =
     (useWatch<MenuEditorFormValues>({ control: form.control }) ??
@@ -375,6 +448,20 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
     [watchedValues.choiceGroups]
   );
   const currentStatus = watchedValues.status ?? "draft";
+  const draftDiff = useMemo(
+    () => computeDraftDiff(watchedValues),
+    [computeDraftDiff, watchedValues]
+  );
+  const hasPendingFieldChanges = draftDiff.hasChanges;
+  const changedFields = draftDiff.changedFields;
+  const draftActionAvailable =
+    currentStatus !== "draft" || hasPendingFieldChanges;
+  const publishActionAvailable =
+    currentStatus !== "published" || hasPendingFieldChanges;
+  const draftButtonDisabled =
+    isAutosaving || isChoiceMutating || !draftActionAvailable;
+  const publishButtonDisabled =
+    isAutosaving || isChoiceMutating || !publishActionAvailable;
 
   const previewSnapshot = useMemo<MenuEditorPreviewSnapshot | null>(() => {
     if (!selectedCategory && !selectedItem && !watchedValues.nameEn?.trim()) {
@@ -434,41 +521,31 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
   }, [previewSnapshot, onPreviewChange]);
 
   useEffect(() => {
-    const subscription = form.watch((values, info) => {
-      if (!selectedItem || !info?.name) return;
-      if (info.name.startsWith("choiceGroups")) {
-        return;
-      }
-
-      if (autosaveTimer.current) {
-        clearTimeout(autosaveTimer.current);
-      }
-      setIsAutosaving(true);
-      setAutosaveError(null);
-      autosaveTimer.current = setTimeout(() => {
-        void persistItemDraft(values as MenuEditorFormValues);
-      }, 750);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [form, persistItemDraft, selectedItem]);
+    if (!selectedItem?.id) return;
+    if (!hasPendingFieldChanges) {
+      clearDraftFromStorage(selectedItem.id);
+      return;
+    }
+    const persistable = pickPersistableValues(watchedValues);
+    saveDraftToStorage(selectedItem.id, persistable);
+  }, [hasPendingFieldChanges, selectedItem?.id, watchedValues]);
 
   useEffect(() => {
     onDirtyChange(
-      isAutosaving || form.formState.isDirty || isChoiceMutating
+      isAutosaving || hasPendingFieldChanges || isChoiceMutating
     );
-  }, [isAutosaving, form.formState.isDirty, isChoiceMutating, onDirtyChange]);
+  }, [hasPendingFieldChanges, isAutosaving, isChoiceMutating, onDirtyChange]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (form.formState.isDirty || isAutosaving || isChoiceMutating) {
+      if (hasPendingFieldChanges || isAutosaving || isChoiceMutating) {
         event.preventDefault();
         event.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [form.formState.isDirty, isAutosaving, isChoiceMutating]);
+  }, [hasPendingFieldChanges, isAutosaving, isChoiceMutating]);
 
   const createGroup = useCallback(
     async (input: {
@@ -853,38 +930,47 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         toast.error("Menu item is missing an ID.");
         return;
       }
+
+      const currentValues = form.getValues();
+      const { payload, hasChanges } = computeDraftDiff(currentValues);
+      const statusChanged = selectedItem.status !== status;
+
+      if (!hasChanges && !statusChanged) {
+        toast.info("No changes to save yet.");
+        return;
+      }
+
       setIsAutosaving(true);
+      setAutosaveError(null);
       try {
+        const requestBody: Record<string, unknown> = { ...payload };
+        if (statusChanged) {
+          requestBody.status = status;
+        }
+
         const { item } = await fetchJSON<{ item: MenuItemRecord }>(
           `/api/admin/menu/items/${itemId}`,
           {
             method: "PATCH",
             headers: defaultHeaders,
-            body: JSON.stringify({ status }),
+            body: JSON.stringify(requestBody),
           }
         );
+
         updateItem({
           itemId: item.id,
           categoryId: item.categoryId,
           updates: item,
         });
-        form.reset(
-          {
-            ...form.getValues(),
-            status: item.status,
-          },
-          {
-            keepValues: true,
-            keepDirty: false,
-            keepTouched: true,
-            keepErrors: true,
-          }
-        );
+
+        clearDraftFromStorage(itemId);
+        const nextValues = itemToFormValues(item, item.categoryId);
+        form.reset(nextValues);
         setLastSavedAt(new Date());
         toast.success(
           status === "published"
-            ? "Menu item published"
-            : "Menu item saved as draft"
+            ? "Changes published"
+            : "Draft saved"
         );
       } catch (error) {
         console.error(error);
@@ -896,7 +982,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         setIsAutosaving(false);
       }
     },
-    [form, selectedItem, updateItem]
+    [computeDraftDiff, form, selectedItem, updateItem]
   );
 
   const deleteItem = useCallback(async () => {
@@ -909,6 +995,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       return;
     }
     try {
+      if (selectedItem.id) {
+        clearDraftFromStorage(selectedItem.id);
+      }
       await fetchJSON<{ success: boolean }>(
         `/api/admin/menu/items/${selectedItem.id.trim()}`,
         { method: "DELETE" }
@@ -1010,13 +1099,13 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
             description="Name your dish and set quick identifiers diners will see first."
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <FieldBlock label="Name (English)" required>
+              <FieldBlock label="Name (English)" required changed={changedFields.has("nameEn")}>
                 <Input
                   {...form.register("nameEn")}
                   placeholder="e.g. Grilled chicken bowl"
                 />
               </FieldBlock>
-              <FieldBlock label="Name (Burmese)">
+              <FieldBlock label="Name (Burmese)" changed={changedFields.has("nameMm")}>
                 <Input
                   {...form.register("nameMm")}
                   placeholder="မြန်မာလို အမည်"
@@ -1024,7 +1113,12 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
               </FieldBlock>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              <FieldBlock label="Price" description="Enter numbers only" required>
+              <FieldBlock
+                label="Price"
+                description="Enter numbers only"
+                required
+                changed={changedFields.has("price")}
+              >
                 <Input
                   type="number"
                   min="0"
@@ -1036,6 +1130,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
               <FieldBlock
                 label="Menu code"
                 description="Shows on orders like A-12"
+                changed={changedFields.has("menuCode")}
               >
                 <Input
                   {...form.register("menuCode")}
@@ -1043,11 +1138,43 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
                   maxLength={32}
                 />
               </FieldBlock>
-              <FieldBlock label="Placeholder icon" description="Optional emoji or letters">
-                <Input
-                  {...form.register("placeholderIcon")}
-                  maxLength={4}
-                  placeholder="🍜"
+              <FieldBlock
+                label="Placeholder icon"
+                description="Pick a fallback emoji for dishes without photos."
+                changed={changedFields.has("placeholderIcon")}
+              >
+                <Controller
+                  control={form.control}
+                  name="placeholderIcon"
+                  render={({ field }) => (
+                    <Select
+                      value={
+                        field.value && field.value.length > 0
+                          ? field.value
+                          : undefined
+                      }
+                      onValueChange={(value) => {
+                        if (value === "__clear__") {
+                          field.onChange("");
+                          return;
+                        }
+                        field.onChange(value);
+                      }}
+                    >
+                      <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
+                        <SelectValue placeholder="Choose an icon" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__clear__">No icon</SelectItem>
+                        {PLACEHOLDER_ICON_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <span className="mr-2 text-lg">{option.value}</span>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
               </FieldBlock>
             </div>
@@ -1058,14 +1185,20 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
             description="Tell diners what makes this item special in both languages."
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <FieldBlock label="Description (English)">
+              <FieldBlock
+                label="Description (English)"
+                changed={changedFields.has("descriptionEn")}
+              >
                 <Textarea
                   {...form.register("descriptionEn")}
                   rows={3}
                   placeholder="Share ingredients or tasting notes."
                 />
               </FieldBlock>
-              <FieldBlock label="Description (Burmese)">
+              <FieldBlock
+                label="Description (Burmese)"
+                changed={changedFields.has("descriptionMm")}
+              >
                 <Textarea
                   {...form.register("descriptionMm")}
                   rows={3}
@@ -1083,6 +1216,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
               <ToggleBlock
                 label="In stock"
                 description="Turn off when the kitchen runs out—diners will see it grayed out."
+                changed={changedFields.has("isAvailable")}
               >
                 <Controller
                   control={form.control}
@@ -1099,6 +1233,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
               <ToggleBlock
                 label="Allow order notes"
                 description="Enable diners to send requests with their order."
+                changed={changedFields.has("allowUserNotes")}
               >
                 <Controller
                   control={form.control}
@@ -1140,26 +1275,34 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
             onReorderOption={reorderOptions}
           />
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setStatus("draft")}
-                disabled={isAutosaving}
-                className={cn(getStatusButtonClass(currentStatus === "draft"), "transition-colors")}
-              >
-                Save as draft
-              </Button>
-              <Button
-                variant="outline"
-                className={cn(getStatusButtonClass(currentStatus === "published"), "transition-colors")}
-                type="button"
-                onClick={() => setStatus("published")}
-                disabled={isAutosaving}
-              >
-                Publish changes
-              </Button>
-            </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setStatus("draft")}
+                  disabled={draftButtonDisabled}
+                  className={cn(
+                    getStatusButtonClass(draftActionAvailable),
+                    "transition-colors",
+                    draftButtonDisabled && "opacity-60"
+                  )}
+                >
+                  Save as draft
+                </Button>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    getStatusButtonClass(publishActionAvailable),
+                    "transition-colors",
+                    publishButtonDisabled && "opacity-60"
+                  )}
+                  type="button"
+                  onClick={() => setStatus("published")}
+                  disabled={publishButtonDisabled}
+                >
+                  Publish changes
+                </Button>
+              </div>
             <Button
               variant="destructive"
               type="button"
@@ -1343,12 +1486,24 @@ type FieldBlockProps = {
   className?: string;
 };
 
-function FieldBlock({ label, required, description, children, className }: FieldBlockProps) {
+function FieldBlock({
+  label,
+  required,
+  description,
+  children,
+  className,
+  changed,
+}: FieldBlockProps & { changed?: boolean }) {
   return (
     <label className={cn("flex flex-col gap-2", className)}>
       <span className="text-sm font-semibold text-slate-800">
         {label}
         {required ? <span className="ml-1 text-rose-500">*</span> : null}
+        {changed ? (
+          <span className="ml-1 text-amber-500" aria-label="Unsaved change">
+            *
+          </span>
+        ) : null}
       </span>
       {children}
       {description ? (
@@ -1365,7 +1520,13 @@ type ToggleBlockProps = {
   className?: string;
 };
 
-function ToggleBlock({ label, description, children, className }: ToggleBlockProps) {
+function ToggleBlock({
+  label,
+  description,
+  children,
+  className,
+  changed,
+}: ToggleBlockProps & { changed?: boolean }) {
   return (
     <div
       className={cn(
@@ -1374,7 +1535,14 @@ function ToggleBlock({ label, description, children, className }: ToggleBlockPro
       )}
     >
       <div className="w-full space-y-1 sm:w-auto">
-        <p className="text-sm font-semibold text-slate-800">{label}</p>
+        <p className="text-sm font-semibold text-slate-800">
+          {label}
+          {changed ? (
+            <span className="ml-1 text-amber-500" aria-label="Unsaved change">
+              *
+            </span>
+          ) : null}
+        </p>
         {description ? (
           <p className="text-xs text-slate-500">{description}</p>
         ) : null}
