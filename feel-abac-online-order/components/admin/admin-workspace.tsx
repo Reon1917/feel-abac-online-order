@@ -6,6 +6,15 @@ import { useState } from "react";
 import { AdminList } from "./admin-list";
 import { AdminManagement } from "./admin-management";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDownIcon } from "lucide-react";
+import { withLocalePath } from "@/lib/i18n/path";
+import type { Locale } from "@/lib/i18n/config";
 
 type AdminRecord = {
   id: string;
@@ -21,6 +30,7 @@ type AdminWorkspaceProps = {
   adminList: AdminRecord[];
   currentUserId: string;
   isSuperAdmin: boolean;
+  locale: Locale;
 };
 
 const panels = [
@@ -45,11 +55,16 @@ export function AdminWorkspace({
   adminList,
   currentUserId,
   isSuperAdmin,
+  locale,
 }: AdminWorkspaceProps) {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   const currentPanel = panels.find((panel) => panel.id === activePanel);
+
+  const handleNavigate = (path: string) => {
+    router.push(withLocalePath(locale, path));
+  };
 
   return (
     <div className="space-y-6">
@@ -114,9 +129,32 @@ export function AdminWorkspace({
                   We built a dedicated full-screen experience for managing menu categories, items, images,
                   and choice groups. Launch it with the button below.
                 </p>
-                <Button onClick={() => router.push("/admin/menu")} size="sm">
-                  Open menu builder
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="inline-flex items-center gap-1">
+                      Menu tools
+                      <ChevronDownIcon className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[12rem]">
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        handleNavigate("/admin/menu");
+                      }}
+                    >
+                      Builder studio
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        handleNavigate("/admin/menu/layout");
+                      }}
+                    >
+                      Layout editor
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">

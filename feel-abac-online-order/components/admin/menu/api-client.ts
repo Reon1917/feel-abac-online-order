@@ -1,5 +1,7 @@
 "use client";
 
+import type { MenuReorderPayload } from "@/lib/menu/validators";
+
 const defaultHeaders = {
   "Content-Type": "application/json",
 };
@@ -27,4 +29,15 @@ export async function fetchJSON<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function applyMenuReorder(payload: MenuReorderPayload) {
+  return fetchJSON<{ success: boolean; updated: number }>(
+    "/api/admin/menu/reorder",
+    {
+      method: "POST",
+      headers: defaultHeaders,
+      body: JSON.stringify(payload),
+    }
+  );
 }

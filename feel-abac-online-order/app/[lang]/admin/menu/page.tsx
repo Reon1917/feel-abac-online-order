@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { AdminMenuManager } from "@/components/admin/menu/menu-manager";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
@@ -6,6 +7,8 @@ import { getAdminMenuHierarchy } from "@/lib/menu/queries";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
+import { Button } from "@/components/ui/button";
+import { withLocalePath } from "@/lib/i18n/path";
 
 type PageProps = {
   params: Promise<{
@@ -116,6 +119,14 @@ export default async function AdminMenuPage({ params }: PageProps) {
                 ))}
               </ul>
             </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button asChild variant="outline" size="sm">
+              <Link href={withLocalePath(locale, "/admin/menu/layout")}>
+                {dict.actions?.openLayoutEditor ?? "Open layout editor"}
+              </Link>
+            </Button>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

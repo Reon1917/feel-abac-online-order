@@ -90,6 +90,7 @@ export default async function AdminDashboard({ params }: PageProps) {
             adminList={adminList}
             currentUserId={sessionData.session.user.id}
             isSuperAdmin={isSuperAdmin ?? false}
+            locale={locale}
           />
         </div>
       </div>
