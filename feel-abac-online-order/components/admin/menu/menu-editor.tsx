@@ -236,8 +236,8 @@ function clearDraftFromStorage(itemId: string) {
 function pickPersistableValues(values: MenuEditorFormValues): Partial<MenuEditorFormValues> {
   return PERSISTABLE_FIELDS.reduce<Partial<MenuEditorFormValues>>((acc, field) => {
     const value = values[field];
-    if (value !== undefined) {
-      acc[field] = value;
+    if (value !== undefined && value !== null) {
+      (acc as Record<string, unknown>)[field] = value;
     }
     return acc;
   }, {});
