@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray, sum } from "drizzle-orm";
+import { and, eq, inArray, sum, sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import { cartItemChoices, cartItems, carts } from "@/src/db/schema";
@@ -133,11 +133,17 @@ export async function getActiveCartForUser(
 export async function getActiveCartSummary(
   userId: string
 ): Promise<CartSummary | null> {
-  const cart = await getActiveCartForUser(userId);
+  const [cart] = await db
+    .select({ id: carts.id, subtotal: carts.subtotal })
+    .from(carts)
+    .where(and(eq(carts.userId, userId), eq(carts.status, "active")))
+    .limit(1);
+
   if (!cart) {
     return null;
   }
-  return summarizeCartRecord(cart);
+
+  return buildCartSummaryFromRow(cart.id, cart.subtotal);
 }
 
 async function ensureActiveCart(userId: string) {
@@ -175,15 +181,43 @@ async function recalculateCartTotals(cartId: string) {
     .where(eq(cartItems.cartId, cartId));
 
   const subtotalValue = numericToNumber(result?.total ?? "0");
+  const subtotalString = toNumericString(subtotalValue);
 
   await db
     .update(carts)
     .set({
-      subtotal: toNumericString(subtotalValue),
+      subtotal: subtotalString,
       lastActivityAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(carts.id, cartId));
+
+  return subtotalString;
+}
+
+async function getCartQuantityStats(cartId: string) {
+  const [stats] = await db
+    .select({
+      itemCount: sql<number>`COUNT(*)`,
+      totalQuantity: sum(cartItems.quantity),
+    })
+    .from(cartItems)
+    .where(eq(cartItems.cartId, cartId));
+
+  return {
+    itemCount: Number(stats?.itemCount ?? 0),
+    totalQuantity: Number(stats?.totalQuantity ?? 0),
+  };
+}
+
+async function buildCartSummaryFromRow(cartId: string, subtotalValue: string | null): Promise<CartSummary> {
+  const { itemCount, totalQuantity } = await getCartQuantityStats(cartId);
+  return {
+    id: cartId,
+    subtotal: numericToNumber(subtotalValue ?? "0"),
+    itemCount,
+    totalQuantity,
+  };
 }
 
 async function getCartItemForUser(userId: string, cartItemId: string) {
@@ -406,14 +440,10 @@ export async function addItemToCart(input: AddToCartInput) {
     }
   }
 
-  await recalculateCartTotals(cart.id);
+  const nextSubtotal = await recalculateCartTotals(cart.id);
 
-  const refreshedCart = await getActiveCartForUser(userId);
-  if (!refreshedCart) {
-    throw new Error("Unable to refresh cart after update.");
-  }
-
-  return summarizeCartRecord(refreshedCart);
+  const summary = await buildCartSummaryFromRow(cart.id, nextSubtotal);
+  return summary;
 }
 
 export async function updateCartItemQuantity(

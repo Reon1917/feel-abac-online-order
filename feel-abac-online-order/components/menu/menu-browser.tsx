@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
@@ -31,6 +38,18 @@ type DisplayCategory = {
   itemCountLabel: string;
 };
 
+type SearchableItem = {
+  record: PublicMenuItem;
+  searchText: string;
+};
+
+type SearchableCategory = {
+  id: string;
+  displayName: string;
+  secondaryName?: string | null;
+  searchableItems: SearchableItem[];
+};
+
 const INITIAL_CATEGORY_BATCH = 3;
 const CATEGORY_BATCH_SIZE = 2;
 
@@ -59,6 +78,7 @@ export function MenuBrowser({
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
+  const deferredSearch = useDeferredValue(searchTerm);
 
   const localize = useCallback(
     (en: string | null | undefined, mm?: string | null) => {
@@ -70,55 +90,94 @@ export function MenuBrowser({
     [menuLocale]
   );
 
-  const filteredCategories = useMemo<DisplayCategory[]>(() => {
-    const query = searchTerm.trim().toLowerCase();
+  const resetVisibleCategories = useCallback(() => {
+    setVisibleCategoryCount(INITIAL_CATEGORY_BATCH);
+  }, []);
 
-    return categories
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchTerm(value);
+      resetVisibleCategories();
+    },
+    [resetVisibleCategories]
+  );
+
+  const handleCategoryChange = useCallback(
+    (categoryId: string) => {
+      setActiveCategory(categoryId);
+      resetVisibleCategories();
+    },
+    [resetVisibleCategories]
+  );
+
+  const searchableCategories = useMemo<SearchableCategory[]>(() => {
+    return categories.map((category) => {
+      const displayName = localize(category.name, category.nameMm);
+      const secondaryCandidate =
+        menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
+      const secondaryName =
+        secondaryCandidate && secondaryCandidate !== displayName
+          ? secondaryCandidate
+          : null;
+
+      const searchableItems = category.items.map<SearchableItem>((item) => ({
+        record: item,
+        searchText: [
+          item.name,
+          item.nameMm ?? "",
+          item.description ?? "",
+          item.descriptionMm ?? "",
+        ]
+          .join(" ")
+          .toLowerCase(),
+      }));
+
+      return {
+        id: category.id,
+        displayName,
+        secondaryName,
+        searchableItems,
+      } satisfies SearchableCategory;
+    });
+  }, [categories, localize, menuLocale]);
+
+  const normalizedQuery = deferredSearch.trim().toLowerCase();
+
+  const filteredCategories = useMemo<DisplayCategory[]>(() => {
+    return searchableCategories
       .map<DisplayCategory | null>((category) => {
         if (activeCategory !== "all" && category.id !== activeCategory) {
           return null;
         }
 
-        const items = category.items.filter((item) => {
-          if (!query) return true;
-          const haystack = [
-            item.name,
-            item.nameMm ?? "",
-            item.description ?? "",
-            item.descriptionMm ?? "",
-          ]
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(query);
-        });
+        const matchingItems = normalizedQuery
+          ? category.searchableItems.filter((item) =>
+              item.searchText.includes(normalizedQuery)
+            )
+          : category.searchableItems;
 
-        if (items.length === 0) {
+        if (matchingItems.length === 0) {
           return null;
         }
 
-        const displayName = localize(category.name, category.nameMm);
-        const secondaryName =
-          menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
+        const count = matchingItems.length;
+        const pluralKey = pluralRules.select(count);
+        const itemCountTemplates = browser.itemCount as ItemCountDictionary | undefined;
+        const template =
+          itemCountTemplates?.[pluralKey as keyof ItemCountDictionary] ??
+          itemCountTemplates?.other ??
+          "{{count}}";
+
         return {
           id: category.id,
-          displayName,
-          secondaryName:
-            secondaryName && secondaryName !== displayName ? secondaryName : null,
-          itemCountLabel: (() => {
-            const count = items.length;
-            const pluralKey = pluralRules.select(count);
-            const itemCountTemplates = browser.itemCount as ItemCountDictionary | undefined;
-            const template =
-              itemCountTemplates?.[pluralKey as keyof ItemCountDictionary] ??
-              itemCountTemplates?.other ??
-              "{{count}}";
-            return template.replace("{{count}}", String(count));
-          })(),
-          items,
-        };
+          displayName: category.displayName,
+          secondaryName: category.secondaryName,
+          itemCountLabel: template.replace("{{count}}", String(count)),
+          items: matchingItems.map((entry) => entry.record),
+        } satisfies DisplayCategory;
       })
       .filter(Boolean) as DisplayCategory[];
-  }, [activeCategory, browser.itemCount, categories, localize, menuLocale, pluralRules, searchTerm]);
+  }, [activeCategory, browser.itemCount, normalizedQuery, pluralRules, searchableCategories]);
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -158,12 +217,12 @@ export function MenuBrowser({
     const allLabel = browser.categoryAll;
     return [
       { id: "all", name: allLabel },
-      ...categories.map(({ id, name, nameMm }) => ({
-        id,
-        name: localize(name, nameMm),
+      ...searchableCategories.map((category) => ({
+        id: category.id,
+        name: category.displayName,
       })),
     ];
-  }, [browser.categoryAll, categories, localize]);
+  }, [browser.categoryAll, searchableCategories]);
 
   const prioritizedItemId =
     renderedCategories[0]?.items[0]?.id ?? null;
@@ -226,7 +285,7 @@ export function MenuBrowser({
           <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => handleSearchChange(event.target.value)}
             placeholder={browser.searchPlaceholder}
             className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
           />
@@ -236,7 +295,7 @@ export function MenuBrowser({
           {categoryTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveCategory(tab.id)}
+              onClick={() => handleCategoryChange(tab.id)}
               aria-pressed={activeCategory === tab.id}
               className={clsx(
                 "rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
