@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, Search } from "lucide-react";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -57,6 +57,7 @@ export function MenuBrowser({
   );
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
+  const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
 
   const localize = useCallback(
@@ -169,7 +170,7 @@ export function MenuBrowser({
 
   return (
     <div className="space-y-10">
-      <section className="relative rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+  <section className="sticky top-4 z-30 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-lg backdrop-blur supports-backdrop-filter:bg-white/75 sm:top-6 sm:p-6">
   <div className="absolute right-4 top-6 flex items-center sm:right-6">
           <span className="sr-only">{browser.viewLabel}</span>
           <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
@@ -222,7 +223,7 @@ export function MenuBrowser({
         </div>
 
         <label className="mt-6 flex w-full items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm shadow-inner transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100">
-          <span className="text-base">🔍</span>
+          <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
@@ -266,6 +267,7 @@ export function MenuBrowser({
                 appLocale={appLocale}
                 compact={isCompact}
                 actionLabel={browser.viewDetails}
+                outOfStockLabel={outOfStockLabel}
                 priorityItemId={prioritizedItemId}
               />
             ))}
@@ -291,6 +293,7 @@ function MenuCategorySection({
   appLocale,
   compact,
   actionLabel,
+  outOfStockLabel,
   priorityItemId = null,
 }: {
   category: DisplayCategory;
@@ -298,6 +301,7 @@ function MenuCategorySection({
   appLocale: Locale;
   compact?: boolean;
   actionLabel: string;
+  outOfStockLabel: string;
   priorityItemId?: string | null;
 }) {
   const isCompact = !!compact;
@@ -328,6 +332,7 @@ function MenuCategorySection({
                 menuLocale={menuLocale}
                 appLocale={appLocale}
                 actionLabel={actionLabel}
+                outOfStockLabel={outOfStockLabel}
                 priority={priorityItemId === item.id}
               />
             ))}
@@ -341,6 +346,7 @@ function MenuCategorySection({
                 menuLocale={menuLocale}
                 appLocale={appLocale}
                 actionLabel={actionLabel}
+                outOfStockLabel={outOfStockLabel}
                 priority={priorityItemId === item.id}
               />
             ))}
@@ -355,12 +361,14 @@ function MenuItemCard({
   menuLocale,
   appLocale,
   actionLabel,
+  outOfStockLabel,
   priority,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
   appLocale: Locale;
   actionLabel: string;
+  outOfStockLabel: string;
   priority?: boolean;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
@@ -369,6 +377,79 @@ function MenuItemCard({
     menuLocale === "my"
       ? item.descriptionMm ?? item.description
       : item.description;
+  const isOutOfStock = !item.isAvailable;
+
+  const cardContent = (
+    <article
+      className={clsx(
+        "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition duration-200",
+        isOutOfStock
+          ? "border-slate-200 opacity-70 grayscale"
+          : "border-slate-200 group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg"
+      )}
+    >
+      <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-36 sm:h-40")}>
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt={displayName}
+            fill
+            className={clsx(
+              "object-cover transition duration-500",
+              !isOutOfStock && "group-hover:scale-105"
+            )}
+            sizes="(max-width: 768px) 100vw, 400px"
+            priority={priority}
+            loading={priority ? "eager" : undefined}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-4xl">
+            {item.placeholderIcon ?? "🍽️"}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{displayName}</h3>
+          {descriptionCopy ? (
+            <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
+              {descriptionCopy}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-auto flex items-center justify-between gap-3">
+          <span className="text-base font-semibold text-emerald-600 sm:text-lg">
+            ฿{formatPrice(item.price)}
+          </span>
+          <span
+            className={clsx(
+              "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-9 sm:w-9 sm:text-xl",
+              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white"
+            )}
+          >
+            +
+            <span className="sr-only">{actionLabel}</span>
+          </span>
+        </div>
+      </div>
+
+      {isOutOfStock ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/85 text-xs font-semibold uppercase tracking-wide text-slate-600">
+          {outOfStockLabel}
+        </div>
+      ) : null}
+    </article>
+  );
+
+  if (isOutOfStock) {
+    return (
+      <div className="group block h-full cursor-not-allowed" aria-disabled="true">
+        {cardContent}
+      </div>
+    );
+  }
 
   return (
     <Link
@@ -376,46 +457,7 @@ function MenuItemCard({
       href={detailHref}
       className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
-      <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg">
-        <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-36 sm:h-40")}>
-          {item.imageUrl ? (
-            <Image
-              src={item.imageUrl}
-              alt={displayName}
-              fill
-              className="object-cover transition duration-500 group-hover:scale-105"
-              sizes="(max-width: 768px) 100vw, 400px"
-              priority={priority}
-              loading={priority ? "eager" : undefined}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-4xl">
-              {item.placeholderIcon ?? "🍽️"}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
-          <div className="space-y-2">
-            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{displayName}</h3>
-            {descriptionCopy ? (
-              <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
-                {descriptionCopy}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="mt-auto flex items-center justify-between gap-3">
-            <span className="text-base font-semibold text-emerald-600 sm:text-lg">
-              ฿{formatPrice(item.price)}
-            </span>
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white sm:h-9 sm:w-9 sm:text-xl">
-              +
-              <span className="sr-only">{actionLabel}</span>
-            </span>
-          </div>
-        </div>
-      </article>
+      {cardContent}
     </Link>
   );
 }
@@ -425,12 +467,14 @@ function MenuItemRow({
   menuLocale,
   appLocale,
   actionLabel,
+  outOfStockLabel,
   priority,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
   appLocale: Locale;
   actionLabel: string;
+  outOfStockLabel: string;
   priority?: boolean;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
@@ -440,54 +484,86 @@ function MenuItemRow({
       ? item.descriptionMm ?? item.description
       : item.description;
 
+  const isOutOfStock = !item.isAvailable;
+
+  const rowContent = (
+    <article
+      className={clsx(
+        "relative flex items-start gap-3 rounded-2xl border bg-white p-3 shadow-sm transition sm:gap-4 sm:p-4",
+        isOutOfStock
+          ? "border-slate-200 opacity-70 grayscale"
+          : "border-slate-200 group-hover:border-emerald-300 group-hover:shadow-md"
+      )}
+    >
+      <div className="relative h-20 w-24 overflow-hidden rounded-xl bg-emerald-50 sm:w-28">
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt={displayName}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 40vw, 200px"
+            priority={priority}
+            loading={priority ? "eager" : undefined}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-3xl">
+            {item.placeholderIcon ?? "🍽️"}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 space-y-1">
+          <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
+            {displayName}
+          </h3>
+          {descriptionCopy ? (
+            <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
+              {descriptionCopy}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col items-end gap-2 text-right">
+          <span className="text-base font-semibold text-emerald-600 sm:text-lg">
+            ฿{formatPrice(item.price)}
+          </span>
+          <span
+            className={clsx(
+              "inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-8 sm:w-8 sm:text-lg",
+              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white"
+            )}
+          >
+            +
+            <span className="sr-only">{actionLabel}</span>
+          </span>
+        </div>
+      </div>
+
+      {isOutOfStock ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/85 text-xs font-semibold uppercase tracking-wide text-slate-600">
+          {outOfStockLabel}
+        </div>
+      ) : null}
+    </article>
+  );
+
+  if (isOutOfStock) {
+    return (
+      <div className="group block cursor-not-allowed" aria-disabled="true">
+        {rowContent}
+      </div>
+    );
+  }
+
   return (
     <Link
       prefetch={false}
       href={detailHref}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
-      <article className="relative flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition group-hover:border-emerald-300 group-hover:shadow-md sm:gap-4 sm:p-4">
-        <div className="relative h-20 w-24 overflow-hidden rounded-xl bg-emerald-50 sm:w-28">
-          {item.imageUrl ? (
-            <Image
-              src={item.imageUrl}
-              alt={displayName}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 40vw, 200px"
-              priority={priority}
-              loading={priority ? "eager" : undefined}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-3xl">
-              {item.placeholderIcon ?? "🍽️"}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-1 items-start justify-between gap-3 sm:gap-4">
-          <div className="min-w-0 space-y-1">
-            <h3 className="text-sm font-semibold text-slate-900 sm:text-base">
-              {displayName}
-            </h3>
-            {descriptionCopy ? (
-              <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
-                {descriptionCopy}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col items-end gap-2 text-right">
-            <span className="text-base font-semibold text-emerald-600 sm:text-lg">
-              ฿{formatPrice(item.price)}
-            </span>
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition group-hover:bg-emerald-600 group-hover:text-white sm:h-8 sm:w-8 sm:text-lg">
-              +
-              <span className="sr-only">{actionLabel}</span>
-            </span>
-          </div>
-        </div>
-      </article>
+      {rowContent}
     </Link>
   );
 }

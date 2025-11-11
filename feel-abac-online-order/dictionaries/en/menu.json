@@ -1,7 +1,7 @@
 {
   "header": {
     "title": "Menu",
-    "description": "Reachable at"
+    "description": "Browse dishes and start your order."
   },
   "browser": {
     "title": "Discover the menu",
@@ -15,6 +15,7 @@
     "viewList": "List view",
     "viewDetails": "View item details",
     "loadingMore": "Loading more dishes…",
+    "outOfStock": "Out of stock",
     "itemCount": {
       "one": "{{count}} item",
       "other": "{{count}} items"

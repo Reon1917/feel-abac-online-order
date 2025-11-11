@@ -60,6 +60,16 @@ type CategoryDialogState =
   | { mode: "edit"; category: MenuCategoryRecord }
   | null;
 
+type BuilderTab = "categories" | "items" | "details";
+
+type BuilderTabOption = {
+  id: BuilderTab;
+  label: string;
+  helper?: string;
+  disabled?: boolean;
+};
+
+
 function nextDisplayOrder(records: { displayOrder: number }[]) {
   if (records.length === 0) return 0;
   return Math.max(...records.map((record) => record.displayOrder ?? 0)) + 1;
@@ -95,6 +105,7 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [activeTab, setActiveTab] = useState<BuilderTab>("categories");
 
   const refreshMenu = useCallback(
     async (opts?: { categoryId?: string | null; itemId?: string | null }) => {
@@ -151,6 +162,7 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
         categoryId: selectedCategory.id,
         itemId: item.id,
       });
+      setActiveTab("details");
     } catch (error) {
       console.error(error);
       toast.error(
@@ -238,6 +250,26 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
     [refreshMenu]
   );
 
+  const handleSelectCategory = useCallback(
+    (categoryId: string) => {
+      setSelectedCategory(categoryId);
+      setActiveTab("items");
+    },
+    [setSelectedCategory]
+  );
+
+  const handleSelectItem = useCallback(
+    (itemId: string) => {
+      setSelectedItem(itemId);
+      setActiveTab("details");
+    },
+    [setSelectedItem]
+  );
+
+  const handleSelectTab = useCallback((tab: BuilderTab) => {
+    setActiveTab(tab);
+  }, []);
+
   const handleBackToDashboard = () => {
     if (hasUnsavedChanges) {
       setExitDialogOpen(true);
@@ -298,6 +330,41 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
       ? "Everything autosaves as you go—no more lost work. Preview changes instantly and publish when you’re ready."
       : "Organize categories, curate dishes, and adjust availability without leaving this workspace. Autosave keeps drafts safe while you experiment.";
 
+  const builderTabs = useMemo<BuilderTabOption[]>(
+    () => [
+      {
+        id: "categories",
+        label: "Categories",
+        helper: "Organize sections",
+      },
+      {
+        id: "items",
+        label: "Menu list",
+        helper: selectedCategory ? `Inside ${selectedCategory.nameEn}` : "Pick a category",
+        disabled: !selectedCategory,
+      },
+      {
+        id: "details",
+        label: "Menu details",
+        helper: selectedItem ? "Edit copy & pricing" : "Choose an item",
+        disabled: !selectedItem,
+      },
+    ],
+    [selectedCategory, selectedItem]
+  );
+
+  useEffect(() => {
+    setActiveTab((current) => {
+      if (current === "items" && !selectedCategory) {
+        return "categories";
+      }
+      if (current === "details" && !selectedItem) {
+        return selectedCategory ? "items" : "categories";
+      }
+      return current;
+    });
+  }, [selectedCategory, selectedItem]);
+
   const headerContent = (
     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div className="space-y-2">
@@ -342,27 +409,76 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
     </div>
   );
 
-  const gridContent = (
-  <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <CategoryPanel
-        menu={menu}
-        selectedCategoryId={selectedCategoryId}
-        selectedItemId={selectedItemId}
-        onSelectCategory={(categoryId) => setSelectedCategory(categoryId)}
-        onSelectItem={(itemId) => setSelectedItem(itemId)}
-        onCreateDraftItem={handleCreateDraftItem}
-        onCreateCategory={handleCreateCategory}
-        onUpdateCategory={handleUpdateCategory}
-        onDeleteCategory={handleDeleteCategory}
-        primaryActionClassName={primaryActionClasses}
-        subtleActionClassName={subtleActionClasses}
-        switchToneClassName={switchToneClasses}
-      />
+  const builderContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
+        {builderTabs.map((tab) => {
+          const isActive = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleSelectTab(tab.id)}
+              disabled={tab.disabled}
+              className={cn(
+                "flex min-w-[150px] flex-col rounded-xl px-4 py-2 text-left text-sm font-semibold transition",
+                isActive
+                  ? "bg-white text-emerald-700 shadow"
+                  : "text-slate-600 hover:text-slate-900",
+                tab.disabled
+                  ? "cursor-not-allowed opacity-50 hover:text-slate-600"
+                  : ""
+              )}
+            >
+              <span>{tab.label}</span>
+              {tab.helper ? (
+                <span className="text-xs font-normal text-slate-500">
+                  {tab.helper}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
 
-      <MenuEditor
-        refreshMenu={refreshMenu}
-        onDirtyChange={setHasUnsavedChanges}
-      />
+      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className={cn(activeTab !== "categories" && "hidden")}>
+          <div className="p-4 sm:p-6">
+            <CategoriesCard
+              menu={menu}
+              selectedCategoryId={selectedCategoryId}
+              onSelectCategory={handleSelectCategory}
+              onCreateCategory={handleCreateCategory}
+              onUpdateCategory={handleUpdateCategory}
+              onDeleteCategory={handleDeleteCategory}
+              primaryActionClassName={primaryActionClasses}
+              subtleActionClassName={subtleActionClasses}
+              switchToneClassName={switchToneClasses}
+            />
+          </div>
+        </div>
+
+        <div className={cn(activeTab !== "items" && "hidden")}>
+          <div className="p-4 sm:p-6">
+            <ItemsCard
+              selectedCategory={selectedCategory}
+              selectedItemId={selectedItemId}
+              onSelectItem={handleSelectItem}
+              onCreateDraftItem={handleCreateDraftItem}
+              primaryActionClassName={primaryActionClasses}
+            />
+          </div>
+        </div>
+
+        <div className={cn(activeTab !== "details" && "hidden")}>
+          <div className="p-0 sm:p-4 lg:p-6">
+            <MenuEditor
+              refreshMenu={refreshMenu}
+              onDirtyChange={setHasUnsavedChanges}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -372,12 +488,12 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
         <div className="border-b border-slate-200 bg-linear-to-br from-white via-white to-emerald-50/80 p-6">
           {headerContent}
         </div>
-        <div className="p-6">{gridContent}</div>
+        <div className="p-6">{builderContent}</div>
       </section>
     ) : (
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6">
         {headerContent}
-        {gridContent}
+        {builderContent}
       </div>
     );
 
@@ -427,18 +543,11 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
   );
 }
 
-type CategoryPanelProps = {
+type CategoriesCardProps = {
   menu: MenuCategoryRecord[];
   selectedCategoryId: string | null;
-  selectedItemId: string | null;
-  onSelectCategory: (categoryId: string | null) => void;
-  onSelectItem: (itemId: string | null) => void;
-  onCreateDraftItem: () => Promise<void>;
-  onCreateCategory: (values: {
-    nameEn: string;
-    nameMm?: string;
-    isActive: boolean;
-  }) => Promise<void>;
+  onSelectCategory: (categoryId: string) => void;
+  onCreateCategory: (values: { nameEn: string; nameMm?: string; isActive: boolean }) => Promise<void>;
   onUpdateCategory: (
     categoryId: string,
     updates: Partial<{ nameEn: string; nameMm?: string; isActive: boolean }>
@@ -449,30 +558,22 @@ type CategoryPanelProps = {
   switchToneClassName: string;
 };
 
-function CategoryPanel({
+function CategoriesCard({
   menu,
   selectedCategoryId,
-  selectedItemId,
   onSelectCategory,
-  onSelectItem,
-  onCreateDraftItem,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
   primaryActionClassName,
   subtleActionClassName,
   switchToneClassName,
-}: CategoryPanelProps) {
+}: CategoriesCardProps) {
   const [dialogState, setDialogState] = useState<CategoryDialogState>(null);
   const [nameEn, setNameEn] = useState("");
   const [nameMm, setNameMm] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const selectedCategory = useMemo(() => {
-    if (!selectedCategoryId) return null;
-    return menu.find((category) => category.id === selectedCategoryId) ?? null;
-  }, [menu, selectedCategoryId]);
 
   useEffect(() => {
     if (!dialogState) {
@@ -481,6 +582,7 @@ function CategoryPanel({
       setIsActive(true);
       return;
     }
+
     if (dialogState.mode === "edit") {
       setNameEn(dialogState.category.nameEn);
       setNameMm(dialogState.category.nameMm ?? "");
@@ -497,6 +599,7 @@ function CategoryPanel({
       toast.error("English name is required.");
       return;
     }
+
     setIsSubmitting(true);
     try {
       if (dialogState?.mode === "edit") {
@@ -519,17 +622,17 @@ function CategoryPanel({
   };
 
   return (
-    <div className="space-y-4">
-      <Card className="shadow-sm flex flex-col md:h-[560px]">
-        <CardHeader className="pb-4">
+    <div className="space-y-3 sm:space-y-4">
+      <Card className="flex flex-col shadow-sm md:h-[560px]">
+        <CardHeader className="space-y-1.5 p-4 pb-3 sm:p-6 sm:pb-4">
           <CardTitle className="text-lg font-semibold text-slate-900">
-            Step 1 · Pick a category
+            Step 1 · Organize categories
           </CardTitle>
           <CardDescription className="text-sm text-slate-600">
-            Categories keep your menu tidy. Choose one to see its dishes.
+            Categories keep your menu tidy. Choose one to work on its dishes.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex h-full flex-col gap-4 overflow-hidden">
+        <CardContent className="flex h-full flex-col gap-3 overflow-hidden p-4 sm:gap-4 sm:p-6">
           <div className="flex justify-end">
             <Button
               type="button"
@@ -547,7 +650,7 @@ function CategoryPanel({
                 No categories yet. Create one to begin building your menu.
               </div>
             ) : (
-              <div className="space-y-3 pr-1">
+              <div className="space-y-2 pr-1 sm:space-y-3">
                 {menu.map((category) => {
                   const isSelected = category.id === selectedCategoryId;
                   return (
@@ -570,11 +673,11 @@ function CategoryPanel({
                             <p className="text-sm font-semibold text-slate-900">
                               {category.nameEn}
                             </p>
-                            {category.nameMm && (
+                            {category.nameMm ? (
                               <p className="text-xs text-slate-500">
                                 {category.nameMm}
                               </p>
-                            )}
+                            ) : null}
                           </div>
                           <span
                             className={cn(
@@ -598,9 +701,7 @@ function CategoryPanel({
                             <Switch
                               checked={category.isActive}
                               onCheckedChange={(checked) =>
-                                onUpdateCategory(category.id, {
-                                  isActive: checked,
-                                })
+                                onUpdateCategory(category.id, { isActive: checked })
                               }
                               className={switchToneClassName}
                             />
@@ -624,86 +725,6 @@ function CategoryPanel({
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-sm flex flex-col md:h-[560px]">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg font-semibold text-slate-900">
-            Step 2 · Add dishes & drinks
-          </CardTitle>
-          <CardDescription className="text-sm text-slate-600">
-            {selectedCategory
-              ? `You're working inside ${selectedCategory.nameEn}. Pick an existing item or add something new.`
-              : "Choose a category first, then start adding dishes and drinks here."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex h-full flex-col gap-4 overflow-hidden">
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              type="button"
-              onClick={() => void onCreateDraftItem()}
-              disabled={!selectedCategory}
-              className={primaryActionClassName}
-            >
-              <PlusCircleIcon className="size-4" />
-              Add menu item
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {selectedCategory ? (
-              selectedCategory.items.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                  No items yet. Click “Add menu item” to start filling this category.
-                </div>
-              ) : (
-                <div className="space-y-2 pr-1">
-                  {selectedCategory.items.map((item) => {
-                    const isActive = item.id === selectedItemId;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => onSelectItem(item.id)}
-                        className={cn(
-                          "w-full rounded-lg border px-3 py-2 text-left transition hover:border-emerald-300",
-                          isActive
-                            ? "border-emerald-400 bg-emerald-50 shadow-sm"
-                            : "border-slate-200 bg-white"
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">
-                              {item.nameEn}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {item.descriptionEn
-                                ? item.descriptionEn.slice(0, 60)
-                                : "No description yet"}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xs font-semibold text-slate-600">
-                              {item.status === "published" ? "Live" : "Draft"}
-                            </span>
-                            <div className="text-xs text-slate-500">
-                              {formatMoney(item.price)}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-                Choose a category above to see its items.
               </div>
             )}
           </div>
@@ -745,7 +766,7 @@ function CategoryPanel({
               </span>
               <Switch
                 checked={isActive}
-                onCheckedChange={(checked) => setIsActive(checked)}
+                onCheckedChange={setIsActive}
                 className={switchToneClassName}
               />
             </div>
@@ -776,3 +797,100 @@ function CategoryPanel({
     </div>
   );
 }
+
+type ItemsCardProps = {
+  selectedCategory: MenuCategoryRecord | null;
+  selectedItemId: string | null;
+  onSelectItem: (itemId: string) => void;
+  onCreateDraftItem: () => Promise<void>;
+  primaryActionClassName: string;
+};
+
+function ItemsCard({
+  selectedCategory,
+  selectedItemId,
+  onSelectItem,
+  onCreateDraftItem,
+  primaryActionClassName,
+}: ItemsCardProps) {
+  return (
+    <Card className="flex flex-col shadow-sm md:h-[560px]">
+      <CardHeader className="space-y-1.5 p-4 pb-3 sm:p-6 sm:pb-4">
+        <CardTitle className="text-lg font-semibold text-slate-900">
+          Step 2 · Curate menu items
+        </CardTitle>
+        <CardDescription className="text-sm text-slate-600">
+          {selectedCategory
+            ? `You're working inside ${selectedCategory.nameEn}. Pick an existing item or add something new.`
+            : "Choose a category first, then start adding dishes and drinks here."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex h-full flex-col gap-3 overflow-hidden p-4 sm:gap-4 sm:p-6">
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            type="button"
+            onClick={() => void onCreateDraftItem()}
+            disabled={!selectedCategory}
+            className={primaryActionClassName}
+          >
+            <PlusCircleIcon className="size-4" />
+            Add menu item
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {!selectedCategory ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+              Choose a category above to see its items.
+            </div>
+          ) : selectedCategory.items.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+              No items yet. Click “Add menu item” to start filling this category.
+            </div>
+          ) : (
+            <div className="space-y-2 pr-1">
+              {selectedCategory.items.map((item) => {
+                const isActive = item.id === selectedItemId;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectItem(item.id)}
+                    className={cn(
+                      "w-full rounded-lg border px-3 py-2 text-left transition hover:border-emerald-300",
+                      isActive
+                        ? "border-emerald-400 bg-emerald-50 shadow-sm"
+                        : "border-slate-200 bg-white"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {item.nameEn}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {item.descriptionEn
+                            ? item.descriptionEn.slice(0, 60)
+                            : "No description yet"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-semibold text-slate-600">
+                          {item.status === "published" ? "Live" : "Draft"}
+                        </span>
+                        <div className="text-xs text-slate-500">
+                          {formatMoney(item.price)}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+

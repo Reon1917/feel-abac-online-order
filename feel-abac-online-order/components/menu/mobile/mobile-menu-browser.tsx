@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+
 import clsx from "clsx";
+import { Search } from "lucide-react";
 
 import styles from "./mobile-menu.module.css";
 import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
@@ -40,6 +42,7 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
   );
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
+  const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const localize = useCallback(
@@ -162,7 +165,7 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
 
       <div className={styles.controlRow}>
         <label className={styles.searchField}>
-          <span className={styles.searchIcon}>🔍</span>
+          <Search className={styles.searchIcon} aria-hidden="true" />
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
@@ -208,6 +211,7 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
                         menuLocale={menuLocale}
                         appLocale={appLocale}
                         actionLabel={dictionary.browser.viewDetails}
+                        outOfStockLabel={outOfStockLabel}
                       />
                     </li>
                   ))}
@@ -235,18 +239,26 @@ type MobileMenuCardProps = {
   menuLocale: Locale;
   appLocale: Locale;
   actionLabel: string;
+  outOfStockLabel: string;
 };
 
-function MobileMenuListItem({ item, menuLocale, appLocale, actionLabel }: MobileMenuCardProps) {
+function MobileMenuListItem({
+  item,
+  menuLocale,
+  appLocale,
+  actionLabel,
+  outOfStockLabel,
+}: MobileMenuCardProps) {
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
     menuLocale === "my"
       ? item.descriptionMm ?? item.description ?? null
       : item.description ?? item.descriptionMm ?? null;
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
+  const isOutOfStock = !item.isAvailable;
 
-  return (
-    <Link prefetch={false} href={detailHref} className={styles.listInner}>
+  const content = (
+    <>
       <div className={styles.listImage}>
         {item.imageUrl ? (
           <Image
@@ -272,7 +284,23 @@ function MobileMenuListItem({ item, menuLocale, appLocale, actionLabel }: Mobile
         +
         <span className="sr-only">{actionLabel}</span>
       </span>
-    </Link>
+      {isOutOfStock ? (
+        <div className={styles.outOfStockOverlay}>{outOfStockLabel}</div>
+      ) : null}
+    </>
+  );
 
+  if (isOutOfStock) {
+    return (
+      <div className={clsx(styles.listInner, styles.listInnerDisabled)} aria-disabled="true">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link prefetch={false} href={detailHref} className={styles.listInner}>
+      {content}
+    </Link>
   );
 }

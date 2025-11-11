@@ -1,10 +1,9 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AdminBar } from "@/components/admin/admin-bar";
 import { ResponsiveMenuBrowser } from "@/components/menu/responsive-menu-browser";
-import { PhoneEditModalClient } from "@/components/menu/phone-edit-modal-client";
+import { UserProfileMenu } from "@/components/menu/user-profile-menu";
 import { getPublicMenuHierarchy } from "@/lib/menu/queries";
 import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
@@ -52,7 +51,13 @@ export default async function MenuPage({ params }: PageProps) {
   return (
     <>
       {sessionData.isAdmin && <AdminBar />}
-      <nav className="flex items-center justify-end bg-white px-6 py-4 sm:px-10 lg:px-12">
+      <nav className="flex items-center justify-between bg-white px-6 py-4 sm:px-10 lg:px-12">
+        <UserProfileMenu
+          name={sessionData.session.user.name}
+          email={sessionData.session.user.email}
+          phoneNumber={profile.phoneNumber}
+          labels={common.profileMenu}
+        />
         <Suspense fallback={<div className="w-40" />}>
           <UiLanguageSwitcher
             locale={locale}
@@ -65,17 +70,8 @@ export default async function MenuPage({ params }: PageProps) {
           <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{dict.header.title}</h1>
-              <p className="flex items-center gap-1 text-sm text-slate-600">
-              {dict.header.description}{" "}
-              <strong className="font-semibold text-slate-800">
-                {profile.phoneNumber}
-              </strong>
-              <Suspense fallback={null}>
-                <PhoneEditModalClient currentPhone={profile.phoneNumber} />
-              </Suspense>
-            </p>
-          </div>
-            <SignOutButton />
+              <p className="text-sm text-slate-600">{dict.header.description}</p>
+            </div>
           </header>
 
           {hasMenu ? (

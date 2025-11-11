@@ -18,9 +18,18 @@
 }
 
 .controlRow {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 34px -20px rgba(15, 23, 42, 0.35);
 }
 
 .searchField {
@@ -34,7 +43,10 @@
 }
 
 .searchIcon {
-  font-size: 1rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: #94a3b8;
+  flex-shrink: 0;
 }
 
 .searchInput {
@@ -170,6 +182,18 @@
 .listInner:focus-visible {
   outline: 2px solid #a7f3d0;
   outline-offset: 3px;
+}
+
+.listInnerDisabled {
+  cursor: not-allowed;
+  filter: grayscale(0.65);
+  opacity: 0.75;
+}
+
+.listInnerDisabled:hover {
+  border-color: #e2e8f0;
+  box-shadow: rgba(15, 23, 42, 0.04) 0px 6px 12px -8px;
+  transform: none;
 }
 
 .listImage {
@@ -315,6 +339,22 @@
   pointer-events: none;
 }
 
+.outOfStockOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+  pointer-events: none;
+}
+
 .listInner:hover .addButton {
   background: #047857;
 }
@@ -330,6 +370,11 @@
 
   .headerSubtitle {
     font-size: 0.9rem;
+  }
+
+  .controlRow {
+    padding: 0.65rem 0.6rem 0.75rem;
+    border-radius: 0.9rem;
   }
 
   .cardBody {
@@ -473,6 +518,11 @@
 
   .headerSubtitle {
     font-size: 0.76rem;
+  }
+
+  .controlRow {
+    padding: 0.6rem 0.5rem 0.7rem;
+    border-radius: 0.8rem;
   }
 
   .controlRow {

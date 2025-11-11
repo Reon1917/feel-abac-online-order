@@ -8,5 +8,13 @@
     "label": "Menu language",
     "english": "English names",
     "burmese": "Burmese names"
+  },
+  "profileMenu": {
+    "trigger": "Profile",
+    "title": "Your profile",
+    "description": "Review your account details and quick actions.",
+    "signedInAs": "Signed in as",
+    "phone": "Phone",
+    "email": "Email"
   }
 }

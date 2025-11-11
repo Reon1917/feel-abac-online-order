@@ -98,6 +98,7 @@ export type PublicMenuItem = {
   placeholderIcon: string | null;
   menuCode: string | null;
   allowUserNotes: boolean;
+  isAvailable: boolean;
   choiceGroups: PublicMenuChoiceGroup[];
   displayOrder: number;
 };
