@@ -17,6 +17,7 @@ import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { useCartDraft } from "./cart-draft-provider";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -75,6 +76,7 @@ export function MenuBrowser({
     INITIAL_CATEGORY_BATCH
   );
   const { menuLocale } = useMenuLocale();
+  const { queueAddition } = useCartDraft();
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
@@ -142,6 +144,13 @@ export function MenuBrowser({
   }, [categories, localize, menuLocale]);
 
   const normalizedQuery = deferredSearch.trim().toLowerCase();
+
+  const handleQuickAdd = useCallback(
+    (item: PublicMenuItem, rect?: DOMRect | null) => {
+      queueAddition(item, rect ?? null);
+    },
+    [queueAddition]
+  );
 
   const filteredCategories = useMemo<DisplayCategory[]>(() => {
     return searchableCategories
@@ -328,6 +337,7 @@ export function MenuBrowser({
                 actionLabel={browser.viewDetails}
                 outOfStockLabel={outOfStockLabel}
                 priorityItemId={prioritizedItemId}
+                onQuickAdd={handleQuickAdd}
               />
             ))}
           </div>
@@ -354,6 +364,7 @@ function MenuCategorySection({
   actionLabel,
   outOfStockLabel,
   priorityItemId = null,
+  onQuickAdd,
 }: {
   category: DisplayCategory;
   menuLocale: Locale;
@@ -362,6 +373,7 @@ function MenuCategorySection({
   actionLabel: string;
   outOfStockLabel: string;
   priorityItemId?: string | null;
+  onQuickAdd?: (item: PublicMenuItem, rect?: DOMRect | null) => void;
 }) {
   const isCompact = !!compact;
   const itemCountLabel = category.itemCountLabel;
@@ -393,6 +405,7 @@ function MenuCategorySection({
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
                 priority={priorityItemId === item.id}
+                onQuickAdd={onQuickAdd}
               />
             ))}
           </div>
@@ -407,6 +420,7 @@ function MenuCategorySection({
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
                 priority={priorityItemId === item.id}
+                onQuickAdd={onQuickAdd}
               />
             ))}
           </div>
@@ -422,6 +436,7 @@ function MenuItemCard({
   actionLabel,
   outOfStockLabel,
   priority,
+  onQuickAdd,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
@@ -429,6 +444,7 @@ function MenuItemCard({
   actionLabel: string;
   outOfStockLabel: string;
   priority?: boolean;
+  onQuickAdd?: (item: PublicMenuItem, rect?: DOMRect | null) => void;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -437,6 +453,8 @@ function MenuItemCard({
       ? item.descriptionMm ?? item.description
       : item.description;
   const isOutOfStock = !item.isAvailable;
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const canQuickAdd = (item.choiceGroups?.length ?? 0) === 0;
 
   const cardContent = (
     <article
@@ -482,15 +500,28 @@ function MenuItemCard({
           <span className="text-base font-semibold text-emerald-600 sm:text-lg">
             ฿{formatPrice(item.price)}
           </span>
-          <span
+          <button
+            ref={addButtonRef}
+            type="button"
+            aria-label={actionLabel}
+            aria-disabled={!canQuickAdd || isOutOfStock}
             className={clsx(
               "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-9 sm:w-9 sm:text-xl",
-              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white"
+              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
+              (!canQuickAdd || isOutOfStock) && "cursor-default opacity-60"
             )}
+            onClick={(event) => {
+              if (!canQuickAdd || isOutOfStock) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
+              onQuickAdd?.(item, rect);
+            }}
           >
             +
-            <span className="sr-only">{actionLabel}</span>
-          </span>
+          </button>
         </div>
       </div>
 
@@ -528,6 +559,7 @@ function MenuItemRow({
   actionLabel,
   outOfStockLabel,
   priority,
+  onQuickAdd,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
@@ -535,6 +567,7 @@ function MenuItemRow({
   actionLabel: string;
   outOfStockLabel: string;
   priority?: boolean;
+  onQuickAdd?: (item: PublicMenuItem, rect?: DOMRect | null) => void;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -544,6 +577,8 @@ function MenuItemRow({
       : item.description;
 
   const isOutOfStock = !item.isAvailable;
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const canQuickAdd = (item.choiceGroups?.length ?? 0) === 0;
 
   const rowContent = (
     <article
@@ -588,15 +623,28 @@ function MenuItemRow({
           <span className="text-base font-semibold text-emerald-600 sm:text-lg">
             ฿{formatPrice(item.price)}
           </span>
-          <span
+          <button
+            ref={addButtonRef}
+            type="button"
+            aria-label={actionLabel}
+            aria-disabled={!canQuickAdd || isOutOfStock}
             className={clsx(
               "inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-8 sm:w-8 sm:text-lg",
-              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white"
+              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
+              (!canQuickAdd || isOutOfStock) && "cursor-default opacity-60"
             )}
+            onClick={(event) => {
+              if (!canQuickAdd || isOutOfStock) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
+              onQuickAdd?.(item, rect);
+            }}
           >
             +
-            <span className="sr-only">{actionLabel}</span>
-          </span>
+          </button>
         </div>
       </div>
 

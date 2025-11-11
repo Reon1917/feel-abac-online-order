@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import {
@@ -107,6 +108,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return Response.json({ error: "Menu item not found" }, { status: 404 });
   }
 
+  revalidateTag("public-menu", "default");
+
   return Response.json({ item });
 }
 
@@ -135,6 +138,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   if (imageKey) {
     await deleteMenuImageByKey(imageKey).catch(() => undefined);
   }
+
+  revalidateTag("public-menu", "default");
 
   return Response.json({ success: true });
 }

@@ -336,7 +336,14 @@
   font-size: 1.25rem;
   box-shadow: rgba(15, 23, 42, 0.08) 0px 6px 14px -6px;
   transition: transform 150ms ease, background-color 150ms ease;
-  pointer-events: none;
+  pointer-events: auto;
+  border: none;
+  cursor: pointer;
+}
+
+.addButtonDisabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .outOfStockOverlay {

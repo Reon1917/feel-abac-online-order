@@ -13,6 +13,7 @@ import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { useCartDraft } from "../cart-draft-provider";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -41,6 +42,7 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
     INITIAL_CATEGORY_BATCH
   );
   const { menuLocale } = useMenuLocale();
+  const { queueAddition } = useCartDraft();
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -206,15 +208,16 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
                 <ul className={styles.sectionList}>
                   {category.items.map((item) => (
                     <li key={item.id} className={styles.listItem}>
-                      <MobileMenuListItem
-                        item={item}
-                        menuLocale={menuLocale}
-                        appLocale={appLocale}
-                        actionLabel={dictionary.browser.viewDetails}
-                        outOfStockLabel={outOfStockLabel}
-                      />
-                    </li>
-                  ))}
+                    <MobileMenuListItem
+                      item={item}
+                      menuLocale={menuLocale}
+                      appLocale={appLocale}
+                      actionLabel={dictionary.browser.viewDetails}
+                      outOfStockLabel={outOfStockLabel}
+                      onQuickAdd={(candidate, rect) => queueAddition(candidate, rect ?? null)}
+                    />
+                  </li>
+                ))}
                 </ul>
               </section>
             ))}
@@ -240,6 +243,7 @@ type MobileMenuCardProps = {
   appLocale: Locale;
   actionLabel: string;
   outOfStockLabel: string;
+  onQuickAdd?: (item: PublicMenuItem, rect?: DOMRect | null) => void;
 };
 
 function MobileMenuListItem({
@@ -248,6 +252,7 @@ function MobileMenuListItem({
   appLocale,
   actionLabel,
   outOfStockLabel,
+  onQuickAdd,
 }: MobileMenuCardProps) {
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
   const descriptionCopy =
@@ -256,6 +261,8 @@ function MobileMenuListItem({
       : item.description ?? item.descriptionMm ?? null;
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const isOutOfStock = !item.isAvailable;
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const canQuickAdd = (item.choiceGroups?.length ?? 0) === 0;
 
   const content = (
     <>
@@ -280,10 +287,24 @@ function MobileMenuListItem({
           <span className={styles.price}>฿{formatPrice(item.price)}</span>
         </div>
       </div>
-      <span className={styles.addButton}>
+      <button
+        ref={addButtonRef}
+        type="button"
+        className={clsx(styles.addButton, (!canQuickAdd || isOutOfStock) && styles.addButtonDisabled)}
+        aria-label={actionLabel}
+        aria-disabled={!canQuickAdd || isOutOfStock}
+        onClick={(event) => {
+          if (!canQuickAdd || isOutOfStock) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
+          onQuickAdd?.(item, rect);
+        }}
+      >
         +
-        <span className="sr-only">{actionLabel}</span>
-      </span>
+      </button>
       {isOutOfStock ? (
         <div className={styles.outOfStockOverlay}>{outOfStockLabel}</div>
       ) : null}

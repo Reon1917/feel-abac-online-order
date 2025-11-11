@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
@@ -30,10 +31,14 @@ export async function POST(request: NextRequest) {
 
   try {
     if (payload.mode === "categories") {
-      return await applyCategoryReorder(payload);
+      const response = await applyCategoryReorder(payload);
+      revalidateTag("public-menu", "default");
+      return response;
     }
 
-    return await applyItemReorder(payload);
+    const response = await applyItemReorder(payload);
+    revalidateTag("public-menu", "default");
+    return response;
   } catch (error) {
     console.error("[menu/reorder] failed to update display order", error);
     return Response.json(

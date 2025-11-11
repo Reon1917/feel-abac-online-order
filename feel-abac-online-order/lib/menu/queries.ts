@@ -287,7 +287,7 @@ export const getPublicMenuHierarchy = unstable_cache(
   ["public-menu-hierarchy"],
   {
     tags: ["public-menu"],
-    revalidate: 60,
+    revalidate: 300,
   }
 );
 

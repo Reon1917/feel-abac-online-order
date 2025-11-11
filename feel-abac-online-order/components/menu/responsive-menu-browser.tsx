@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { MenuBrowser } from "./menu-browser";
 import { MobileMenuBrowser } from "./mobile";
 import { CartPeekButton } from "./cart-peek-button";
+import { CartDraftProvider } from "./cart-draft-provider";
 import { PublicMenuCategory } from "@/lib/menu/types";
 import type { Locale } from "@/lib/i18n/config";
 import type { CartSummary } from "@/lib/cart/types";
@@ -59,7 +60,7 @@ export function ResponsiveMenuBrowser({
   const isMobile = useMediaQuery(MOBILE_QUERY);
 
   return (
-    <>
+    <CartDraftProvider messages={dictionary.cartToasts}>
       {isMobile ? (
         <MobileMenuBrowser
           categories={categories}
@@ -81,6 +82,6 @@ export function ResponsiveMenuBrowser({
         dictionary={dictionary.cartPeek}
         cartHref={cartHref}
       />
-    </>
+    </CartDraftProvider>
   );
 }
