@@ -363,14 +363,15 @@ type InsertCartLinePlan = {
   choices: ChoiceDetail[];
 };
 
-type UpdateCartLinePlan = {
-  type: "update";
+type IncrementCartLinePlan = {
+  type: "increment";
   cartItemId: string;
   unitTotal: number;
-  quantity: number;
+  delta: number;
+  plannedQuantity: number;
 };
 
-type CartLinePlan = InsertCartLinePlan | UpdateCartLinePlan;
+type CartLinePlan = InsertCartLinePlan | IncrementCartLinePlan;
 
 function isInsertPlan(plan: CartLinePlan): plan is InsertCartLinePlan {
   return plan.type === "insert";
@@ -399,6 +400,7 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
   type DbBatchInput = Parameters<typeof db.batch>[0];
   type BatchStatement = DbBatchInput[number];
   const statements: BatchStatement[] = [];
+  const incrementStatementIndexes: number[] = [];
 
   for (const plan of plans.values()) {
     if (isInsertPlan(plan)) {
@@ -433,16 +435,26 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
         );
       }
     } else {
-      statements.push(
-        db
-          .update(cartItems)
-          .set({
-            quantity: plan.quantity,
-            totalPrice: toNumericString(plan.unitTotal * plan.quantity),
-            updatedAt: new Date(),
-          })
-          .where(eq(cartItems.id, plan.cartItemId))
-      );
+      const deltaParam = plan.delta;
+      const unitTotalParam = plan.unitTotal;
+      const statement = db
+        .update(cartItems)
+        .set({
+          quantity: sql`${cartItems.quantity} + ${deltaParam}`,
+          totalPrice: sql`${cartItems.totalPrice} + ${toNumericString(
+            unitTotalParam * deltaParam
+          )}`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(cartItems.id, plan.cartItemId),
+            sql`${cartItems.quantity} + ${deltaParam} <= ${MAX_QUANTITY_PER_LINE}`
+          )
+        )
+        .returning({ quantity: cartItems.quantity });
+      const index = statements.push(statement) - 1;
+      incrementStatementIndexes.push(index);
     }
   }
 
@@ -451,7 +463,18 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
     return subtotal;
   }
 
-  await db.batch(statements as [BatchStatement, ...BatchStatement[]]);
+  const results = (await db.batch(
+    statements as [BatchStatement, ...BatchStatement[]]
+  )) as unknown[];
+
+  for (const index of incrementStatementIndexes) {
+    const row = results[index] as Array<{ quantity: number }>;
+    if (!row || row.length === 0) {
+      throw new Error(
+        `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+      );
+    }
+  }
 
   const nextSubtotal = await recalculateCartTotals(cart.id);
 
@@ -488,13 +511,24 @@ async function buildCartLinePlans(cartId: string, inputs: AddToCartInput[]) {
 
     const existingPlan = plans.get(hashKey);
     if (existingPlan) {
-      const nextQuantity = existingPlan.quantity + quantity;
-      if (nextQuantity > MAX_QUANTITY_PER_LINE) {
-        throw new Error(
-          `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
-        );
+      if (isInsertPlan(existingPlan)) {
+        const nextQuantity = existingPlan.quantity + quantity;
+        if (nextQuantity > MAX_QUANTITY_PER_LINE) {
+          throw new Error(
+            `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+          );
+        }
+        existingPlan.quantity = nextQuantity;
+      } else {
+        const nextQuantity = existingPlan.plannedQuantity + quantity;
+        if (nextQuantity > MAX_QUANTITY_PER_LINE) {
+          throw new Error(
+            `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+          );
+        }
+        existingPlan.delta += quantity;
+        existingPlan.plannedQuantity = nextQuantity;
       }
-      existingPlan.quantity = nextQuantity;
       continue;
     }
 
@@ -517,10 +551,11 @@ async function buildCartLinePlans(cartId: string, inputs: AddToCartInput[]) {
       }
 
       plans.set(hashKey, {
-        type: "update",
+        type: "increment",
         cartItemId: existingItem.id,
         unitTotal: storedUnitTotal,
-        quantity: nextQuantity,
+        delta: quantity,
+        plannedQuantity: nextQuantity,
       });
       continue;
     }
@@ -531,20 +566,20 @@ async function buildCartLinePlans(cartId: string, inputs: AddToCartInput[]) {
     );
     const unitTotal = item.price + addonsTotal;
 
-    plans.set(hashKey, {
-      type: "insert",
-      cartItemId: crypto.randomUUID(),
-      menuItemId: item.id,
-      menuItemName: item.name,
-      menuItemNameMm: item.nameMm,
-      basePrice: item.price,
-      addonsTotal,
-      unitTotal,
-      quantity,
-      note: normalizedNote,
-      hashKey,
-      choices: choiceDetails,
-    });
+  plans.set(hashKey, {
+    type: "insert",
+    cartItemId: crypto.randomUUID(),
+    menuItemId: item.id,
+    menuItemName: item.name,
+    menuItemNameMm: item.nameMm,
+    basePrice: item.price,
+    addonsTotal,
+    unitTotal,
+    quantity,
+    note: normalizedNote,
+    hashKey,
+    choices: choiceDetails,
+  });
   }
 
   return plans;
