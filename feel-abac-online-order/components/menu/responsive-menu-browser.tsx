@@ -61,13 +61,36 @@ export function ResponsiveMenuBrowser({
 }: ResponsiveMenuBrowserProps) {
   const router = useRouter();
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const [optimisticTotals, setOptimisticTotals] = useState({
+    quantity: 0,
+    subtotal: 0,
+  });
   const { quickAdd } = useQuickAddToCart({
     messages: {
-      success: dictionary.quickAdd?.success ?? "Added to your cart.",
       error: dictionary.quickAdd?.error ?? "Couldn't add this item. Try again.",
     },
   });
   const { launch, Overlay: CartAddAnimationOverlay } = useCartAddAnimation();
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOptimisticTotals((prev) => {
+      if (prev.quantity === 0 && prev.subtotal === 0) {
+        return prev;
+      }
+      return { quantity: 0, subtotal: 0 };
+    });
+  }, [cartSummary?.subtotal, cartSummary?.totalQuantity]);
+
+  const applyOptimisticDelta = useCallback(
+    (quantityDelta: number, subtotalDelta: number) => {
+      setOptimisticTotals((prev) => ({
+        quantity: Math.max(0, prev.quantity + quantityDelta),
+        subtotal: Math.max(0, prev.subtotal + subtotalDelta),
+      }));
+    },
+    []
+  );
 
   const handleQuickAdd = useCallback(
     async ({
@@ -88,12 +111,19 @@ export function ResponsiveMenuBrowser({
         return;
       }
 
-      const result = await quickAdd(item);
-      if (result.status === "added" && rect) {
+      const quantityDelta = 1;
+      const subtotalDelta = item.price;
+      applyOptimisticDelta(quantityDelta, subtotalDelta);
+      if (rect) {
         launch(rect);
       }
+
+      const result = await quickAdd(item);
+      if (result.status === "error") {
+        applyOptimisticDelta(-quantityDelta, -subtotalDelta);
+      }
     },
-    [launch, quickAdd, router]
+    [applyOptimisticDelta, launch, quickAdd, router]
   );
 
   return (
@@ -120,6 +150,8 @@ export function ResponsiveMenuBrowser({
         summary={cartSummary}
         dictionary={dictionary.cartPeek}
         cartHref={cartHref}
+        optimisticQuantity={optimisticTotals.quantity}
+        optimisticSubtotal={optimisticTotals.subtotal}
       />
       <CartAddAnimationOverlay />
     </>

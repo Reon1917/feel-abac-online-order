@@ -11,6 +11,8 @@ type CartPeekButtonProps = {
   summary: CartSummary | null;
   dictionary: NonNullable<MenuDictionary["cartPeek"]>;
   cartHref: string;
+  optimisticQuantity?: number;
+  optimisticSubtotal?: number;
 };
 
 function formatPrice(value: number) {
@@ -24,21 +26,27 @@ export function CartPeekButton({
   summary,
   dictionary,
   cartHref,
+  optimisticQuantity = 0,
+  optimisticSubtotal = 0,
 }: CartPeekButtonProps) {
   const router = useRouter();
   const [isNavigating, startTransition] = useTransition();
-  const showSummary = !!summary && summary.totalQuantity > 0;
+  const baseQuantity = summary?.totalQuantity ?? 0;
+  const baseSubtotal = summary?.subtotal ?? 0;
+  const displayQuantity = baseQuantity + optimisticQuantity;
+  const displaySubtotal = baseSubtotal + optimisticSubtotal;
+  const showSummary = displayQuantity > 0;
 
-  if (!showSummary || !summary) {
+  if (!showSummary) {
     return null;
   }
 
   const itemsLabel =
-    summary.totalQuantity === 1
+    displayQuantity === 1
       ? dictionary.itemsLabel.one
       : dictionary.itemsLabel.other.replace(
           "{{count}}",
-          String(summary.totalQuantity)
+          String(displayQuantity)
         );
 
   const handleClick = () => {
@@ -77,7 +85,7 @@ export function CartPeekButton({
               {dictionary.totalLabel}
             </span>
             <p className="text-lg font-semibold text-white">
-              ฿{formatPrice(summary.subtotal)}
+              ฿{formatPrice(displaySubtotal)}
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { startTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -13,7 +13,7 @@ export type QuickAddPayload = {
 };
 
 export type QuickAddMessages = {
-  success: string;
+  success?: string;
   error: string;
 };
 
@@ -54,8 +54,9 @@ export function useQuickAddToCart({ messages }: UseQuickAddOptions) {
           throw new Error(message);
         }
 
-        toast.success(messages.success);
-        router.refresh();
+        startTransition(() => {
+          router.refresh();
+        });
         return { status: "added" };
       } catch (error) {
         const fallback =
@@ -64,7 +65,7 @@ export function useQuickAddToCart({ messages }: UseQuickAddOptions) {
         return { status: "error", message: fallback };
       }
     },
-    [messages.error, messages.success, router]
+    [messages.error, router]
   );
 
   return {
