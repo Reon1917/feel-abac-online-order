@@ -465,9 +465,20 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
     return subtotal;
   }
 
-  const results = (await db.batch(
-    statements as [BatchStatement, ...BatchStatement[]]
-  )) as unknown[];
+  let results: unknown[];
+  try {
+    results = (await db.batch(
+      statements as [BatchStatement, ...BatchStatement[]]
+    )) as unknown[];
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /unique|duplicate/i.test(error.message ?? "")
+    ) {
+      return addItemsToCart(inputs);
+    }
+    throw error;
+  }
 
   let incrementFailure = false;
   for (const index of incrementStatementIndexes) {
