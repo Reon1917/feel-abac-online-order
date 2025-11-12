@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { MenuBrowser } from "./menu-browser";
 import { MobileMenuBrowser } from "./mobile";
 import { CartPeekButton } from "./cart-peek-button";
-import { CartDraftProvider } from "./cart-draft-provider";
-import { PublicMenuCategory } from "@/lib/menu/types";
+import { useQuickAddToCart, canQuickAddItem } from "./use-quick-add";
+import { useCartAddAnimation } from "./cart-add-animation";
+import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
 import type { Locale } from "@/lib/i18n/config";
 import type { CartSummary } from "@/lib/cart/types";
 
@@ -57,16 +59,52 @@ export function ResponsiveMenuBrowser({
   cartSummary,
   cartHref,
 }: ResponsiveMenuBrowserProps) {
+  const router = useRouter();
   const isMobile = useMediaQuery(MOBILE_QUERY);
+  const { quickAdd } = useQuickAddToCart({
+    messages: {
+      success: dictionary.quickAdd?.success ?? "Added to your cart.",
+      error: dictionary.quickAdd?.error ?? "Couldn't add this item. Try again.",
+    },
+  });
+  const { launch, Overlay: CartAddAnimationOverlay } = useCartAddAnimation();
+
+  const handleQuickAdd = useCallback(
+    async ({
+      item,
+      rect,
+      detailHref,
+    }: {
+      item: PublicMenuItem;
+      rect?: DOMRect | null;
+      detailHref: string;
+    }) => {
+      if (!item.isAvailable) {
+        return;
+      }
+
+      if (!canQuickAddItem(item)) {
+        router.push(detailHref);
+        return;
+      }
+
+      const result = await quickAdd(item);
+      if (result.status === "added" && rect) {
+        launch(rect);
+      }
+    },
+    [launch, quickAdd, router]
+  );
 
   return (
-    <CartDraftProvider messages={dictionary.cartToasts}>
+    <>
       {isMobile ? (
         <MobileMenuBrowser
           categories={categories}
           dictionary={dictionary}
           common={common}
           appLocale={appLocale}
+          onQuickAdd={handleQuickAdd}
         />
       ) : (
         <MenuBrowser
@@ -75,6 +113,7 @@ export function ResponsiveMenuBrowser({
           dictionary={dictionary}
           common={common}
           appLocale={appLocale}
+          onQuickAdd={handleQuickAdd}
         />
       )}
       <CartPeekButton
@@ -82,6 +121,7 @@ export function ResponsiveMenuBrowser({
         dictionary={dictionary.cartPeek}
         cartHref={cartHref}
       />
-    </CartDraftProvider>
+      <CartAddAnimationOverlay />
+    </>
   );
 }

@@ -13,7 +13,7 @@ import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
-import { useCartDraft } from "../cart-draft-provider";
+import type { QuickAddHandler } from "../use-quick-add";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -23,6 +23,7 @@ type MobileMenuBrowserProps = {
   dictionary: MenuDictionary;
   common: CommonDictionary;
   appLocale: Locale;
+  onQuickAdd?: QuickAddHandler;
 };
 
 const INITIAL_CATEGORY_BATCH = 4;
@@ -35,14 +36,19 @@ function formatPrice(value: number) {
   });
 }
 
-export function MobileMenuBrowser({ categories, dictionary, common, appLocale }: MobileMenuBrowserProps) {
+export function MobileMenuBrowser({
+  categories,
+  dictionary,
+  common,
+  appLocale,
+  onQuickAdd,
+}: MobileMenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [visibleCategoryCount, setVisibleCategoryCount] = useState(
     INITIAL_CATEGORY_BATCH
   );
   const { menuLocale } = useMenuLocale();
-  const { queueAddition } = useCartDraft();
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -214,7 +220,7 @@ export function MobileMenuBrowser({ categories, dictionary, common, appLocale }:
                       appLocale={appLocale}
                       actionLabel={dictionary.browser.viewDetails}
                       outOfStockLabel={outOfStockLabel}
-                      onQuickAdd={(candidate, rect) => queueAddition(candidate, rect ?? null)}
+                      onQuickAdd={onQuickAdd}
                     />
                   </li>
                 ))}
@@ -243,7 +249,7 @@ type MobileMenuCardProps = {
   appLocale: Locale;
   actionLabel: string;
   outOfStockLabel: string;
-  onQuickAdd?: (item: PublicMenuItem, rect?: DOMRect | null) => void;
+  onQuickAdd?: QuickAddHandler;
 };
 
 function MobileMenuListItem({
@@ -262,7 +268,7 @@ function MobileMenuListItem({
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const canQuickAdd = (item.choiceGroups?.length ?? 0) === 0;
+  const buttonDisabled = isOutOfStock || !onQuickAdd;
 
   const content = (
     <>
@@ -290,17 +296,21 @@ function MobileMenuListItem({
       <button
         ref={addButtonRef}
         type="button"
-        className={clsx(styles.addButton, (!canQuickAdd || isOutOfStock) && styles.addButtonDisabled)}
+        className={clsx(styles.addButton, buttonDisabled && styles.addButtonDisabled)}
         aria-label={actionLabel}
-        aria-disabled={!canQuickAdd || isOutOfStock}
+        aria-disabled={buttonDisabled}
         onClick={(event) => {
-          if (!canQuickAdd || isOutOfStock) {
+          if (buttonDisabled || !onQuickAdd) {
             return;
           }
           event.preventDefault();
           event.stopPropagation();
           const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
-          onQuickAdd?.(item, rect);
+          onQuickAdd({
+            item,
+            rect,
+            detailHref,
+          });
         }}
       >
         +

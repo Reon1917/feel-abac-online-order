@@ -54,21 +54,14 @@
   "cartPeek": {
     "button": "Check cart",
     "processing": "Opening cart...",
-    "applyButton": "Add pending items",
-    "applyProcessing": "Adding items...",
-    "pendingLabel": {
-      "one": "1 item ready to add",
-      "other": "{{count}} items ready to add"
-    },
     "itemsLabel": {
       "one": "1 item",
       "other": "{{count}} items"
     },
     "totalLabel": "Subtotal"
   },
-  "cartToasts": {
-    "requireDetails": "Open the item to choose options before adding.",
-    "applySuccess": "Items added to your cart.",
-    "applyError": "Couldn't add those items. Try again."
+  "quickAdd": {
+    "success": "Added to your cart.",
+    "error": "Couldn't add this item. Try again."
   }
 }
