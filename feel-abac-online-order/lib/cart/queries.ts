@@ -396,7 +396,9 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
 
   const plans = await buildCartLinePlans(cart.id, inputs);
 
-  const statements: Parameters<typeof db.batch>[0] = [];
+  type DbBatchInput = Parameters<typeof db.batch>[0];
+  type BatchStatement = DbBatchInput[number];
+  const statements: BatchStatement[] = [];
 
   for (const plan of plans.values()) {
     if (isInsertPlan(plan)) {
@@ -449,7 +451,7 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
     return subtotal;
   }
 
-  await db.batch(statements);
+  await db.batch(statements as [BatchStatement, ...BatchStatement[]]);
 
   const nextSubtotal = await recalculateCartTotals(cart.id);
 
