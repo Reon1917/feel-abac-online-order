@@ -9,6 +9,7 @@ import { MenuLayoutEditor } from "@/components/admin/menu/menu-layout-editor";
 import { withLocalePath } from "@/lib/i18n/path";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{
@@ -22,7 +23,9 @@ export default async function MenuLayoutEditorPage({ params }: PageProps) {
   const { lang } = await params;
   const locale = lang as Locale;
 
-  await requireActiveAdmin();
+  if (!(await requireActiveAdmin())) {
+    redirect(withLocalePath(locale, "/"));
+  }
 
   const dict = getDictionary(locale, "adminMenu");
   const common = getDictionary(locale, "common");
@@ -39,7 +42,7 @@ export default async function MenuLayoutEditorPage({ params }: PageProps) {
         </Suspense>
       </nav>
       <main className="min-h-screen bg-slate-100 text-slate-900">
-        <section className="border-b border-slate-200 bg-linear-to-r from-white via-emerald-50 to-white">
+        <section className="border-b border-slate-200 bg-gradient-to-r from-white via-emerald-50 to-white">
           <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-12 lg:px-12">
             <div className="space-y-3">
               <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { resolveUserId } from "@/lib/api/require-user";
-import { addItemToCart } from "@/lib/cart/queries";
+import { addItemsToCart } from "@/lib/cart/queries";
 import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
 
 const payloadSchema = z.object({
@@ -31,16 +31,16 @@ export async function POST(request: NextRequest) {
   const queue = parsed.data.items;
 
   try {
-    for (const item of queue) {
-      await addItemToCart({
+    const summary = await addItemsToCart(
+      queue.map((item) => ({
         userId,
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         selections: [],
-      });
-    }
+      }))
+    );
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, summary });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to add these items.";
