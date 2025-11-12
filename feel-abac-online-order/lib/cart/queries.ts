@@ -400,10 +400,12 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
   type DbBatchInput = Parameters<typeof db.batch>[0];
   type BatchStatement = DbBatchInput[number];
   const statements: BatchStatement[] = [];
+  const insertedCartItemIds: string[] = [];
   const incrementStatementIndexes: number[] = [];
 
   for (const plan of plans.values()) {
     if (isInsertPlan(plan)) {
+      insertedCartItemIds.push(plan.cartItemId);
       statements.push(
         db.insert(cartItems).values({
           id: plan.cartItemId,
@@ -467,13 +469,28 @@ export async function addItemsToCart(inputs: AddToCartInput[]) {
     statements as [BatchStatement, ...BatchStatement[]]
   )) as unknown[];
 
+  let incrementFailure = false;
   for (const index of incrementStatementIndexes) {
     const row = results[index] as Array<{ quantity: number }>;
     if (!row || row.length === 0) {
-      throw new Error(
-        `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
-      );
+      incrementFailure = true;
+      break;
     }
+  }
+
+  if (incrementFailure) {
+    if (insertedCartItemIds.length > 0) {
+      await db
+        .delete(cartItemChoices)
+        .where(inArray(cartItemChoices.cartItemId, insertedCartItemIds));
+      await db
+        .delete(cartItems)
+        .where(inArray(cartItems.id, insertedCartItemIds));
+    }
+    await recalculateCartTotals(cart.id);
+    throw new Error(
+      `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+    );
   }
 
   const nextSubtotal = await recalculateCartTotals(cart.id);
