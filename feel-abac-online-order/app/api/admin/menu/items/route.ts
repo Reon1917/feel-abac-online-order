@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import crypto from "node:crypto";
 import { asc, eq } from "drizzle-orm";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
@@ -67,6 +68,8 @@ export async function POST(request: NextRequest) {
       status: values.status ?? "draft",
     })
     .returning();
+
+  revalidateTag("public-menu", "default");
 
   return Response.json({ item }, { status: 201 });
 }

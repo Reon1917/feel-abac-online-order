@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import crypto from "node:crypto";
 import { asc } from "drizzle-orm";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest) {
       isActive: values.isActive ?? true,
     })
     .returning();
+
+  revalidateTag("public-menu", "default");
 
   return Response.json({ category }, { status: 201 });
 }

@@ -42,5 +42,56 @@
   "items": {
     "title": "Step 2 · Add dishes & drinks",
     "description": "Choose a category first, then start adding dishes and drinks here."
+  },
+  "actions": {
+    "openLayoutEditor": "Open layout editor"
+  },
+  "layoutEditor": {
+    "title": "Menu layout editor",
+    "subtitle": "Drag and drop categories or items to control exactly how diners see the lineup.",
+    "backToBuilder": "Back to builder",
+    "modeLabel": "What do you need to reorder?",
+    "modes": {
+      "categories": "Categories",
+      "items": "Items"
+    },
+    "stats": {
+      "categories": "Categories",
+      "items": "Items in view"
+    },
+    "status": {
+      "clean": "No pending changes",
+      "dirty": "%s updates ready to apply"
+    },
+    "categorySelectLabel": "Pick a category",
+    "categorySelectPlaceholder": "Select category",
+    "refreshLabel": "Refresh data",
+    "emptyCategories": {
+      "title": "No categories yet",
+      "description": "Create at least one category inside the builder before arranging the layout."
+    },
+    "emptyItems": {
+      "title": "No dishes in this category",
+      "description": "Add items inside the builder, then return here to arrange them."
+    },
+    "dropHint": "Drag the handle to reorder. Order numbers update automatically.",
+    "actions": {
+      "apply": "Apply display order changes",
+      "reset": "Reset order"
+    },
+    "feedback": {
+      "success": "Display order updated",
+      "nothingToApply": "Nothing to apply yet",
+      "apiError": "Could not update the display order. Try again.",
+      "confirmTitle": "Discard pending changes?",
+      "confirmDescription": "Switching modes will discard the unsaved layout changes you just made.",
+      "discard": "Discard changes",
+      "stay": "Stay here"
+    },
+    "badges": {
+      "hidden": "Hidden",
+      "draft": "Draft",
+      "unavailable": "Unavailable"
+    }
   }
 }

@@ -6,6 +6,8 @@ import { useState } from "react";
 import { AdminList } from "./admin-list";
 import { AdminManagement } from "./admin-management";
 import { Button } from "@/components/ui/button";
+import { withLocalePath } from "@/lib/i18n/path";
+import type { Locale } from "@/lib/i18n/config";
 
 type AdminRecord = {
   id: string;
@@ -21,6 +23,7 @@ type AdminWorkspaceProps = {
   adminList: AdminRecord[];
   currentUserId: string;
   isSuperAdmin: boolean;
+  locale: Locale;
 };
 
 const panels = [
@@ -45,11 +48,16 @@ export function AdminWorkspace({
   adminList,
   currentUserId,
   isSuperAdmin,
+  locale,
 }: AdminWorkspaceProps) {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   const currentPanel = panels.find((panel) => panel.id === activePanel);
+
+  const handleNavigate = (path: string) => {
+    router.push(withLocalePath(locale, path));
+  };
 
   return (
     <div className="space-y-6">
@@ -106,17 +114,48 @@ export function AdminWorkspace({
                 />
               </div>
             ) : activePanel === "menu" ? (
-              <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-                <p className="text-base font-semibold text-slate-900">
-                  Menu builder
-                </p>
-                <p>
-                  We built a dedicated full-screen experience for managing menu categories, items, images,
-                  and choice groups. Launch it with the button below.
-                </p>
-                <Button onClick={() => router.push("/admin/menu")} size="sm">
-                  Open menu builder
-                </Button>
+              <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 md:grid-cols-2">
+                <div className="flex h-full flex-col justify-between rounded-xl border border-white/60 bg-white/70 p-4 shadow-xs">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                      Builder studio
+                    </p>
+                    <p className="text-base font-semibold text-slate-900">
+                      Create and edit dishes
+                    </p>
+                    <p>
+                      Manage categories, menu items, and choice groups in the full builder workspace.
+                    </p>
+                  </div>
+                  <Button
+                    className="mt-4"
+                    size="sm"
+                    onClick={() => handleNavigate("/admin/menu")}
+                  >
+                    Launch builder
+                  </Button>
+                </div>
+                <div className="flex h-full flex-col justify-between rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-xs">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Layout editor
+                    </p>
+                    <p className="text-base font-semibold text-slate-900">
+                      Control display order
+                    </p>
+                    <p>
+                      Drag categories or items to change how diners see the menu without touching copy.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="mt-4 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                    size="sm"
+                    onClick={() => handleNavigate("/admin/menu/layout")}
+                  >
+                    Open layout editor
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">

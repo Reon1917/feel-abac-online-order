@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import type { PublicMenuChoiceGroup, PublicMenuItem } from "@/lib/menu/types";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
@@ -62,6 +63,7 @@ function getRequirementLabel(
 
 export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) {
   const { menuLocale } = useMenuLocale();
+  const router = useRouter();
   const [notes, setNotes] = useState("");
   const [selections, setSelections] = useState<SelectionState>(() => {
     const initialEntries = item.choiceGroups.map((group) => [group.id, []]);
@@ -179,6 +181,8 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
           detail.addToCartError;
         throw new Error(errorMessage);
       }
+
+      router.refresh();
 
       toast.success(detail.addedToCart);
     } catch (error) {

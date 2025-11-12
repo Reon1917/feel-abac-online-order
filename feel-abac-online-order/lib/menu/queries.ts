@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import {
@@ -168,7 +169,7 @@ export async function getAdminMenuHierarchy(): Promise<MenuCategoryRecord[]> {
   }));
 }
 
-export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
+async function loadPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
   const categories = await db
     .select()
     .from(menuCategories)
@@ -280,6 +281,15 @@ export async function getPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
     items: itemsByCategory.get(category.id) ?? [],
   }));
 }
+
+export const getPublicMenuHierarchy = unstable_cache(
+  async () => loadPublicMenuHierarchy(),
+  ["public-menu-hierarchy"],
+  {
+    tags: ["public-menu"],
+    revalidate: 300,
+  }
+);
 
 export async function getPublicMenuItemById(
   itemId: string

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
@@ -10,6 +17,7 @@ import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import type { QuickAddHandler } from "./use-quick-add";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -21,6 +29,7 @@ type MenuBrowserProps = {
   dictionary: MenuDictionary;
   common: CommonDictionary;
   appLocale: Locale;
+  onQuickAdd?: QuickAddHandler;
 };
 
 type DisplayCategory = {
@@ -29,6 +38,18 @@ type DisplayCategory = {
   secondaryName?: string | null;
   items: PublicMenuItem[];
   itemCountLabel: string;
+};
+
+type SearchableItem = {
+  record: PublicMenuItem;
+  searchText: string;
+};
+
+type SearchableCategory = {
+  id: string;
+  displayName: string;
+  secondaryName?: string | null;
+  searchableItems: SearchableItem[];
 };
 
 const INITIAL_CATEGORY_BATCH = 3;
@@ -47,6 +68,7 @@ export function MenuBrowser({
   dictionary,
   common,
   appLocale,
+  onQuickAdd,
 }: MenuBrowserProps) {
   const [viewMode, setViewMode] = useState<MenuBrowserProps["layout"]>(layout);
   const isCompact = viewMode === "compact";
@@ -59,6 +81,7 @@ export function MenuBrowser({
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
+  const deferredSearch = useDeferredValue(searchTerm);
 
   const localize = useCallback(
     (en: string | null | undefined, mm?: string | null) => {
@@ -70,55 +93,94 @@ export function MenuBrowser({
     [menuLocale]
   );
 
-  const filteredCategories = useMemo<DisplayCategory[]>(() => {
-    const query = searchTerm.trim().toLowerCase();
+  const resetVisibleCategories = useCallback(() => {
+    setVisibleCategoryCount(INITIAL_CATEGORY_BATCH);
+  }, []);
 
-    return categories
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchTerm(value);
+      resetVisibleCategories();
+    },
+    [resetVisibleCategories]
+  );
+
+  const handleCategoryChange = useCallback(
+    (categoryId: string) => {
+      setActiveCategory(categoryId);
+      resetVisibleCategories();
+    },
+    [resetVisibleCategories]
+  );
+
+  const searchableCategories = useMemo<SearchableCategory[]>(() => {
+    return categories.map((category) => {
+      const displayName = localize(category.name, category.nameMm);
+      const secondaryCandidate =
+        menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
+      const secondaryName =
+        secondaryCandidate && secondaryCandidate !== displayName
+          ? secondaryCandidate
+          : null;
+
+      const searchableItems = category.items.map<SearchableItem>((item) => ({
+        record: item,
+        searchText: [
+          item.name,
+          item.nameMm ?? "",
+          item.description ?? "",
+          item.descriptionMm ?? "",
+        ]
+          .join(" ")
+          .toLowerCase(),
+      }));
+
+      return {
+        id: category.id,
+        displayName,
+        secondaryName,
+        searchableItems,
+      } satisfies SearchableCategory;
+    });
+  }, [categories, localize, menuLocale]);
+
+  const normalizedQuery = deferredSearch.trim().toLowerCase();
+
+  const filteredCategories = useMemo<DisplayCategory[]>(() => {
+    return searchableCategories
       .map<DisplayCategory | null>((category) => {
         if (activeCategory !== "all" && category.id !== activeCategory) {
           return null;
         }
 
-        const items = category.items.filter((item) => {
-          if (!query) return true;
-          const haystack = [
-            item.name,
-            item.nameMm ?? "",
-            item.description ?? "",
-            item.descriptionMm ?? "",
-          ]
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(query);
-        });
+        const matchingItems = normalizedQuery
+          ? category.searchableItems.filter((item) =>
+              item.searchText.includes(normalizedQuery)
+            )
+          : category.searchableItems;
 
-        if (items.length === 0) {
+        if (matchingItems.length === 0) {
           return null;
         }
 
-        const displayName = localize(category.name, category.nameMm);
-        const secondaryName =
-          menuLocale === "my" ? category.name ?? null : category.nameMm ?? null;
+        const count = matchingItems.length;
+        const pluralKey = pluralRules.select(count);
+        const itemCountTemplates = browser.itemCount as ItemCountDictionary | undefined;
+        const template =
+          itemCountTemplates?.[pluralKey as keyof ItemCountDictionary] ??
+          itemCountTemplates?.other ??
+          "{{count}}";
+
         return {
           id: category.id,
-          displayName,
-          secondaryName:
-            secondaryName && secondaryName !== displayName ? secondaryName : null,
-          itemCountLabel: (() => {
-            const count = items.length;
-            const pluralKey = pluralRules.select(count);
-            const itemCountTemplates = browser.itemCount as ItemCountDictionary | undefined;
-            const template =
-              itemCountTemplates?.[pluralKey as keyof ItemCountDictionary] ??
-              itemCountTemplates?.other ??
-              "{{count}}";
-            return template.replace("{{count}}", String(count));
-          })(),
-          items,
-        };
+          displayName: category.displayName,
+          secondaryName: category.secondaryName,
+          itemCountLabel: template.replace("{{count}}", String(count)),
+          items: matchingItems.map((entry) => entry.record),
+        } satisfies DisplayCategory;
       })
       .filter(Boolean) as DisplayCategory[];
-  }, [activeCategory, browser.itemCount, categories, localize, menuLocale, pluralRules, searchTerm]);
+  }, [activeCategory, browser.itemCount, normalizedQuery, pluralRules, searchableCategories]);
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -158,12 +220,12 @@ export function MenuBrowser({
     const allLabel = browser.categoryAll;
     return [
       { id: "all", name: allLabel },
-      ...categories.map(({ id, name, nameMm }) => ({
-        id,
-        name: localize(name, nameMm),
+      ...searchableCategories.map((category) => ({
+        id: category.id,
+        name: category.displayName,
       })),
     ];
-  }, [browser.categoryAll, categories, localize]);
+  }, [browser.categoryAll, searchableCategories]);
 
   const prioritizedItemId =
     renderedCategories[0]?.items[0]?.id ?? null;
@@ -226,7 +288,7 @@ export function MenuBrowser({
           <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => handleSearchChange(event.target.value)}
             placeholder={browser.searchPlaceholder}
             className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
           />
@@ -236,7 +298,7 @@ export function MenuBrowser({
           {categoryTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveCategory(tab.id)}
+              onClick={() => handleCategoryChange(tab.id)}
               aria-pressed={activeCategory === tab.id}
               className={clsx(
                 "rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
@@ -269,6 +331,7 @@ export function MenuBrowser({
                 actionLabel={browser.viewDetails}
                 outOfStockLabel={outOfStockLabel}
                 priorityItemId={prioritizedItemId}
+                onQuickAdd={onQuickAdd}
               />
             ))}
           </div>
@@ -295,6 +358,7 @@ function MenuCategorySection({
   actionLabel,
   outOfStockLabel,
   priorityItemId = null,
+  onQuickAdd,
 }: {
   category: DisplayCategory;
   menuLocale: Locale;
@@ -303,6 +367,7 @@ function MenuCategorySection({
   actionLabel: string;
   outOfStockLabel: string;
   priorityItemId?: string | null;
+  onQuickAdd?: QuickAddHandler;
 }) {
   const isCompact = !!compact;
   const itemCountLabel = category.itemCountLabel;
@@ -334,6 +399,7 @@ function MenuCategorySection({
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
                 priority={priorityItemId === item.id}
+                onQuickAdd={onQuickAdd}
               />
             ))}
           </div>
@@ -348,6 +414,7 @@ function MenuCategorySection({
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
                 priority={priorityItemId === item.id}
+                onQuickAdd={onQuickAdd}
               />
             ))}
           </div>
@@ -363,6 +430,7 @@ function MenuItemCard({
   actionLabel,
   outOfStockLabel,
   priority,
+  onQuickAdd,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
@@ -370,6 +438,7 @@ function MenuItemCard({
   actionLabel: string;
   outOfStockLabel: string;
   priority?: boolean;
+  onQuickAdd?: QuickAddHandler;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -378,6 +447,8 @@ function MenuItemCard({
       ? item.descriptionMm ?? item.description
       : item.description;
   const isOutOfStock = !item.isAvailable;
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const buttonDisabled = isOutOfStock || !onQuickAdd;
 
   const cardContent = (
     <article
@@ -423,15 +494,32 @@ function MenuItemCard({
           <span className="text-base font-semibold text-emerald-600 sm:text-lg">
             ฿{formatPrice(item.price)}
           </span>
-          <span
+          <button
+            ref={addButtonRef}
+            type="button"
+            aria-label={actionLabel}
+            aria-disabled={buttonDisabled}
             className={clsx(
               "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-9 sm:w-9 sm:text-xl",
-              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white"
+              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
+              buttonDisabled && "cursor-default opacity-60"
             )}
+            onClick={(event) => {
+              if (buttonDisabled || !onQuickAdd) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
+              onQuickAdd({
+                item,
+                rect,
+                detailHref,
+              });
+            }}
           >
             +
-            <span className="sr-only">{actionLabel}</span>
-          </span>
+          </button>
         </div>
       </div>
 
@@ -469,6 +557,7 @@ function MenuItemRow({
   actionLabel,
   outOfStockLabel,
   priority,
+  onQuickAdd,
 }: {
   item: PublicMenuItem;
   menuLocale: Locale;
@@ -476,6 +565,7 @@ function MenuItemRow({
   actionLabel: string;
   outOfStockLabel: string;
   priority?: boolean;
+  onQuickAdd?: QuickAddHandler;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
   const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
@@ -485,6 +575,8 @@ function MenuItemRow({
       : item.description;
 
   const isOutOfStock = !item.isAvailable;
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const buttonDisabled = isOutOfStock || !onQuickAdd;
 
   const rowContent = (
     <article
@@ -529,15 +621,32 @@ function MenuItemRow({
           <span className="text-base font-semibold text-emerald-600 sm:text-lg">
             ฿{formatPrice(item.price)}
           </span>
-          <span
+          <button
+            ref={addButtonRef}
+            type="button"
+            aria-label={actionLabel}
+            aria-disabled={buttonDisabled}
             className={clsx(
               "inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-8 sm:w-8 sm:text-lg",
-              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white"
+              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
+              buttonDisabled && "cursor-default opacity-60"
             )}
+            onClick={(event) => {
+              if (buttonDisabled || !onQuickAdd) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
+              onQuickAdd({
+                item,
+                rect,
+                detailHref,
+              });
+            }}
           >
             +
-            <span className="sr-only">{actionLabel}</span>
-          </span>
+          </button>
         </div>
       </div>
 

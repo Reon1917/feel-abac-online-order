@@ -59,5 +59,9 @@
       "other": "{{count}} items"
     },
     "totalLabel": "Subtotal"
+  },
+  "quickAdd": {
+    "success": "Added to your cart.",
+    "error": "Couldn't add this item. Try again."
   }
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { and, eq, inArray, sum } from "drizzle-orm";
+import crypto from "node:crypto";
+import { and, eq, inArray, sum, sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import { cartItemChoices, cartItems, carts } from "@/src/db/schema";
@@ -133,11 +134,17 @@ export async function getActiveCartForUser(
 export async function getActiveCartSummary(
   userId: string
 ): Promise<CartSummary | null> {
-  const cart = await getActiveCartForUser(userId);
+  const [cart] = await db
+    .select({ id: carts.id, subtotal: carts.subtotal })
+    .from(carts)
+    .where(and(eq(carts.userId, userId), eq(carts.status, "active")))
+    .limit(1);
+
   if (!cart) {
     return null;
   }
-  return summarizeCartRecord(cart);
+
+  return buildCartSummaryFromRow(cart.id, cart.subtotal);
 }
 
 async function ensureActiveCart(userId: string) {
@@ -175,15 +182,43 @@ async function recalculateCartTotals(cartId: string) {
     .where(eq(cartItems.cartId, cartId));
 
   const subtotalValue = numericToNumber(result?.total ?? "0");
+  const subtotalString = toNumericString(subtotalValue);
 
   await db
     .update(carts)
     .set({
-      subtotal: toNumericString(subtotalValue),
+      subtotal: subtotalString,
       lastActivityAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(carts.id, cartId));
+
+  return subtotalString;
+}
+
+async function getCartQuantityStats(cartId: string) {
+  const [stats] = await db
+    .select({
+      itemCount: sql<number>`COUNT(*)`,
+      totalQuantity: sum(cartItems.quantity),
+    })
+    .from(cartItems)
+    .where(eq(cartItems.cartId, cartId));
+
+  return {
+    itemCount: Number(stats?.itemCount ?? 0),
+    totalQuantity: Number(stats?.totalQuantity ?? 0),
+  };
+}
+
+async function buildCartSummaryFromRow(cartId: string, subtotalValue: string | null): Promise<CartSummary> {
+  const { itemCount, totalQuantity } = await getCartQuantityStats(cartId);
+  return {
+    id: cartId,
+    subtotal: numericToNumber(subtotalValue ?? "0"),
+    itemCount,
+    totalQuantity,
+  };
 }
 
 async function getCartItemForUser(userId: string, cartItemId: string) {
@@ -299,121 +334,283 @@ function ensureGroupSelections(
 }
 
 export async function addItemToCart(input: AddToCartInput) {
-  const { userId, menuItemId, quantity, note } = input;
+  const summary = await addItemsToCart([input]);
+  return summary;
+}
+
+type ChoiceDetail = {
+  groupId: string;
+  groupName: string;
+  groupNameMm: string | null;
+  optionId: string;
+  optionName: string;
+  optionNameMm: string | null;
+  extraPrice: number;
+};
+
+type InsertCartLinePlan = {
+  type: "insert";
+  cartItemId: string;
+  menuItemId: string;
+  menuItemName: string;
+  menuItemNameMm: string | null;
+  basePrice: number;
+  addonsTotal: number;
+  unitTotal: number;
+  quantity: number;
+  note: string | null;
+  hashKey: string;
+  choices: ChoiceDetail[];
+};
+
+type IncrementCartLinePlan = {
+  type: "increment";
+  cartItemId: string;
+  unitTotal: number;
+  delta: number;
+  plannedQuantity: number;
+};
+
+type CartLinePlan = InsertCartLinePlan | IncrementCartLinePlan;
+
+function isInsertPlan(plan: CartLinePlan): plan is InsertCartLinePlan {
+  return plan.type === "insert";
+}
+
+export async function addItemsToCart(inputs: AddToCartInput[]) {
+  if (!inputs.length) {
+    throw new Error("At least one item is required.");
+  }
+
+  const userId = inputs[0]?.userId;
 
   if (!userId) {
     throw new Error("User is required to add items to the cart.");
   }
 
-  const menuResult = await getPublicMenuItemById(menuItemId);
-  if (!menuResult) {
-    throw new Error("Menu item is no longer available.");
-  }
-
-  const item = menuResult.item;
-
-  const sanitizedSelections = validateSelections(input.selections);
-  const choiceDetails = ensureGroupSelections(item, sanitizedSelections);
-
-  const normalizedNote =
-    item.allowUserNotes && note ? note.trim().slice(0, 280) : null;
-
-  if (quantity > MAX_QUANTITY_PER_LINE) {
-    throw new Error("Quantity exceeds the allowed limit for a single item.");
+  const mismatchedUser = inputs.find((entry) => entry.userId !== userId);
+  if (mismatchedUser) {
+    throw new Error("All items must belong to the same user.");
   }
 
   const cart = await ensureActiveCart(userId);
-  const hashKey = generateCartItemHash(
-    item.id,
-    sanitizedSelections,
-    normalizedNote
-  );
 
-  const [existingItem] = await db
-    .select()
-    .from(cartItems)
-    .where(and(eq(cartItems.cartId, cart.id), eq(cartItems.hashKey, hashKey)))
-    .limit(1);
+  const plans = await buildCartLinePlans(cart.id, inputs);
 
-  const addonsTotal = choiceDetails.reduce(
-    (total, choice) => total + choice.extraPrice,
-    0
-  );
-  const unitTotal = item.price + addonsTotal;
-  const lineTotal = unitTotal * quantity;
+  type DbBatchInput = Parameters<typeof db.batch>[0];
+  type BatchStatement = DbBatchInput[number];
+  const statements: BatchStatement[] = [];
+  const insertedCartItemIds: string[] = [];
+  const incrementStatementIndexes: number[] = [];
 
-  if (existingItem) {
-    const storedBase = numericToNumber(existingItem.basePrice);
-    const storedAddons = numericToNumber(existingItem.addonsTotal);
-    const storedUnitTotal = storedBase + storedAddons;
-
-    const nextQuantity = existingItem.quantity + quantity;
-    if (nextQuantity > MAX_QUANTITY_PER_LINE) {
-      throw new Error(
-        `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+  for (const plan of plans.values()) {
+    if (isInsertPlan(plan)) {
+      insertedCartItemIds.push(plan.cartItemId);
+      statements.push(
+        db.insert(cartItems).values({
+          id: plan.cartItemId,
+          cartId: cart.id,
+          menuItemId: plan.menuItemId,
+          menuItemName: plan.menuItemName,
+          menuItemNameMm: plan.menuItemNameMm,
+          basePrice: toNumericString(plan.basePrice),
+          addonsTotal: toNumericString(plan.addonsTotal),
+          quantity: plan.quantity,
+          note: plan.note,
+          hashKey: plan.hashKey,
+          totalPrice: toNumericString(plan.unitTotal * plan.quantity),
+        })
       );
-    }
 
-    await db
-      .update(cartItems)
-      .set({
-        quantity: nextQuantity,
-        totalPrice: toNumericString(storedUnitTotal * nextQuantity),
-        updatedAt: new Date(),
-      })
-      .where(eq(cartItems.id, existingItem.id));
-  } else {
-    const [insertedItem] = await db
-      .insert(cartItems)
-      .values({
-        cartId: cart.id,
-        menuItemId: item.id,
-        menuItemName: item.name,
-        menuItemNameMm: item.nameMm,
-        basePrice: toNumericString(item.price),
-        addonsTotal: toNumericString(addonsTotal),
-        quantity,
-        note: normalizedNote,
-        hashKey,
-        totalPrice: toNumericString(lineTotal),
-      })
-      .returning();
-
-    if (!insertedItem) {
-      throw new Error("Unable to add item to cart.");
-    }
-
-    if (choiceDetails.length > 0) {
-      try {
-        await db.insert(cartItemChoices).values(
-          choiceDetails.map((choice) => ({
-            cartItemId: insertedItem.id,
-            groupName: choice.groupName,
-            groupNameMm: choice.groupNameMm,
-            optionName: choice.optionName,
-            optionNameMm: choice.optionNameMm,
-            extraPrice: String(choice.extraPrice),
-          }))
-        );
-      } catch (error) {
-        await db.delete(cartItems).where(eq(cartItems.id, insertedItem.id));
-        throw new Error(
-          error instanceof Error
-            ? error.message
-            : "Unable to add item to cart."
+      if (plan.choices.length > 0) {
+        statements.push(
+          db.insert(cartItemChoices).values(
+            plan.choices.map((choice) => ({
+              cartItemId: plan.cartItemId,
+              groupName: choice.groupName,
+              groupNameMm: choice.groupNameMm,
+              optionName: choice.optionName,
+              optionNameMm: choice.optionNameMm,
+              extraPrice: toNumericString(choice.extraPrice),
+            }))
+          )
         );
       }
+    } else {
+      const deltaParam = plan.delta;
+      const unitTotalParam = plan.unitTotal;
+      const statement = db
+        .update(cartItems)
+        .set({
+          quantity: sql`${cartItems.quantity} + ${deltaParam}`,
+          totalPrice: sql`${cartItems.totalPrice} + ${toNumericString(
+            unitTotalParam * deltaParam
+          )}`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(cartItems.id, plan.cartItemId),
+            sql`${cartItems.quantity} + ${deltaParam} <= ${MAX_QUANTITY_PER_LINE}`
+          )
+        )
+        .returning({ quantity: cartItems.quantity });
+      const index = statements.push(statement) - 1;
+      incrementStatementIndexes.push(index);
     }
   }
 
-  await recalculateCartTotals(cart.id);
-
-  const refreshedCart = await getActiveCartForUser(userId);
-  if (!refreshedCart) {
-    throw new Error("Unable to refresh cart after update.");
+  if (statements.length === 0) {
+    const subtotal = await buildCartSummaryFromRow(cart.id, cart.subtotal);
+    return subtotal;
   }
 
-  return summarizeCartRecord(refreshedCart);
+  let results: unknown[];
+  try {
+    results = (await db.batch(
+      statements as [BatchStatement, ...BatchStatement[]]
+    )) as unknown[];
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      /unique|duplicate/i.test(error.message ?? "")
+    ) {
+      return addItemsToCart(inputs);
+    }
+    throw error;
+  }
+
+  let incrementFailure = false;
+  for (const index of incrementStatementIndexes) {
+    const row = results[index] as Array<{ quantity: number }>;
+    if (!row || row.length === 0) {
+      incrementFailure = true;
+      break;
+    }
+  }
+
+  if (incrementFailure) {
+    if (insertedCartItemIds.length > 0) {
+      await db
+        .delete(cartItemChoices)
+        .where(inArray(cartItemChoices.cartItemId, insertedCartItemIds));
+      await db
+        .delete(cartItems)
+        .where(inArray(cartItems.id, insertedCartItemIds));
+    }
+    await recalculateCartTotals(cart.id);
+    throw new Error(
+      `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+    );
+  }
+
+  const nextSubtotal = await recalculateCartTotals(cart.id);
+
+  const summary = await buildCartSummaryFromRow(cart.id, nextSubtotal);
+  return summary;
+}
+
+async function buildCartLinePlans(cartId: string, inputs: AddToCartInput[]) {
+  const plans = new Map<string, CartLinePlan>();
+
+  for (const input of inputs) {
+    const { menuItemId, quantity, note } = input;
+
+    if (quantity > MAX_QUANTITY_PER_LINE) {
+      throw new Error("Quantity exceeds the allowed limit for a single item.");
+    }
+
+    const menuResult = await getPublicMenuItemById(menuItemId);
+    if (!menuResult) {
+      throw new Error("Menu item is no longer available.");
+    }
+
+    const item = menuResult.item;
+    const sanitizedSelections = validateSelections(input.selections);
+    const choiceDetails = ensureGroupSelections(item, sanitizedSelections);
+    const normalizedNote =
+      item.allowUserNotes && note ? note.trim().slice(0, 280) : null;
+
+    const hashKey = generateCartItemHash(
+      item.id,
+      sanitizedSelections,
+      normalizedNote
+    );
+
+    const existingPlan = plans.get(hashKey);
+    if (existingPlan) {
+      if (isInsertPlan(existingPlan)) {
+        const nextQuantity = existingPlan.quantity + quantity;
+        if (nextQuantity > MAX_QUANTITY_PER_LINE) {
+          throw new Error(
+            `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+          );
+        }
+        existingPlan.quantity = nextQuantity;
+      } else {
+        const nextQuantity = existingPlan.plannedQuantity + quantity;
+        if (nextQuantity > MAX_QUANTITY_PER_LINE) {
+          throw new Error(
+            `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+          );
+        }
+        existingPlan.delta += quantity;
+        existingPlan.plannedQuantity = nextQuantity;
+      }
+      continue;
+    }
+
+    const [existingItem] = await db
+      .select()
+      .from(cartItems)
+      .where(and(eq(cartItems.cartId, cartId), eq(cartItems.hashKey, hashKey)))
+      .limit(1);
+
+    if (existingItem) {
+      const storedBase = numericToNumber(existingItem.basePrice);
+      const storedAddons = numericToNumber(existingItem.addonsTotal);
+      const storedUnitTotal = storedBase + storedAddons;
+
+      const nextQuantity = existingItem.quantity + quantity;
+      if (nextQuantity > MAX_QUANTITY_PER_LINE) {
+        throw new Error(
+          `You can only add up to ${MAX_QUANTITY_PER_LINE} of this configuration.`
+        );
+      }
+
+      plans.set(hashKey, {
+        type: "increment",
+        cartItemId: existingItem.id,
+        unitTotal: storedUnitTotal,
+        delta: quantity,
+        plannedQuantity: nextQuantity,
+      });
+      continue;
+    }
+
+    const addonsTotal = choiceDetails.reduce(
+      (total, choice) => total + choice.extraPrice,
+      0
+    );
+    const unitTotal = item.price + addonsTotal;
+
+  plans.set(hashKey, {
+    type: "insert",
+    cartItemId: crypto.randomUUID(),
+    menuItemId: item.id,
+    menuItemName: item.name,
+    menuItemNameMm: item.nameMm,
+    basePrice: item.price,
+    addonsTotal,
+    unitTotal,
+    quantity,
+    note: normalizedNote,
+    hashKey,
+    choices: choiceDetails,
+  });
+  }
+
+  return plans;
 }
 
 export async function updateCartItemQuantity(

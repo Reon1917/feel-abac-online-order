@@ -228,6 +228,29 @@ export const menuChoiceOptionUpdateSchema = z.object({
   displayOrder: z.coerce.number().int().gte(0).optional(),
 });
 
+const reorderEntrySchema = z.object({
+  id: z.string().uuid(),
+  displayOrder: z.number().int().min(0, "Display order cannot be negative"),
+});
+
+export const menuReorderSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("categories"),
+    categories: z
+      .array(reorderEntrySchema)
+      .min(2, "Provide at least two categories to reorder"),
+  }),
+  z.object({
+    mode: z.literal("items"),
+    categoryId: z.string().uuid(),
+    items: z
+      .array(reorderEntrySchema)
+      .min(2, "Provide at least two items to reorder"),
+  }),
+]);
+
+export type MenuReorderPayload = z.infer<typeof menuReorderSchema>;
+
 export function toDecimalString(value: number) {
   return value.toFixed(2);
 }
