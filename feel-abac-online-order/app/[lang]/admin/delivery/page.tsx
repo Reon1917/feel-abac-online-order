@@ -10,6 +10,7 @@ import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { DeliveryLocationForm } from "@/components/admin/delivery/location-form";
+import { DeliveryLocationEditDialog } from "@/components/admin/delivery/location-edit-dialog";
 
 type PageProps = {
   params: Promise<{
@@ -82,25 +83,29 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
                         {location.condoName}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-slate-500">
-                        {dict.list.columns.fee}
+                  <div className="flex flex-col items-end gap-2 text-right">
+                    <p className="text-xs font-semibold text-slate-500">
+                      {dict.list.columns.fee}
+                    </p>
+                    <p className="text-sm text-slate-900">
+                      ฿{location.minFee}–{location.maxFee}
+                    </p>
+                    {location.buildings.length ? (
+                      <p className="text-[11px] text-slate-500">
+                        {dict.list.columns.buildings}:{" "}
+                        {location.buildings.map((building) => building.label).join(", ")}
                       </p>
-                      <p className="text-sm text-slate-900">
-                        ฿{location.minFee}–{location.maxFee}
+                    ) : (
+                      <p className="text-[11px] text-slate-400">
+                        {dict.list.columns.buildings}: –
                       </p>
-                      {location.buildings.length ? (
-                        <p className="text-[11px] text-slate-500">
-                          {dict.list.columns.buildings}:{" "}
-                          {location.buildings.map((building) => building.label).join(", ")}
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-slate-400">
-                          {dict.list.columns.buildings}: –
-                        </p>
-                      )}
-                    </div>
-                  </li>
+                    )}
+                    <DeliveryLocationEditDialog
+                      location={location}
+                      dictionary={dict}
+                    />
+                  </div>
+                </li>
                 ))}
               </ul>
             )}

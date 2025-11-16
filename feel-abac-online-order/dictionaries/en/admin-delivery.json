@@ -6,14 +6,17 @@
   },
   "form": {
     "title": "Add new condo",
-    "description": "Give each condo a fee range and optional building tags. Use comma or new line to add multiple buildings quickly.",
+    "description": "Give each condo a fee range and optionally list out the building labels diners will see.",
     "condoName": "Condo name",
     "minFee": "Min fee (Baht)",
     "maxFee": "Max fee (Baht)",
     "notes": "Internal notes (optional)",
-    "buildings": "Buildings (optional)",
-    "buildingsPlaceholder": "Building A, Building B...",
-    "buildingsHint": "Separate buildings with commas or line breaks.",
+    "buildings": "Buildings",
+    "buildingsToggle": "This condo has multiple buildings",
+    "buildingsAdd": "Add building",
+    "buildingsRemove": "Remove",
+    "buildingsPlaceholder": "Building A",
+    "buildingsEmpty": "Add at least one building name.",
     "submit": "Add location",
     "submitting": "Adding...",
     "success": "Delivery location added",
@@ -27,6 +30,16 @@
       "condo": "Condo",
       "fee": "Fee range",
       "buildings": "Buildings"
-    }
+    },
+    "editButton": "Edit condo"
+  },
+  "edit": {
+    "title": "Edit delivery condo",
+    "description": "Update the name, fee range, or buildings for this location.",
+    "submit": "Save changes",
+    "submitting": "Saving...",
+    "cancel": "Cancel",
+    "success": "Delivery location updated",
+    "error": "Unable to update delivery location"
   }
 }

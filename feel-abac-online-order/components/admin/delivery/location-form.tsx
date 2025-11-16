@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { BuildingFieldsSection } from "@/components/admin/delivery/building-fields";
 
 type AdminDeliveryDictionary = typeof import("@/dictionaries/en/admin-delivery.json");
 
@@ -20,9 +21,35 @@ export function DeliveryLocationForm({ dictionary }: DeliveryLocationFormProps) 
   const [minFee, setMinFee] = useState("");
   const [maxFee, setMaxFee] = useState("");
   const [notes, setNotes] = useState("");
-  const [buildingText, setBuildingText] = useState("");
+  const [hasBuildings, setHasBuildings] = useState(false);
+  const [buildingFields, setBuildingFields] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleToggleBuildings = (checked: boolean) => {
+    setHasBuildings(checked);
+    if (checked && buildingFields.length === 0) {
+      setBuildingFields([""]);
+    }
+    if (!checked) {
+      setBuildingFields([]);
+    }
+  };
+
+  const handleBuildingChange = (index: number, value: string) => {
+    setBuildingFields((prev) => prev.map((entry, idx) => (idx === index ? value : entry)));
+  };
+
+  const handleAddBuildingField = () => {
+    setBuildingFields((prev) => [...prev, ""]);
+  };
+
+  const handleRemoveBuildingField = (index: number) => {
+    setBuildingFields((prev) => {
+      const next = prev.filter((_, idx) => idx !== index);
+      return next.length === 0 ? [""] : next;
+    });
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,10 +66,15 @@ export function DeliveryLocationForm({ dictionary }: DeliveryLocationFormProps) 
     setIsSubmitting(true);
 
     try {
-      const buildings = buildingText
-        .split(/[\n,]+/)
-        .map((entry) => entry.trim())
-        .filter(Boolean);
+      const buildings = hasBuildings
+        ? buildingFields.map((entry) => entry.trim()).filter(Boolean)
+        : [];
+
+      if (hasBuildings && buildings.length === 0) {
+        setError(dictionary.buildingsEmpty);
+        setIsSubmitting(false);
+        return;
+      }
 
       const response = await fetch("/api/admin/delivery-locations", {
         method: "POST",
@@ -69,7 +101,8 @@ export function DeliveryLocationForm({ dictionary }: DeliveryLocationFormProps) 
       setMinFee("");
       setMaxFee("");
       setNotes("");
-      setBuildingText("");
+      setHasBuildings(false);
+      setBuildingFields([]);
       router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : dictionary.error;
@@ -129,15 +162,15 @@ export function DeliveryLocationForm({ dictionary }: DeliveryLocationFormProps) 
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-semibold text-slate-800">{dictionary.buildings}</span>
-        <Textarea
-          value={buildingText}
-          onChange={(event) => setBuildingText(event.target.value)}
-          placeholder={dictionary.buildingsPlaceholder}
-        />
-        <span className="text-[11px] text-slate-500">{dictionary.buildingsHint}</span>
-      </label>
+      <BuildingFieldsSection
+        dictionary={dictionary}
+        hasBuildings={hasBuildings}
+        onHasBuildingsChange={handleToggleBuildings}
+        buildingFields={buildingFields}
+        onBuildingChange={handleBuildingChange}
+        onAddBuilding={handleAddBuildingField}
+        onRemoveBuilding={handleRemoveBuildingField}
+      />
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
