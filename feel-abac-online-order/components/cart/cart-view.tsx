@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -8,6 +8,11 @@ import { toast } from "sonner";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { CartRecord } from "@/lib/cart/types";
 import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
+import type {
+  DeliveryLocationOption,
+  DeliverySelection,
+} from "@/lib/delivery/types";
+import { DeliveryLocationPicker } from "./delivery-location-picker";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -15,6 +20,11 @@ type CartViewProps = {
   cart: CartRecord | null;
   dictionary: CartDictionary;
   menuHref: string;
+  deliveryLocations: DeliveryLocationOption[];
+  defaultDeliverySelection: {
+    locationId: string;
+    buildingId: string | null;
+  } | null;
 };
 
 type CartItemRecord = CartRecord["items"][number];
@@ -26,7 +36,13 @@ function formatPrice(value: number) {
   });
 }
 
-export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
+export function CartView({
+  cart,
+  dictionary,
+  menuHref,
+  deliveryLocations,
+  defaultDeliverySelection,
+}: CartViewProps) {
   const { menuLocale } = useMenuLocale();
   const router = useRouter();
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
@@ -34,6 +50,16 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
   const [pendingItems, setPendingItems] = useState<Record<string, boolean>>({});
   const [editingItem, setEditingItem] = useState<CartItemRecord | null>(null);
   const [editingQuantity, setEditingQuantity] = useState(1);
+  const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(() => {
+    if (!defaultDeliverySelection?.locationId) {
+      return null;
+    }
+    return {
+      mode: "preset",
+      locationId: defaultDeliverySelection.locationId,
+      buildingId: defaultDeliverySelection.buildingId ?? null,
+    };
+  });
   const quantityLabel = dictionary.items.quantityLabel;
   const quantityLabelLower = quantityLabel.toLowerCase();
   const decrementAria = dictionary.items.decrement;
@@ -50,6 +76,17 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
   const editModalRemove = dictionary.items.editModalRemove;
   const editModalCancel = dictionary.items.editModalCancel;
   const editModalSaving = dictionary.items.editModalSaving;
+  const deliveryDictionary = dictionary.delivery;
+  const selectedDeliveryLocation = useMemo(() => {
+    if (deliverySelection?.mode !== "preset") {
+      return null;
+    }
+    return (
+      deliveryLocations.find(
+        (location) => location.id === deliverySelection.locationId
+      ) ?? null
+    );
+  }, [deliveryLocations, deliverySelection]);
 
   const setItemPending = (itemId: string, isPending: boolean) => {
     setPendingItems((prev) => ({
@@ -170,6 +207,40 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
       closeEditModal();
     }
   };
+
+  const selectedBuildingLabel =
+    deliverySelection?.mode === "preset" && deliverySelection.buildingId
+      ? selectedDeliveryLocation?.buildings.find(
+          (building) => building.id === deliverySelection.buildingId
+        )?.label ?? null
+      : null;
+
+  const locationTriggerLabel = deliverySelection
+    ? deliveryDictionary.changeCta
+    : deliveryDictionary.chooseCta;
+
+  const locationSummaryLabel = (() => {
+    if (!deliverySelection) {
+      return deliveryDictionary.notSelected;
+    }
+    if (deliverySelection.mode === "custom") {
+      return deliverySelection.customBuildingName
+        ? `${deliverySelection.customCondoName} · ${deliverySelection.customBuildingName}`
+        : deliverySelection.customCondoName;
+    }
+    if (selectedDeliveryLocation) {
+      return selectedBuildingLabel
+        ? `${selectedDeliveryLocation.condoName} · ${selectedBuildingLabel}`
+        : selectedDeliveryLocation.condoName;
+    }
+    return deliveryDictionary.unavailableSelection;
+  })();
+
+  const locationFeeLabel =
+    selectedDeliveryLocation?.minFee != null &&
+    selectedDeliveryLocation?.maxFee != null
+      ? `฿${selectedDeliveryLocation.minFee}–${selectedDeliveryLocation.maxFee}`
+      : null;
 
   return (
     <>
@@ -321,6 +392,36 @@ export function CartView({ cart, dictionary, menuHref }: CartViewProps) {
           <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
             <span>{dictionary.summary.subtotal}</span>
             <span>฿{formatPrice(cart.subtotal)}</span>
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {deliveryDictionary.label}
+              </p>
+              <p className="text-sm font-semibold text-slate-900">
+                {locationSummaryLabel}
+              </p>
+              {locationFeeLabel ? (
+                <p className="text-xs text-slate-500">
+                  {deliveryDictionary.feeRangeLabel}: {locationFeeLabel}
+                </p>
+              ) : null}
+              {deliverySelection?.mode === "custom" ? (
+                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                  {deliveryDictionary.customBadge}
+                </span>
+              ) : null}
+            </div>
+            <DeliveryLocationPicker
+              locations={deliveryLocations}
+              selection={deliverySelection}
+              dictionary={deliveryDictionary}
+              triggerLabel={locationTriggerLabel}
+              onSelectionChange={setDeliverySelection}
+            />
           </div>
         </div>
 
