@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { getDeliveryLocationsForAdmin } from "@/lib/delivery/queries";
@@ -50,6 +52,13 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
       <main className="min-h-screen bg-slate-50 text-slate-900">
         <section className="border-b border-slate-200 bg-white/80">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-10 lg:px-10">
+            <Link
+              href={withLocalePath(locale, "/admin/dashboard")}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-600"
+            >
+              <ArrowLeft className="size-4" />
+              {dict.header.backToDashboard}
+            </Link>
             <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
               {dict.header.badge}
             </span>
@@ -83,29 +92,29 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
                         {location.condoName}
                       </p>
                     </div>
-                  <div className="flex flex-col items-end gap-2 text-right">
-                    <p className="text-xs font-semibold text-slate-500">
-                      {dict.list.columns.fee}
-                    </p>
-                    <p className="text-sm text-slate-900">
-                      ฿{location.minFee}–{location.maxFee}
-                    </p>
-                    {location.buildings.length ? (
-                      <p className="text-[11px] text-slate-500">
-                        {dict.list.columns.buildings}:{" "}
-                        {location.buildings.map((building) => building.label).join(", ")}
+                    <div className="flex flex-col items-end gap-2 text-right">
+                      <p className="text-xs font-semibold text-slate-500">
+                        {dict.list.columns.fee}
                       </p>
-                    ) : (
-                      <p className="text-[11px] text-slate-400">
-                        {dict.list.columns.buildings}: –
+                      <p className="text-sm text-slate-900">
+                        ฿{location.minFee}–{location.maxFee}
                       </p>
-                    )}
-                    <DeliveryLocationEditDialog
-                      location={location}
-                      dictionary={dict}
-                    />
-                  </div>
-                </li>
+                      {location.buildings.length ? (
+                        <p className="text-[11px] text-slate-500">
+                          {dict.list.columns.buildings}:{" "}
+                          {location.buildings.map((building) => building.label).join(", ")}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400">
+                          {dict.list.columns.buildings}: –
+                        </p>
+                      )}
+                      <DeliveryLocationEditDialog
+                        location={location}
+                        dictionary={dict}
+                      />
+                    </div>
+                  </li>
                 ))}
               </ul>
             )}

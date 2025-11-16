@@ -155,7 +155,7 @@ export function DeliveryLocationEditDialog({
           {dictionary.list.editButton}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg space-y-4">
         <DialogHeader>
           <DialogTitle>{dictionary.edit.title}</DialogTitle>
           <DialogDescription>{dictionary.edit.description}</DialogDescription>

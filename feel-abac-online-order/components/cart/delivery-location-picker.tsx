@@ -180,20 +180,20 @@ export function DeliveryLocationPicker({
           {triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg space-y-4">
         <DialogHeader>
           <DialogTitle>{dictionary.modal.title}</DialogTitle>
           <DialogDescription>{dictionary.modal.subtitle}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-600">
+        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
           <button
             type="button"
             onClick={() => setMode("preset")}
             className={clsx(
               "flex-1 rounded-full py-2 transition",
               mode === "preset"
-                ? "bg-white text-slate-900 shadow-sm"
+                ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
                 : "text-slate-500"
             )}
           >
@@ -205,7 +205,7 @@ export function DeliveryLocationPicker({
             className={clsx(
               "flex-1 rounded-full py-2 transition",
               mode === "custom"
-                ? "bg-white text-slate-900 shadow-sm"
+                ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
                 : "text-slate-500"
             )}
           >

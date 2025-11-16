@@ -2,7 +2,8 @@
   "header": {
     "badge": "Coverage setup",
     "title": "Delivery locations",
-    "subtitle": "Keep the AU condo list fresh so diners can tap once and see the correct fee range."
+    "subtitle": "Keep the AU condo list fresh so diners can tap once and see the correct fee range.",
+    "backToDashboard": "Back to dashboard"
   },
   "form": {
     "title": "Add new condo",
