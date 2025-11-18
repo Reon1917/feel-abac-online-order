@@ -251,6 +251,33 @@ export const menuReorderSchema = z.discriminatedUnion("mode", [
 
 export type MenuReorderPayload = z.infer<typeof menuReorderSchema>;
 
+const badgeLabelField = z
+  .string()
+  .trim()
+  .min(1, "Badge label cannot be empty")
+  .max(40, "Badge label must be 40 characters or fewer")
+  .optional()
+  .or(z.literal("").transform(() => undefined));
+
+export const recommendedMenuItemSchema = z.object({
+  menuItemId: z.string().uuid("Menu item ID is required"),
+  badgeLabel: badgeLabelField,
+});
+
+export const recommendedMenuItemUpdateSchema = z.object({
+  badgeLabel: badgeLabelField,
+});
+
+export const recommendedMenuReorderSchema = z.object({
+  items: z
+    .array(reorderEntrySchema)
+    .min(2, "Provide at least two recommendations to reorder"),
+});
+
+export type RecommendedMenuReorderPayload = z.infer<
+  typeof recommendedMenuReorderSchema
+>;
+
 export function toDecimalString(value: number) {
   return value.toFixed(2);
 }

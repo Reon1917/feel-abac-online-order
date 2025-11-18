@@ -15,6 +15,7 @@ import {
   RefreshCwIcon,
 } from "lucide-react";
 import {
+  AdminRecommendedMenuItem,
   MenuCategoryRecord,
   MenuItemRecord,
 } from "@/lib/menu/types";
@@ -40,9 +41,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { RecommendedItemsCard } from "./recommended-items-card";
 
 type AdminMenuManagerProps = {
   initialMenu: MenuCategoryRecord[];
+  initialRecommendations: AdminRecommendedMenuItem[];
   variant?: "standalone" | "workspace";
 };
 
@@ -75,7 +78,11 @@ function nextDisplayOrder(records: { displayOrder: number }[]) {
   return Math.max(...records.map((record) => record.displayOrder ?? 0)) + 1;
 }
 
-export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminMenuManagerProps) {
+export function AdminMenuManager({
+  initialMenu,
+  initialRecommendations,
+  variant = "standalone",
+}: AdminMenuManagerProps) {
   const router = useRouter();
   const menu = useAdminMenuStore((state) => state.menu);
   const selectedCategoryId = useAdminMenuStore((state) => state.selectedCategoryId);
@@ -459,13 +466,17 @@ export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminM
         </div>
 
         <div className={cn(activeTab !== "items" && "hidden")}>
-          <div className="p-4 sm:p-6">
+          <div className="space-y-4 p-4 sm:p-6">
             <ItemsCard
               selectedCategory={selectedCategory}
               selectedItemId={selectedItemId}
               onSelectItem={handleSelectItem}
               onCreateDraftItem={handleCreateDraftItem}
               primaryActionClassName={primaryActionClasses}
+            />
+            <RecommendedItemsCard
+              menu={menu}
+              initialRecommendations={initialRecommendations}
             />
           </div>
         </div>

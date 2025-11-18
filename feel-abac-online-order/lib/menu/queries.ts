@@ -21,6 +21,7 @@ import {
   PublicMenuItem,
   PublicMenuOption,
 } from "@/lib/menu/types";
+import { numericToNumber } from "./math";
 
 export type PublicMenuItemWithCategory = {
   item: PublicMenuItem;
@@ -30,12 +31,6 @@ export type PublicMenuItemWithCategory = {
     nameMm: string | null;
   };
 };
-
-function numericToNumber(value: string | null): number {
-  if (!value) return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function mapOptions(records: Array<typeof menuChoiceOptions.$inferSelect>) {
   return records.map<MenuChoiceOption>((option) => ({

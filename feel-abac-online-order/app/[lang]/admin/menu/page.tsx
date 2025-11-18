@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { AdminMenuManager } from "@/components/admin/menu/menu-manager";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { getAdminMenuHierarchy } from "@/lib/menu/queries";
+import { getAdminRecommendedMenuItems } from "@/lib/menu/recommendations";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
@@ -26,7 +27,10 @@ export default async function AdminMenuPage({ params }: PageProps) {
 
   await requireActiveAdmin();
 
-  const menu = await getAdminMenuHierarchy();
+  const [menu, recommended] = await Promise.all([
+    getAdminMenuHierarchy(),
+    getAdminRecommendedMenuItems(),
+  ]);
   const totalCategories = menu.length;
   const hiddenCategories = menu.filter((category) => !category.isActive).length;
   const totalItems = menu.reduce((sum, category) => sum + category.items.length, 0);
@@ -149,7 +153,11 @@ export default async function AdminMenuPage({ params }: PageProps) {
       </section>
 
   <section className="mx-auto -mt-8 w-full max-w-[1360px] px-6 pb-16 lg:px-12">
-        <AdminMenuManager initialMenu={menu} variant="workspace" />
+        <AdminMenuManager
+          initialMenu={menu}
+          initialRecommendations={recommended}
+          variant="workspace"
+        />
       </section>
     </main>
     </>

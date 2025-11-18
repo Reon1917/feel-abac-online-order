@@ -21,6 +21,12 @@
       "other": "{{count}} items"
     }
   },
+  "recommendations": {
+    "label": "Chef's picks",
+    "title": "Recommended for you",
+    "subtitle": "Hand-picked dishes the kitchen loves right now.",
+    "badgeDefault": "Chef's pick"
+  },
   "detail": {
     "back": "Back to menu",
     "categoryPrefix": "Category",

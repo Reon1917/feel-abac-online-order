@@ -12,12 +12,17 @@ import Image from "next/image";
 import Link from "next/link";
 import clsx from "clsx";
 import { LayoutGrid, List, Search } from "lucide-react";
-import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
+import {
+  PublicMenuCategory,
+  PublicMenuItem,
+  PublicRecommendedMenuItem,
+} from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { QuickAddHandler } from "./use-quick-add";
+import { useMenuImageCache } from "./menu-image-cache";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -25,6 +30,7 @@ type ItemCountDictionary = NonNullable<MenuDictionary["browser"]["itemCount"]>;
 
 type MenuBrowserProps = {
   categories: PublicMenuCategory[];
+  recommended?: PublicRecommendedMenuItem[];
   layout?: "default" | "compact";
   dictionary: MenuDictionary;
   common: CommonDictionary;
@@ -64,6 +70,7 @@ function formatPrice(value: number) {
 
 export function MenuBrowser({
   categories,
+  recommended = [],
   layout = "default",
   dictionary,
   common,
@@ -230,6 +237,13 @@ export function MenuBrowser({
   const prioritizedItemId =
     renderedCategories[0]?.items[0]?.id ?? null;
 
+  const recommendedDictionary = dictionary.recommendations;
+  const showRecommendations =
+    Boolean(recommendedDictionary) &&
+    recommended.length > 0 &&
+    normalizedQuery.length === 0 &&
+    activeCategory === "all";
+
   return (
     <div className="space-y-10">
   <section className="sticky top-4 z-30 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-lg backdrop-blur supports-backdrop-filter:bg-white/75 sm:top-6 sm:p-6">
@@ -314,6 +328,18 @@ export function MenuBrowser({
         </div>
       </section>
 
+      {showRecommendations && recommendedDictionary ? (
+        <RecommendedItemsSection
+          recommended={recommended}
+          menuLocale={menuLocale}
+          appLocale={appLocale}
+          copy={recommendedDictionary}
+          actionLabel={browser.viewDetails}
+          outOfStockLabel={outOfStockLabel}
+          onQuickAdd={onQuickAdd}
+        />
+      ) : null}
+
       <div>
         {filteredCategories.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white/80 p-10 text-center text-sm text-slate-500">
@@ -347,6 +373,65 @@ export function MenuBrowser({
         </div>
       ) : null}
     </div>
+  );
+}
+
+type RecommendationCopy = NonNullable<MenuDictionary["recommendations"]>;
+
+function RecommendedItemsSection({
+  recommended,
+  menuLocale,
+  appLocale,
+  copy,
+  actionLabel,
+  outOfStockLabel,
+  onQuickAdd,
+}: {
+  recommended: PublicRecommendedMenuItem[];
+  menuLocale: Locale;
+  appLocale: Locale;
+  copy: RecommendationCopy;
+  actionLabel: string;
+  outOfStockLabel: string;
+  onQuickAdd?: QuickAddHandler;
+}) {
+  if (recommended.length === 0) {
+    return null;
+  }
+
+  const fallbackBadge = copy.badgeDefault ?? "Chef's pick";
+
+  return (
+    <section className="space-y-5 rounded-3xl border border-emerald-100 bg-linear-to-br from-white via-emerald-25 to-white p-6 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+            {copy.label ?? "Featured"}
+          </span>
+          <h2 className="text-2xl font-semibold text-slate-900">
+            {copy.title}
+          </h2>
+          <p className="text-sm text-slate-600">{copy.subtitle}</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {recommended.map((entry, index) => (
+          <MenuItemCard
+            key={entry.id}
+            item={entry.item}
+            menuLocale={menuLocale}
+            appLocale={appLocale}
+            actionLabel={actionLabel}
+            outOfStockLabel={outOfStockLabel}
+            priority={index === 0}
+            variant="recommended"
+            badgeLabel={entry.badgeLabel ?? fallbackBadge}
+            onQuickAdd={onQuickAdd}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -430,6 +515,8 @@ function MenuItemCard({
   actionLabel,
   outOfStockLabel,
   priority,
+  variant = "default",
+  badgeLabel,
   onQuickAdd,
 }: {
   item: PublicMenuItem;
@@ -438,6 +525,8 @@ function MenuItemCard({
   actionLabel: string;
   outOfStockLabel: string;
   priority?: boolean;
+  variant?: "default" | "recommended";
+  badgeLabel?: string | null;
   onQuickAdd?: QuickAddHandler;
 }) {
   const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
@@ -449,17 +538,27 @@ function MenuItemCard({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
+  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
+  const shouldPreloadImage = Boolean(priority || isFirstInstance);
+  const badgeText =
+    typeof badgeLabel === "string" && badgeLabel.trim().length > 0
+      ? badgeLabel.trim()
+      : null;
+  const imageHeightClass =
+    variant === "recommended" ? "h-44 sm:h-52" : "h-36 sm:h-40";
 
   const cardContent = (
     <article
       className={clsx(
-        "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition duration-200",
+        "relative flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm transition duration-200",
         isOutOfStock
           ? "border-slate-200 opacity-70 grayscale"
-          : "border-slate-200 group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg"
+          : variant === "recommended"
+            ? "border-emerald-100 bg-linear-to-b from-white via-emerald-50/40 to-white group-hover:border-emerald-200 group-hover:shadow-lg"
+            : "border-slate-200 bg-white group-hover:-translate-y-1 group-hover:border-emerald-300 group-hover:shadow-lg"
       )}
     >
-      <div className={clsx("relative w-full overflow-hidden bg-emerald-50", "h-36 sm:h-40")}>
+      <div className={clsx("relative w-full overflow-hidden bg-emerald-50", imageHeightClass)}>
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
@@ -470,14 +569,19 @@ function MenuItemCard({
               !isOutOfStock && "group-hover:scale-105"
             )}
             sizes="(max-width: 768px) 100vw, 400px"
-            priority={priority}
-            loading={priority ? "eager" : undefined}
+            priority={shouldPreloadImage}
+            loading={shouldPreloadImage ? "eager" : undefined}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-4xl">
             {item.placeholderIcon ?? "🍽️"}
           </div>
         )}
+        {badgeText ? (
+          <span className="pointer-events-none absolute left-4 top-4 inline-flex items-center rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 shadow">
+            {badgeText}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
@@ -577,6 +681,8 @@ function MenuItemRow({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
+  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
+  const shouldPreloadImage = Boolean(priority || isFirstInstance);
 
   const rowContent = (
     <article
@@ -595,8 +701,8 @@ function MenuItemRow({
             fill
             className="object-cover"
             sizes="(max-width: 768px) 40vw, 200px"
-            priority={priority}
-            loading={priority ? "eager" : undefined}
+            priority={shouldPreloadImage}
+            loading={shouldPreloadImage ? "eager" : undefined}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-3xl">
