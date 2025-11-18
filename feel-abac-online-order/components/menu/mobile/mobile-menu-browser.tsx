@@ -430,7 +430,18 @@ function MobileRecommendedCard({
       href={detailHref}
       prefetch={false}
       className={styles.recommendedLink}
-      onClick={() => rememberMenuScrollPosition(appLocale)}
+      onMouseDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.button !== 0
+        ) {
+          return;
+        }
+        rememberMenuScrollPosition(appLocale);
+      }}
     >
       {content}
     </Link>
@@ -532,7 +543,18 @@ function MobileMenuListItem({
       prefetch={false}
       href={detailHref}
       className={styles.listInner}
-      onClick={() => rememberMenuScrollPosition(appLocale)}
+      onMouseDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.button !== 0
+        ) {
+          return;
+        }
+        rememberMenuScrollPosition(appLocale);
+      }}
     >
       {content}
     </Link>

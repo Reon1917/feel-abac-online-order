@@ -4,6 +4,39 @@ const STORAGE_PREFIX = "menu:scroll:";
 const RETURN_PREFIX = "menu:return:";
 const REFRESH_FLAG_PREFIX = "menu:return-refresh:";
 
+function safeSetItem(key: string, value: string) {
+  try {
+    if (typeof sessionStorage === "undefined") {
+      return;
+    }
+    sessionStorage.setItem(key, value);
+  } catch {
+    // ignored – storage may be unavailable
+  }
+}
+
+function safeGetItem(key: string) {
+  try {
+    if (typeof sessionStorage === "undefined") {
+      return null;
+    }
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeRemoveItem(key: string) {
+  try {
+    if (typeof sessionStorage === "undefined") {
+      return;
+    }
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignored
+  }
+}
+
 function storageKey(locale: Locale) {
   return `${STORAGE_PREFIX}${locale}`;
 }
@@ -25,8 +58,8 @@ export function rememberMenuScrollPosition(locale: Locale) {
     typeof window.scrollY === "number"
       ? window.scrollY
       : (document.documentElement?.scrollTop ?? 0);
-  sessionStorage.setItem(key, String(offset));
-  sessionStorage.setItem(returnKey(locale), "1");
+  safeSetItem(key, String(offset));
+  safeSetItem(returnKey(locale), "1");
 }
 
 export function restoreMenuScrollPosition(locale: Locale) {
@@ -34,11 +67,11 @@ export function restoreMenuScrollPosition(locale: Locale) {
     return;
   }
   const key = storageKey(locale);
-  const value = sessionStorage.getItem(key);
+  const value = safeGetItem(key);
   if (!value) {
     return;
   }
-  sessionStorage.removeItem(key);
+  safeRemoveItem(key);
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
     return;
@@ -54,9 +87,9 @@ export function consumeMenuReturnFlag(locale: Locale) {
     return false;
   }
   const key = returnKey(locale);
-  const hasFlag = sessionStorage.getItem(key);
+  const hasFlag = safeGetItem(key);
   if (hasFlag) {
-    sessionStorage.removeItem(key);
+    safeRemoveItem(key);
     return true;
   }
   return false;
@@ -66,7 +99,7 @@ export function markMenuNeedsRefresh(locale: Locale) {
   if (typeof window === "undefined" || typeof sessionStorage === "undefined") {
     return;
   }
-  sessionStorage.setItem(refreshKey(locale), "1");
+  safeSetItem(refreshKey(locale), "1");
 }
 
 export function consumeMenuRefreshFlag(locale: Locale) {
@@ -74,9 +107,9 @@ export function consumeMenuRefreshFlag(locale: Locale) {
     return false;
   }
   const key = refreshKey(locale);
-  const hasFlag = sessionStorage.getItem(key);
+  const hasFlag = safeGetItem(key);
   if (hasFlag) {
-    sessionStorage.removeItem(key);
+    safeRemoveItem(key);
     return true;
   }
   return false;

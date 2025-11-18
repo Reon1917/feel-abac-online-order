@@ -659,7 +659,18 @@ function MenuItemCard({
     <Link
       prefetch={false}
       href={detailHref}
-      onClick={() => rememberMenuScrollPosition(appLocale)}
+      onMouseDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.button !== 0
+        ) {
+          return;
+        }
+        rememberMenuScrollPosition(appLocale);
+      }}
       className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
       {cardContent}
@@ -789,7 +800,18 @@ function MenuItemRow({
     <Link
       prefetch={false}
       href={detailHref}
-      onClick={() => rememberMenuScrollPosition(appLocale)}
+      onMouseDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.button !== 0
+        ) {
+          return;
+        }
+        rememberMenuScrollPosition(appLocale);
+      }}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
       {rowContent}
