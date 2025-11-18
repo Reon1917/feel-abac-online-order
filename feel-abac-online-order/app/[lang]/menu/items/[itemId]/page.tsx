@@ -68,6 +68,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
             item={result.item}
             category={{ name: result.category.name, nameMm: result.category.nameMm }}
             detail={dictionary.detail}
+            locale={locale}
           />
         </div>
       </main>

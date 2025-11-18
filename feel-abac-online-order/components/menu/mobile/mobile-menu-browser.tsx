@@ -19,6 +19,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { QuickAddHandler } from "../use-quick-add";
 import { useMenuImageCache } from "../menu-image-cache";
+import { rememberMenuScrollPosition } from "../menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -429,6 +430,7 @@ function MobileRecommendedCard({
       href={detailHref}
       prefetch={false}
       className={styles.recommendedLink}
+      onClick={() => rememberMenuScrollPosition(appLocale)}
     >
       {content}
     </Link>
@@ -526,7 +528,12 @@ function MobileMenuListItem({
   }
 
   return (
-    <Link prefetch={false} href={detailHref} className={styles.listInner}>
+    <Link
+      prefetch={false}
+      href={detailHref}
+      className={styles.listInner}
+      onClick={() => rememberMenuScrollPosition(appLocale)}
+    >
       {content}
     </Link>
   );

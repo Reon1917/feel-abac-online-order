@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MenuBrowser } from "./menu-browser";
@@ -16,6 +16,11 @@ import {
 import type { Locale } from "@/lib/i18n/config";
 import type { CartSummary } from "@/lib/cart/types";
 import { MenuImageCacheProvider } from "./menu-image-cache";
+import {
+  consumeMenuRefreshFlag,
+  rememberMenuScrollPosition,
+  restoreMenuScrollPosition,
+} from "./menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -79,6 +84,13 @@ export function ResponsiveMenuBrowser({
   });
   const { launch, Overlay: CartAddAnimationOverlay } = useCartAddAnimation();
 
+  useLayoutEffect(() => {
+    restoreMenuScrollPosition(appLocale);
+    if (consumeMenuRefreshFlag(appLocale)) {
+      router.refresh();
+    }
+  }, [appLocale, router]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOptimisticTotals((prev) => {
@@ -114,6 +126,7 @@ export function ResponsiveMenuBrowser({
       }
 
       if (!canQuickAddItem(item)) {
+        rememberMenuScrollPosition(appLocale);
         router.push(detailHref);
         return;
       }
@@ -130,7 +143,7 @@ export function ResponsiveMenuBrowser({
         applyOptimisticDelta(-quantityDelta, -subtotalDelta);
       }
     },
-    [applyOptimisticDelta, launch, quickAdd, router]
+    [appLocale, applyOptimisticDelta, launch, quickAdd, router]
   );
 
   return (

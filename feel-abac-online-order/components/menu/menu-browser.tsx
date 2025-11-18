@@ -23,6 +23,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { QuickAddHandler } from "./use-quick-add";
 import { useMenuImageCache } from "./menu-image-cache";
+import { rememberMenuScrollPosition } from "./menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
@@ -658,6 +659,7 @@ function MenuItemCard({
     <Link
       prefetch={false}
       href={detailHref}
+      onClick={() => rememberMenuScrollPosition(appLocale)}
       className="group block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
       {cardContent}
@@ -787,6 +789,7 @@ function MenuItemRow({
     <Link
       prefetch={false}
       href={detailHref}
+      onClick={() => rememberMenuScrollPosition(appLocale)}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2"
     >
       {rowContent}
