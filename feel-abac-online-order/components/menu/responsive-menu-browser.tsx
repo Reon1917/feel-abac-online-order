@@ -17,6 +17,7 @@ import type { Locale } from "@/lib/i18n/config";
 import type { CartSummary } from "@/lib/cart/types";
 import { MenuImageCacheProvider } from "./menu-image-cache";
 import {
+  clearMenuReturnState,
   consumeMenuRefreshFlag,
   rememberMenuScrollPosition,
   restoreMenuScrollPosition,
@@ -89,6 +90,7 @@ export function ResponsiveMenuBrowser({
     if (consumeMenuRefreshFlag(appLocale)) {
       router.refresh();
     }
+    clearMenuReturnState(appLocale);
   }, [appLocale, router]);
 
   useEffect(() => {

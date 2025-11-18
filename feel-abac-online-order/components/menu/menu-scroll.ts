@@ -95,6 +95,11 @@ export function consumeMenuReturnFlag(locale: Locale) {
   return false;
 }
 
+export function clearMenuReturnState(locale: Locale) {
+  safeRemoveItem(returnKey(locale));
+  safeRemoveItem(storageKey(locale));
+}
+
 export function markMenuNeedsRefresh(locale: Locale) {
   if (typeof window === "undefined" || typeof sessionStorage === "undefined") {
     return;

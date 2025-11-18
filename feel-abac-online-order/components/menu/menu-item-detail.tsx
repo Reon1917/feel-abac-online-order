@@ -10,7 +10,10 @@ import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { Locale } from "@/lib/i18n/config";
-import { consumeMenuReturnFlag, markMenuNeedsRefresh } from "./menu-scroll";
+import {
+  consumeMenuReturnFlag,
+  markMenuNeedsRefresh,
+} from "./menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -195,7 +198,7 @@ export function MenuItemDetail({
 
       toast.success(detail.addedToCart);
       const destination = withLocalePath(locale, "/menu");
-      if (consumeMenuReturnFlag(locale)) {
+      if (consumeMenuReturnFlag(locale) && window.history.length > 1) {
         markMenuNeedsRefresh(locale);
         router.back();
       } else {
