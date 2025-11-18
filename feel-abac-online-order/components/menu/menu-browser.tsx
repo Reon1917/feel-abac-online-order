@@ -546,6 +546,10 @@ function MenuItemCard({
       : null;
   const imageHeightClass =
     variant === "recommended" ? "h-44 sm:h-52" : "h-36 sm:h-40";
+  const descriptionClampClass =
+    variant === "recommended"
+      ? "line-clamp-2 min-h-[2.75rem]"
+      : "line-clamp-3";
 
   const cardContent = (
     <article
@@ -588,9 +592,16 @@ function MenuItemCard({
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{displayName}</h3>
           {descriptionCopy ? (
-            <p className="text-sm leading-relaxed text-slate-600 line-clamp-3">
+            <p
+              className={clsx(
+                "text-sm leading-relaxed text-slate-600",
+                descriptionClampClass
+              )}
+            >
               {descriptionCopy}
             </p>
+          ) : variant === "recommended" ? (
+            <p className="text-sm text-slate-500 opacity-0">.</p>
           ) : null}
         </div>
 

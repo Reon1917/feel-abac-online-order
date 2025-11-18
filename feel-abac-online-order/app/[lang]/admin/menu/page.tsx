@@ -121,19 +121,10 @@ export default async function AdminMenuPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex justify-end">
             <Button asChild variant="outline" size="sm">
               <Link href={withLocalePath(locale, "/admin/menu/layout")}>
                 {dict.actions?.openLayoutEditor ?? "Open layout editor"}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
-            >
-              <Link href={withLocalePath(locale, "/admin/menu/recommended")}>
-                {dict.actions?.openRecommendations ?? "Manage recommendations"}
               </Link>
             </Button>
           </div>

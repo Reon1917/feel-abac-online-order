@@ -71,9 +71,9 @@ export default async function AdminRecommendedMenuPage({
                   size="sm"
                   className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                 >
-                  <Link href={withLocalePath(locale, "/admin/menu")}>
-                    {dict.recommendationsPage?.buttons?.back ??
-                      "Back to builder"}
+                  <Link href={withLocalePath(locale, "/admin/dashboard")}>
+                    {dict.recommendationsPage?.buttons?.dashboard ??
+                      "Back to dashboard"}
                   </Link>
                 </Button>
                 <Button
@@ -82,9 +82,9 @@ export default async function AdminRecommendedMenuPage({
                   size="sm"
                   className="text-slate-700 hover:bg-white/80"
                 >
-                  <Link href={withLocalePath(locale, "/admin/menu/layout")}>
-                    {dict.recommendationsPage?.buttons?.layout ??
-                      "Open layout editor"}
+                  <Link href={withLocalePath(locale, "/admin/menu")}>
+                    {dict.recommendationsPage?.buttons?.builder ??
+                      "Open builder"}
                   </Link>
                 </Button>
               </div>

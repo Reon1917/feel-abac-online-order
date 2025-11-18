@@ -100,8 +100,8 @@
     "title": "Curate recommended dishes",
     "subtitle": "Pick a handful of dishes to pin above the diner menu. Updates are live as soon as you save.",
     "buttons": {
-      "back": "Back to builder",
-      "layout": "Open layout editor"
+      "dashboard": "Back to dashboard",
+      "builder": "Open builder"
     },
     "stats": {
       "label": "Featured items",
