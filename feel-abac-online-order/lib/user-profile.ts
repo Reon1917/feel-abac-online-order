@@ -36,3 +36,17 @@ export async function updateUserPhone(userId: string, phoneNumber: string) {
     .set({ phoneNumber: encryptedPhone })
     .where(eq(userProfiles.id, userId));
 }
+
+export async function updateUserDefaultDeliverySelection(
+  userId: string,
+  locationId: string | null,
+  buildingId: string | null
+) {
+  await db
+    .update(userProfiles)
+    .set({
+      defaultDeliveryLocationId: locationId,
+      defaultDeliveryBuildingId: buildingId,
+    })
+    .where(eq(userProfiles.id, userId));
+}

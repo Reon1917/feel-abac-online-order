@@ -10,6 +10,7 @@ import { withLocalePath } from "@/lib/i18n/path";
 import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
 import { getActiveCartForUser } from "@/lib/cart/queries";
+import { getActiveDeliveryLocations } from "@/lib/delivery/queries";
 
 type PageProps = {
   params: Promise<{
@@ -35,7 +36,15 @@ export default async function CartPage({ params }: PageProps) {
   }
 
   const cart = await getActiveCartForUser(sessionData.session.user.id);
+  const deliveryLocations = await getActiveDeliveryLocations();
   const menuHref = withLocalePath(locale, "/menu");
+  const defaultDeliverySelection =
+    profile.defaultDeliveryLocationId != null
+      ? {
+          locationId: profile.defaultDeliveryLocationId,
+          buildingId: profile.defaultDeliveryBuildingId,
+        }
+      : null;
 
   return (
     <>
@@ -57,7 +66,13 @@ export default async function CartPage({ params }: PageProps) {
             </div>
           </header>
 
-          <CartView cart={cart} dictionary={cartDictionary} menuHref={menuHref} />
+          <CartView
+            cart={cart}
+            dictionary={cartDictionary}
+            menuHref={menuHref}
+            deliveryLocations={deliveryLocations}
+            defaultDeliverySelection={defaultDeliverySelection}
+          />
         </div>
       </main>
     </>

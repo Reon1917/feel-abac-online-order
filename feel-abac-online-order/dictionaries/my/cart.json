@@ -11,8 +11,45 @@
     },
     "subtotal": "စုစုပေါင်း",
     "empty": "အော်ဒါမရှိသေးပါ",
-    "checkoutCta": "အော်ဒါတင်ရန်",
+    "checkoutCta": "Checkout သို့ ဆက်သွားရန်",
     "comingSoon": "Checkout မကြာမီလာမည်"
+  },
+  "delivery": {
+    "label": "ပို့ဆောင်ရာနေရာ",
+    "chooseCta": "နေရာရွေးရန်",
+    "changeCta": "နေရာပြောင်းရန်",
+    "notSelected": "မရွေးရသေးပါ",
+    "unavailableSelection": "သိမ်းထားသည့်နေရာ မရရှိတော့ပါ",
+    "unavailableBuilding": "ရွေးထားသည့်အဆောက်အအုံ မရရှိတော့ပါ။ အဆောက်အအုံအသစ် ရွေးပါ။",
+    "feeRangeLabel": "ပို့ဆောင်ခ",
+    "customBadge": "ကိုယ်တိုင်ထည့်သည်",
+    "rememberLabel": "ဒီနေရာကို မှတ်သားထားမလား",
+    "rememberHint": "Checkout စတင်သွားပြီးနောက် default အဖြစ် သိမ်းထားပေးမည်။",
+    "rememberSuccess": "Default နေရာကို သိမ်းပြီးပါပြီ",
+    "rememberError": "Default နေရာကို မသိမ်းနိုင်ပါ",
+    "errorGeneric": "ပို့ဆောင်နေရာကို မပြင်ဆင်နိုင်ပါ",
+    "errors": {
+      "locationRequired": "Condo တစ်ခုကို ရွေးပါ။",
+      "customRequired": "Condo နာမည်ကို ထည့်ပါ။"
+    },
+    "modal": {
+      "title": "ပို့ဆောင်ရန်နေရာ ရွေးချယ်ရန်",
+      "subtitle": "စာရင်းထဲမှ condo ကို ရွေးပါ သို့မဟုတ် ကိုယ်တိုင် ထည့်သွင်းပါ။",
+      "savedTab": "စာရင်းထဲမှ",
+      "customTab": "အခြားနေရာ",
+      "condoLabel": "Condo",
+      "condoPlaceholder": "Condo ရွေးချယ်ပါ",
+      "buildingLabel": "အဆောက်အအုံ (မလိုအပ်ပါ)",
+      "buildingPlaceholder": "Building ရွေးပါ",
+      "customCondoLabel": "Condo နာမည်",
+      "customCondoPlaceholder": "ဥပမာ - KU Complex",
+      "customBuildingLabel": "အဆောက်အအုံ (မလိုအပ်ပါ)",
+      "customBuildingPlaceholder": "Building A, Tower 2...",
+      "customHelper": "Rider များလွယ်ကူစေရန် Checkout ဗဟိုတွင် အသေးစိတ် ထပ်ဖြည့်နိုင်ပါသည်။",
+      "cancel": "မလုပ်တော့",
+      "save": "နေရာသိမ်းမည်",
+      "saving": "သိမ်းဆည်းနေသည်..."
+    }
   },
   "items": {
     "choicesHeading": "ရွေးချယ်မှုများ",

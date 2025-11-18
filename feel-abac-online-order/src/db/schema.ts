@@ -70,11 +70,63 @@ export const verifications = pgTable("verifications", {
     .notNull(),
 });
 
+export const deliveryLocations = pgTable(
+  "delivery_locations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: text("slug").notNull(),
+    condoName: text("condo_name").notNull(),
+    area: text("area").notNull().default("AU"),
+    minFee: integer("min_fee").notNull(),
+    maxFee: integer("max_fee").notNull(),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    slugIdx: uniqueIndex("delivery_locations_slug_unique").on(table.slug),
+    areaIdx: index("delivery_locations_area_idx").on(table.area),
+  })
+);
+
+export const deliveryBuildings = pgTable(
+  "delivery_buildings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    locationId: uuid("location_id")
+      .notNull()
+      .references(() => deliveryLocations.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    locationLabelIdx: uniqueIndex(
+      "delivery_buildings_location_label_unique"
+    ).on(table.locationId, table.label),
+  })
+);
+
 export const userProfiles = pgTable("user_profiles", {
   id: text("id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   phoneNumber: text("phone_number").notNull(),
+  defaultDeliveryLocationId: uuid("default_delivery_location_id").references(
+    () => deliveryLocations.id,
+    { onDelete: "set null" }
+  ),
+  defaultDeliveryBuildingId: uuid("default_delivery_building_id").references(
+    () => deliveryBuildings.id,
+    { onDelete: "set null" }
+  ),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

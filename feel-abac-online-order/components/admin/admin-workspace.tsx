@@ -61,7 +61,7 @@ export function AdminWorkspace({
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-6 md:grid-cols-3">
+      <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-6 md:grid-cols-2">
         {panels.map((panel) => (
           <button
             key={panel.id}
@@ -87,6 +87,25 @@ export function AdminWorkspace({
           </button>
         ))}
       </section>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+            Delivery coverage
+          </p>
+          <h2 className="text-xl font-semibold text-slate-900">Add Delivery Locations</h2>
+          <p className="text-sm text-slate-600">
+            Keep the AU condo list accurate so diners can pick their spot quickly.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="self-start border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+          onClick={() => handleNavigate("/admin/delivery")}
+        >
+          Add Delivery Locations
+        </Button>
+      </div>
 
       {activePanel && currentPanel && (
         <div className="rounded-xl border border-slate-200 bg-white p-6">
