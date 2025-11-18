@@ -99,6 +99,11 @@ export function DeliveryLocationEditDialog({
       return;
     }
 
+    if (minValue > maxValue) {
+      setError(dictionary.form.invalidFeeOrder);
+      return;
+    }
+
     const buildings = hasBuildings
       ? buildingFields.map((entry) => entry.trim()).filter(Boolean)
       : [];

@@ -18,6 +18,7 @@
     "buildingsRemove": "Remove",
     "buildingsPlaceholder": "Building A",
     "buildingsEmpty": "Add at least one building name.",
+    "invalidFeeOrder": "Minimum fee cannot exceed maximum fee",
     "submit": "Add location",
     "submitting": "Adding...",
     "success": "Delivery location added",

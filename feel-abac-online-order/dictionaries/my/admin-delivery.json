@@ -18,6 +18,7 @@
     "buildingsRemove": "ဖျက်ရန်",
     "buildingsPlaceholder": "Building A",
     "buildingsEmpty": "အဆောက်အအုံအမည် တစ်ခုထည့်ပါ။",
+    "invalidFeeOrder": "အနည်းဆုံးပို့ခသည် အများဆုံးပို့ခထက် မပိုနိုင်ပါ",
     "submit": "နေရာထည့်မည်",
     "submitting": "ထည့်သွင်းနေသည်...",
     "success": "ပို့ဆောင်နေရာကို ထည့်သွင်းပြီးပါပြီ",

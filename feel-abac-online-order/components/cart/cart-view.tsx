@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, useEffect, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -50,8 +50,16 @@ export function CartView({
   const [pendingItems, setPendingItems] = useState<Record<string, boolean>>({});
   const [editingItem, setEditingItem] = useState<CartItemRecord | null>(null);
   const [editingQuantity, setEditingQuantity] = useState(1);
+  const [locationValidationError, setLocationValidationError] = useState<string | null>(null);
   const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(() => {
     if (!defaultDeliverySelection?.locationId) {
+      return null;
+    }
+    // Verify location exists in deliveryLocations array
+    const locationExists = deliveryLocations.some(
+      (location) => location.id === defaultDeliverySelection.locationId
+    );
+    if (!locationExists) {
       return null;
     }
     return {
@@ -87,6 +95,58 @@ export function CartView({
       ) ?? null
     );
   }, [deliveryLocations, deliverySelection]);
+
+  // Validate selected location and building on mount and when selection changes
+  useEffect(() => {
+    if (deliverySelection?.mode !== "preset") {
+      setLocationValidationError(null);
+      return;
+    }
+
+    const location = deliveryLocations.find(
+      (loc) => loc.id === deliverySelection.locationId
+    );
+
+    if (!location) {
+      const errorMessage = deliveryDictionary.unavailableSelection || "Selected delivery location is no longer available. Please select a new location.";
+      setLocationValidationError(errorMessage);
+      toast.error(errorMessage);
+      setDeliverySelection(null);
+      return;
+    }
+
+    if (deliverySelection.buildingId) {
+      if (!location.buildings || !Array.isArray(location.buildings)) {
+        const errorMessage = "Selected building is no longer available. Please select a new building.";
+        setLocationValidationError(errorMessage);
+        toast.error(errorMessage);
+        setDeliverySelection({
+          mode: "preset",
+          locationId: deliverySelection.locationId,
+          buildingId: null,
+        });
+        return;
+      }
+
+      const buildingExists = location.buildings.some(
+        (building) => building.id === deliverySelection.buildingId
+      );
+
+      if (!buildingExists) {
+        const errorMessage = "Selected building is no longer available. Please select a new building.";
+        setLocationValidationError(errorMessage);
+        toast.error(errorMessage);
+        setDeliverySelection({
+          mode: "preset",
+          locationId: deliverySelection.locationId,
+          buildingId: null,
+        });
+        return;
+      }
+    }
+
+    setLocationValidationError(null);
+  }, [deliverySelection, deliveryLocations, deliveryDictionary.unavailableSelection]);
 
   const setItemPending = (itemId: string, isPending: boolean) => {
     setPendingItems((prev) => ({
@@ -209,8 +269,11 @@ export function CartView({
   };
 
   const selectedBuildingLabel =
-    deliverySelection?.mode === "preset" && deliverySelection.buildingId
-      ? selectedDeliveryLocation?.buildings.find(
+    deliverySelection?.mode === "preset" &&
+    deliverySelection.buildingId &&
+    selectedDeliveryLocation &&
+    Array.isArray(selectedDeliveryLocation.buildings)
+      ? selectedDeliveryLocation.buildings.find(
           (building) => building.id === deliverySelection.buildingId
         )?.label ?? null
       : null;
