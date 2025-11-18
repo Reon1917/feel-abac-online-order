@@ -189,6 +189,31 @@ export const menuItems = pgTable("menu_items", {
     .notNull(),
 });
 
+export const recommendedMenuItems = pgTable(
+  "recommended_menu_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    menuCategoryId: uuid("menu_category_id")
+      .notNull()
+      .references(() => menuCategories.id, { onDelete: "cascade" }),
+    menuItemId: uuid("menu_item_id")
+      .notNull()
+      .references(() => menuItems.id, { onDelete: "cascade" }),
+    badgeLabel: text("badge_label"),
+    displayOrder: integer("display_order").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    itemUnique: uniqueIndex("recommended_menu_items_item_unique").on(
+      table.menuItemId
+    ),
+  })
+);
+
 export const menuChoiceGroups = pgTable("menu_choice_groups", {
   id: uuid("id").defaultRandom().primaryKey(),
   menuItemId: uuid("menu_item_id")

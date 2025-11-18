@@ -8,18 +8,25 @@ import clsx from "clsx";
 import { Search } from "lucide-react";
 
 import styles from "./mobile-menu.module.css";
-import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
+import {
+  PublicMenuCategory,
+  PublicMenuItem,
+  PublicRecommendedMenuItem,
+} from "@/lib/menu/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { QuickAddHandler } from "../use-quick-add";
+import { useMenuImageCache } from "../menu-image-cache";
+import { rememberMenuScrollPosition } from "../menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
 
 type MobileMenuBrowserProps = {
   categories: PublicMenuCategory[];
+  recommended?: PublicRecommendedMenuItem[];
   dictionary: MenuDictionary;
   common: CommonDictionary;
   appLocale: Locale;
@@ -38,6 +45,7 @@ function formatPrice(value: number) {
 
 export function MobileMenuBrowser({
   categories,
+  recommended = [],
   dictionary,
   common,
   appLocale,
@@ -51,6 +59,11 @@ export function MobileMenuBrowser({
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
+  const showRecommended =
+    recommended.length > 0 &&
+    searchTerm.trim().length === 0 &&
+    activeCategory === "all";
+  const recommendationCopy = dictionary.recommendations;
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const localize = useCallback(
@@ -203,6 +216,18 @@ export function MobileMenuBrowser({
         </div>
       </div>
 
+      {showRecommended && recommendationCopy ? (
+        <MobileRecommendedSection
+          recommended={recommended}
+          menuLocale={menuLocale}
+          appLocale={appLocale}
+          copy={recommendationCopy}
+          actionLabel={dictionary.browser.viewDetails}
+          outOfStockLabel={outOfStockLabel}
+          onQuickAdd={onQuickAdd}
+        />
+      ) : null}
+
       <div>
         {renderedCategories.length === 0 ? (
           <div className={styles.emptyState}>{browser.empty}</div>
@@ -243,6 +268,186 @@ export function MobileMenuBrowser({
   );
 }
 
+type RecommendationCopy = NonNullable<MenuDictionary["recommendations"]>;
+
+function MobileRecommendedSection({
+  recommended,
+  menuLocale,
+  appLocale,
+  copy,
+  actionLabel,
+  outOfStockLabel,
+  onQuickAdd,
+}: {
+  recommended: PublicRecommendedMenuItem[];
+  menuLocale: Locale;
+  appLocale: Locale;
+  copy: RecommendationCopy;
+  actionLabel: string;
+  outOfStockLabel: string;
+  onQuickAdd?: QuickAddHandler;
+}) {
+  if (recommended.length === 0) {
+    return null;
+  }
+
+  const fallbackBadge = copy.badgeDefault ?? "Chef's pick";
+
+  return (
+    <section className={styles.recommendedSection}>
+      <div className={styles.recommendedHeader}>
+        <div>
+          <span className={styles.recommendedLabel}>
+            {copy.label ?? "Featured"}
+          </span>
+          <h2 className={styles.recommendedTitle}>{copy.title}</h2>
+          <p className={styles.recommendedSubtitle}>{copy.subtitle}</p>
+        </div>
+      </div>
+      <div className={styles.recommendedScroller}>
+        {recommended.map((entry, index) => (
+          <MobileRecommendedCard
+            key={entry.id}
+            recommendation={entry}
+            menuLocale={menuLocale}
+            appLocale={appLocale}
+            actionLabel={actionLabel}
+            outOfStockLabel={outOfStockLabel}
+            badgeLabel={entry.badgeLabel ?? fallbackBadge}
+            onQuickAdd={onQuickAdd}
+            priority={index === 0}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MobileRecommendedCard({
+  recommendation,
+  menuLocale,
+  appLocale,
+  actionLabel,
+  outOfStockLabel,
+  badgeLabel,
+  onQuickAdd,
+  priority,
+}: {
+  recommendation: PublicRecommendedMenuItem;
+  menuLocale: Locale;
+  appLocale: Locale;
+  actionLabel: string;
+  outOfStockLabel: string;
+  badgeLabel: string;
+  onQuickAdd?: QuickAddHandler;
+  priority?: boolean;
+}) {
+  const item = recommendation.item;
+  const detailHref = withLocalePath(appLocale, `/menu/items/${item.id}`);
+  const displayName = menuLocale === "my" ? item.nameMm ?? item.name : item.name;
+  const descriptionCopy =
+    menuLocale === "my"
+      ? item.descriptionMm ?? item.description ?? null
+      : item.description ?? item.descriptionMm ?? null;
+  const isOutOfStock = !item.isAvailable;
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const buttonDisabled = isOutOfStock || !onQuickAdd;
+  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
+  const shouldPreloadImage = Boolean(priority || isFirstInstance);
+
+  const content = (
+    <div
+      className={clsx(
+        styles.recommendedCard,
+        isOutOfStock && styles.recommendedCardDisabled
+      )}
+    >
+      <div className={styles.recommendedImage}>
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt={displayName}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 70vw, 240px"
+            priority={shouldPreloadImage}
+            loading={shouldPreloadImage ? "eager" : undefined}
+          />
+        ) : (
+          <div className={styles.placeholderIcon}>
+            {item.placeholderIcon ?? "🍽️"}
+          </div>
+        )}
+        <span className={styles.recommendedBadge}>{badgeLabel}</span>
+        {isOutOfStock ? (
+          <div className={styles.recommendedOutOfStock}>{outOfStockLabel}</div>
+        ) : null}
+      </div>
+      <div className={styles.recommendedBody}>
+        <h3 className={styles.recommendedName}>{displayName}</h3>
+        {descriptionCopy ? (
+          <p className={styles.recommendedDescription}>{descriptionCopy}</p>
+        ) : null}
+        <div className={styles.recommendedFooter}>
+          <span className={styles.price}>฿{formatPrice(item.price)}</span>
+          <button
+            ref={addButtonRef}
+            type="button"
+            className={clsx(
+              styles.addButton,
+              styles.recommendedAddButton,
+              buttonDisabled && styles.addButtonDisabled
+            )}
+            aria-label={actionLabel}
+            aria-disabled={buttonDisabled}
+            onClick={(event) => {
+              if (buttonDisabled || !onQuickAdd) {
+                return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+              const rect = addButtonRef.current?.getBoundingClientRect() ?? null;
+              onQuickAdd({
+                item,
+                rect,
+                detailHref,
+              });
+            }}
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (isOutOfStock) {
+    return content;
+  }
+
+  return (
+    <Link
+      href={detailHref}
+      prefetch={false}
+      className={styles.recommendedLink}
+      onMouseDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.button !== 0
+        ) {
+          return;
+        }
+        rememberMenuScrollPosition(appLocale);
+      }}
+    >
+      {content}
+    </Link>
+  );
+}
+
 type MobileMenuCardProps = {
   item: PublicMenuItem;
   menuLocale: Locale;
@@ -269,6 +474,8 @@ function MobileMenuListItem({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
+  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
+  const shouldPreloadImage = Boolean(isFirstInstance);
 
   const content = (
     <>
@@ -280,6 +487,8 @@ function MobileMenuListItem({
             fill
             sizes="(max-width: 600px) 40vw, 120px"
             className="object-cover"
+            priority={shouldPreloadImage}
+            loading={shouldPreloadImage ? "eager" : undefined}
           />
         ) : (
           <div className={styles.placeholderIcon}>{item.placeholderIcon ?? "🍽️"}</div>
@@ -330,7 +539,23 @@ function MobileMenuListItem({
   }
 
   return (
-    <Link prefetch={false} href={detailHref} className={styles.listInner}>
+    <Link
+      prefetch={false}
+      href={detailHref}
+      className={styles.listInner}
+      onMouseDown={(event) => {
+        if (
+          event.defaultPrevented ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.button !== 0
+        ) {
+          return;
+        }
+        rememberMenuScrollPosition(appLocale);
+      }}
+    >
       {content}
     </Link>
   );

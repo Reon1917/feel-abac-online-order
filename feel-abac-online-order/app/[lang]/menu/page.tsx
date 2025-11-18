@@ -5,6 +5,7 @@ import { AdminBar } from "@/components/admin/admin-bar";
 import { ResponsiveMenuBrowser } from "@/components/menu/responsive-menu-browser";
 import { UserProfileMenu } from "@/components/menu/user-profile-menu";
 import { getPublicMenuHierarchy } from "@/lib/menu/queries";
+import { getPublicRecommendedMenuItems } from "@/lib/menu/recommendations";
 import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
 import { withLocalePath } from "@/lib/i18n/path";
@@ -34,9 +35,10 @@ export default async function MenuPage({ params }: PageProps) {
 
   const userId = sessionData.session.user.id;
 
-  const [profile, menuCategories, cartSummary] = await Promise.all([
+  const [profile, menuCategories, recommendedItems, cartSummary] = await Promise.all([
     getUserProfile(userId),
     getPublicMenuHierarchy(),
+    getPublicRecommendedMenuItems(),
     getActiveCartSummary(userId),
   ]);
 
@@ -77,6 +79,7 @@ export default async function MenuPage({ params }: PageProps) {
           {hasMenu ? (
             <ResponsiveMenuBrowser
               categories={menuCategories}
+              recommendedItems={recommendedItems}
               dictionary={dict}
               common={common}
               appLocale={locale}

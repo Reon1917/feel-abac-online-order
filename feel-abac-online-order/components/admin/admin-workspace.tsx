@@ -133,7 +133,7 @@ export function AdminWorkspace({
                 />
               </div>
             ) : activePanel === "menu" ? (
-              <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 md:grid-cols-2">
+              <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 md:grid-cols-2 lg:grid-cols-3">
                 <div className="flex h-full flex-col justify-between rounded-xl border border-white/60 bg-white/70 p-4 shadow-xs">
                   <div className="space-y-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
@@ -173,6 +173,27 @@ export function AdminWorkspace({
                     onClick={() => handleNavigate("/admin/menu/layout")}
                   >
                     Open layout editor
+                  </Button>
+                </div>
+                <div className="flex h-full flex-col justify-between rounded-xl border border-emerald-100 bg-white p-4 shadow-xs">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Recommended drops
+                    </p>
+                    <p className="text-base font-semibold text-slate-900">
+                      Pin top dishes
+                    </p>
+                    <p>
+                      Curate the featured carousel so diners always see your must-try items first.
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    className="mt-4 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    size="sm"
+                    onClick={() => handleNavigate("/admin/menu/recommended")}
+                  >
+                    Manage recommendations
                   </Button>
                 </div>
               </div>

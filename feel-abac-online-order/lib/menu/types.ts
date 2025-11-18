@@ -66,6 +66,32 @@ export type MenuCategoryRecord = {
   items: MenuItemRecord[];
 };
 
+export type AdminRecommendedMenuItem = {
+  id: string;
+  menuCategoryId: string;
+  menuItemId: string;
+  displayOrder: number;
+  badgeLabel: string | null;
+  category: {
+    id: string;
+    nameEn: string;
+    nameMm: string | null;
+  };
+  item: {
+    id: string;
+    nameEn: string;
+    nameMm: string | null;
+    descriptionEn: string | null;
+    descriptionMm: string | null;
+    price: number;
+    imageUrl: string | null;
+    placeholderIcon: string | null;
+    isAvailable: boolean;
+    status: MenuItemStatus;
+    displayOrder: number;
+  };
+};
+
 export type PublicMenuOption = {
   id: string;
   name: string;
@@ -109,4 +135,15 @@ export type PublicMenuCategory = {
   nameMm: string | null;
   displayOrder: number;
   items: PublicMenuItem[];
+};
+
+export type PublicRecommendedMenuItem = {
+  id: string;
+  badgeLabel: string | null;
+  category: {
+    id: string;
+    name: string;
+    nameMm: string | null;
+  };
+  item: PublicMenuItem;
 };

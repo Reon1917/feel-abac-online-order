@@ -75,7 +75,10 @@ function nextDisplayOrder(records: { displayOrder: number }[]) {
   return Math.max(...records.map((record) => record.displayOrder ?? 0)) + 1;
 }
 
-export function AdminMenuManager({ initialMenu, variant = "standalone" }: AdminMenuManagerProps) {
+export function AdminMenuManager({
+  initialMenu,
+  variant = "standalone",
+}: AdminMenuManagerProps) {
   const router = useRouter();
   const menu = useAdminMenuStore((state) => state.menu);
   const selectedCategoryId = useAdminMenuStore((state) => state.selectedCategoryId);

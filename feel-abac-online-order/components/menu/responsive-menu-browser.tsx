@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MenuBrowser } from "./menu-browser";
@@ -8,15 +8,27 @@ import { MobileMenuBrowser } from "./mobile";
 import { CartPeekButton } from "./cart-peek-button";
 import { useQuickAddToCart, canQuickAddItem } from "./use-quick-add";
 import { useCartAddAnimation } from "./cart-add-animation";
-import { PublicMenuCategory, PublicMenuItem } from "@/lib/menu/types";
+import {
+  PublicMenuCategory,
+  PublicMenuItem,
+  PublicRecommendedMenuItem,
+} from "@/lib/menu/types";
 import type { Locale } from "@/lib/i18n/config";
 import type { CartSummary } from "@/lib/cart/types";
+import { MenuImageCacheProvider } from "./menu-image-cache";
+import {
+  clearMenuReturnState,
+  consumeMenuRefreshFlag,
+  rememberMenuScrollPosition,
+  restoreMenuScrollPosition,
+} from "./menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 type CommonDictionary = typeof import("@/dictionaries/en/common.json");
 
 type ResponsiveMenuBrowserProps = {
   categories: PublicMenuCategory[];
+  recommendedItems?: PublicRecommendedMenuItem[];
   layout?: "default" | "compact";
   dictionary: MenuDictionary;
   common: CommonDictionary;
@@ -52,6 +64,7 @@ function useMediaQuery(query: string) {
 
 export function ResponsiveMenuBrowser({
   categories,
+  recommendedItems = [],
   layout,
   dictionary,
   common,
@@ -71,6 +84,14 @@ export function ResponsiveMenuBrowser({
     },
   });
   const { launch, Overlay: CartAddAnimationOverlay } = useCartAddAnimation();
+
+  useLayoutEffect(() => {
+    restoreMenuScrollPosition(appLocale);
+    if (consumeMenuRefreshFlag(appLocale)) {
+      router.refresh();
+    }
+    clearMenuReturnState(appLocale);
+  }, [appLocale, router]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -107,6 +128,7 @@ export function ResponsiveMenuBrowser({
       }
 
       if (!canQuickAddItem(item)) {
+        rememberMenuScrollPosition(appLocale);
         router.push(detailHref);
         return;
       }
@@ -123,14 +145,15 @@ export function ResponsiveMenuBrowser({
         applyOptimisticDelta(-quantityDelta, -subtotalDelta);
       }
     },
-    [applyOptimisticDelta, launch, quickAdd, router]
+    [appLocale, applyOptimisticDelta, launch, quickAdd, router]
   );
 
   return (
-    <>
+    <MenuImageCacheProvider>
       {isMobile ? (
         <MobileMenuBrowser
           categories={categories}
+          recommended={recommendedItems}
           dictionary={dictionary}
           common={common}
           appLocale={appLocale}
@@ -139,6 +162,7 @@ export function ResponsiveMenuBrowser({
       ) : (
         <MenuBrowser
           categories={categories}
+          recommended={recommendedItems}
           layout={layout}
           dictionary={dictionary}
           common={common}
@@ -154,6 +178,6 @@ export function ResponsiveMenuBrowser({
         optimisticSubtotal={optimisticTotals.subtotal}
       />
       <CartAddAnimationOverlay />
-    </>
+    </MenuImageCacheProvider>
   );
 }

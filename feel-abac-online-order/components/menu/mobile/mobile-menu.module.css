@@ -346,6 +346,144 @@
   cursor: default;
 }
 
+.recommendedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.recommendedHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.recommendedLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #059669;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.recommendedTitle {
+  margin-top: 0.2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.recommendedSubtitle {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.recommendedScroller {
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  scroll-snap-type: x mandatory;
+}
+
+.recommendedScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.recommendedLink {
+  text-decoration: none;
+  color: inherit;
+  scroll-snap-align: start;
+}
+
+.recommendedCard {
+  width: 15.5rem;
+  min-height: 14rem;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+  box-shadow: 0 12px 30px -18px rgba(16, 185, 129, 0.75);
+  overflow: hidden;
+}
+
+.recommendedCardDisabled {
+  filter: grayscale(0.65);
+  opacity: 0.85;
+}
+
+.recommendedImage {
+  position: relative;
+  height: 8.75rem;
+  overflow: hidden;
+}
+
+.recommendedBadge {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #065f46;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+.recommendedOutOfStock {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.recommendedBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.9rem;
+  flex: 1;
+}
+
+.recommendedName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.recommendedDescription {
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.4rem;
+}
+
+.recommendedFooter {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recommendedAddButton {
+  background: #0f172a;
+  color: #ecfdf5;
+}
+
 .outOfStockOverlay {
   position: absolute;
   inset: 0;

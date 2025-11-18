@@ -8,6 +8,12 @@ import { useRouter } from "next/navigation";
 import type { PublicMenuChoiceGroup, PublicMenuItem } from "@/lib/menu/types";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import { MAX_QUANTITY_PER_LINE } from "@/lib/cart/types";
+import { withLocalePath } from "@/lib/i18n/path";
+import type { Locale } from "@/lib/i18n/config";
+import {
+  consumeMenuReturnFlag,
+  markMenuNeedsRefresh,
+} from "./menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -18,6 +24,7 @@ type MenuItemDetailProps = {
     nameMm: string | null;
   };
   detail: MenuDictionary["detail"];
+  locale: Locale;
 };
 
 type SelectionState = Record<string, string[]>;
@@ -61,7 +68,12 @@ function getRequirementLabel(
   return null;
 }
 
-export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) {
+export function MenuItemDetail({
+  item,
+  category,
+  detail,
+  locale,
+}: MenuItemDetailProps) {
   const { menuLocale } = useMenuLocale();
   const router = useRouter();
   const [notes, setNotes] = useState("");
@@ -185,6 +197,29 @@ export function MenuItemDetail({ item, category, detail }: MenuItemDetailProps) 
       router.refresh();
 
       toast.success(detail.addedToCart);
+      const destination = withLocalePath(locale, "/menu");
+      const shouldReturnToMenu = consumeMenuReturnFlag(locale);
+      let isSafeSameOriginReferrer = false;
+
+      if (shouldReturnToMenu) {
+        try {
+          const referrer = document.referrer;
+          if (referrer) {
+            const referrerUrl = new URL(referrer);
+            isSafeSameOriginReferrer =
+              referrerUrl.origin === window.location.origin;
+          }
+        } catch {
+          isSafeSameOriginReferrer = false;
+        }
+      }
+
+      if (shouldReturnToMenu && isSafeSameOriginReferrer) {
+        markMenuNeedsRefresh(locale);
+        router.back();
+      } else {
+        router.push(destination, { scroll: false });
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : detail.addToCartError;
