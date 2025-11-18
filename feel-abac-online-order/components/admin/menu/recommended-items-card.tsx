@@ -45,6 +45,10 @@ import {
   MenuCategoryRecord,
 } from "@/lib/menu/types";
 
+type RecommendationsDictionary = NonNullable<
+  typeof import("@/dictionaries/en/admin-menu.json")["recommendationsManager"]
+>;
+
 type RecommendationDraft = AdminRecommendedMenuItem & {
   badgeDraft: string;
 };
@@ -52,11 +56,13 @@ type RecommendationDraft = AdminRecommendedMenuItem & {
 type RecommendedItemsCardProps = {
   menu: MenuCategoryRecord[];
   initialRecommendations: AdminRecommendedMenuItem[];
+  dictionary: RecommendationsDictionary;
 };
 
 export function RecommendedItemsCard({
   menu,
   initialRecommendations,
+  dictionary,
 }: RecommendedItemsCardProps) {
   const [recommendations, setRecommendations] = useState<RecommendationDraft[]>(
     () => mapToDrafts(initialRecommendations)
@@ -98,7 +104,10 @@ export function RecommendedItemsCard({
 
   const selectedCategory = useMemo(() => {
     if (!categorySelection) return null;
-    return categoryOptions.find((category) => category.id === categorySelection) ?? null;
+    return (
+      categoryOptions.find((category) => category.id === categorySelection) ??
+      null
+    );
   }, [categoryOptions, categorySelection]);
 
   const selectedItems = selectedCategory
@@ -116,15 +125,15 @@ export function RecommendedItemsCard({
       setOrderDirty(false);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load recommendations");
+      toast.error(dictionary.toasts.loadError);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [dictionary.toasts.loadError]);
 
   const handleAddRecommendation = async () => {
     if (!itemSelection) {
-      toast.error("Pick an item to feature");
+      toast.error(dictionary.toasts.selectionError);
       return;
     }
 
@@ -138,32 +147,33 @@ export function RecommendedItemsCard({
           badgeLabel: badgeInput.trim() || undefined,
         }),
       });
-      toast.success("Recommendation added");
+      toast.success(dictionary.toasts.added);
       setDialogOpen(false);
       await refreshRecommendations();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Could not add item");
+      toast.error(
+        error instanceof Error ? error.message : dictionary.toasts.addError
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleRemoveRecommendation = async (id: string) => {
-    if (!window.confirm("Remove this item from the recommended section?")) {
+    if (!window.confirm(dictionary.removeConfirm)) {
       return;
     }
-
     try {
       await fetchJSON(`/api/admin/menu/recommended/${id}`, {
         method: "DELETE",
         headers: defaultHeaders,
       });
-      toast.success("Recommendation removed");
+      toast.success(dictionary.toasts.removed);
       await refreshRecommendations();
     } catch (error) {
       console.error(error);
-      toast.error("Could not remove recommendation");
+      toast.error(dictionary.toasts.removeError);
     }
   };
 
@@ -176,11 +186,11 @@ export function RecommendedItemsCard({
           badgeLabel: value.trim(),
         }),
       });
-      toast.success("Badge updated");
+      toast.success(dictionary.toasts.badgeSaved);
       await refreshRecommendations();
     } catch (error) {
       console.error(error);
-      toast.error("Could not update badge");
+      toast.error(dictionary.toasts.badgeError);
     }
   };
 
@@ -214,15 +224,20 @@ export function RecommendedItemsCard({
           })),
         }),
       });
-      toast.success("Recommendation order updated");
+      toast.success(dictionary.toasts.orderSaved);
       await refreshRecommendations();
     } catch (error) {
       console.error(error);
-      toast.error("Could not save order");
+      toast.error(dictionary.toasts.orderError);
     } finally {
       setIsSavingOrder(false);
     }
   };
+
+  const badgePlaceholder =
+    dictionary.dialog.badgePlaceholder || "Chef's pick";
+  const disableDialogActions =
+    selectedItems.length === 0 || isSubmitting || categoryOptions.length === 0;
 
   return (
     <Card className="shadow-sm">
@@ -230,11 +245,9 @@ export function RecommendedItemsCard({
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle className="text-lg font-semibold text-slate-900">
-              Spotlight & recommendations
+              {dictionary.title}
             </CardTitle>
-            <CardDescription>
-              Choose which dishes appear in the recommended carousel above the menu.
-            </CardDescription>
+            <CardDescription>{dictionary.subtitle}</CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -245,20 +258,20 @@ export function RecommendedItemsCard({
                 disabled={categoryOptions.length === 0}
               >
                 <PlusCircleIcon className="size-4" />
-                Add recommended menu items
+                {dictionary.addButton}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Add menu item</DialogTitle>
+                <DialogTitle>{dictionary.dialog.title}</DialogTitle>
                 <DialogDescription>
-                  Pick a category, then choose an existing dish to feature. Dupes are automatically prevented.
+                  {dictionary.dialog.description}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Category
+                    {dictionary.dialog.categoryLabel}
                   </label>
                   <Select
                     value={categorySelection}
@@ -269,7 +282,9 @@ export function RecommendedItemsCard({
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue
+                        placeholder={dictionary.dialog.categoryPlaceholder}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {categoryOptions.map((category) => (
@@ -282,7 +297,7 @@ export function RecommendedItemsCard({
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Menu item
+                    {dictionary.dialog.itemLabel}
                   </label>
                   <Select
                     value={itemSelection}
@@ -290,7 +305,9 @@ export function RecommendedItemsCard({
                     disabled={selectedItems.length === 0}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select menu item" />
+                      <SelectValue
+                        placeholder={dictionary.dialog.itemPlaceholder}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {selectedItems.map((item) => (
@@ -303,12 +320,12 @@ export function RecommendedItemsCard({
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Badge label (optional)
+                    {dictionary.dialog.badgeLabel}
                   </label>
                   <Input
                     value={badgeInput}
                     onChange={(event) => setBadgeInput(event.target.value)}
-                    placeholder="Chef's pick"
+                    placeholder={badgePlaceholder}
                   />
                 </div>
               </div>
@@ -318,17 +335,17 @@ export function RecommendedItemsCard({
                   variant="outline"
                   onClick={() => setDialogOpen(false)}
                 >
-                  Cancel
+                  {dictionary.dialog.cancel}
                 </Button>
                 <Button
                   type="button"
                   onClick={() => void handleAddRecommendation()}
-                  disabled={isSubmitting}
+                  disabled={disableDialogActions}
                 >
                   {isSubmitting ? (
                     <Loader2Icon className="mr-2 size-4 animate-spin" />
                   ) : null}
-                  Add
+                  {dictionary.dialog.submit}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -339,11 +356,11 @@ export function RecommendedItemsCard({
         {isLoading ? (
           <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
             <Loader2Icon className="size-4 animate-spin text-emerald-500" />
-            Refreshing recommendations…
+            {dictionary.states.loading}
           </div>
         ) : recommendations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
-            Nothing featured yet. Add a dish to show the recommended section at the top of the menu.
+            {dictionary.states.empty}
           </div>
         ) : (
           <div className="space-y-3">
@@ -362,7 +379,9 @@ export function RecommendedItemsCard({
                     </p>
                     <p className="text-xs text-slate-500">
                       ฿{entry.item.price.toFixed(2)} ·{" "}
-                      {entry.item.isAvailable ? "Available" : "Out of stock"}
+                      {entry.item.isAvailable
+                        ? dictionary.list.available
+                        : dictionary.list.unavailable}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -393,13 +412,13 @@ export function RecommendedItemsCard({
                       onClick={() => void handleRemoveRecommendation(entry.id)}
                     >
                       <Trash2Icon className="mr-1 size-4" />
-                      Remove
+                      {dictionary.list.remove}
                     </Button>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:w-32">
-                    Badge label
+                    {dictionary.list.badgeLabel}
                   </label>
                   <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
@@ -413,15 +432,17 @@ export function RecommendedItemsCard({
                           )
                         )
                       }
-                      placeholder="Chef's pick"
+                      placeholder={badgePlaceholder}
                       className="sm:flex-1"
                     />
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => void handleBadgeSave(entry.id, entry.badgeDraft)}
+                      onClick={() =>
+                        void handleBadgeSave(entry.id, entry.badgeDraft)
+                      }
                     >
-                      Save badge
+                      {dictionary.list.badgeButton}
                     </Button>
                   </div>
                 </div>
@@ -439,7 +460,7 @@ export function RecommendedItemsCard({
               {isSavingOrder ? (
                 <Loader2Icon className="mr-2 size-4 animate-spin" />
               ) : null}
-              Save order
+              {dictionary.order.save}
             </Button>
           </div>
         ) : null}

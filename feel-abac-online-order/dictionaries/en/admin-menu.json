@@ -44,7 +44,8 @@
     "description": "Choose a category first, then start adding dishes and drinks here."
   },
   "actions": {
-    "openLayoutEditor": "Open layout editor"
+    "openLayoutEditor": "Open layout editor",
+    "openRecommendations": "Manage recommendations"
   },
   "layoutEditor": {
     "title": "Menu layout editor",
@@ -92,6 +93,63 @@
       "hidden": "Hidden",
       "draft": "Draft",
       "unavailable": "Unavailable"
+    }
+  },
+  "recommendationsPage": {
+    "badge": "Recommended spotlight",
+    "title": "Curate recommended dishes",
+    "subtitle": "Pick a handful of dishes to pin above the diner menu. Updates are live as soon as you save.",
+    "buttons": {
+      "back": "Back to builder",
+      "layout": "Open layout editor"
+    },
+    "stats": {
+      "label": "Featured items",
+      "description": "Pinned cards appear at the very top of the diner experience."
+    }
+  },
+  "recommendationsManager": {
+    "title": "Spotlight & recommendations",
+    "subtitle": "Choose which dishes appear in the featured carousel before diners browse the menu.",
+    "addButton": "Add recommended menu items",
+    "dialog": {
+      "title": "Add menu item",
+      "description": "Pick a category, then choose an existing dish. Duplicates are blocked automatically.",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Select category",
+      "itemLabel": "Menu item",
+      "itemPlaceholder": "Select menu item",
+      "badgeLabel": "Badge label (optional)",
+      "badgePlaceholder": "Chef's pick",
+      "cancel": "Cancel",
+      "submit": "Add"
+    },
+    "states": {
+      "loading": "Refreshing recommendations…",
+      "empty": "Nothing featured yet. Add a dish to show the recommended section at the top of the menu."
+    },
+    "removeConfirm": "Remove this item from the recommended section?",
+    "list": {
+      "available": "Available",
+      "unavailable": "Out of stock",
+      "remove": "Remove",
+      "badgeLabel": "Badge label",
+      "badgeButton": "Save badge"
+    },
+    "order": {
+      "save": "Save order"
+    },
+    "toasts": {
+      "added": "Recommendation added",
+      "addError": "Could not add item",
+      "removed": "Recommendation removed",
+      "removeError": "Could not remove recommendation",
+      "badgeSaved": "Badge updated",
+      "badgeError": "Could not update badge",
+      "orderSaved": "Recommendation order updated",
+      "orderError": "Could not save order",
+      "loadError": "Failed to load recommendations",
+      "selectionError": "Pick an item to feature"
     }
   }
 }

@@ -4,7 +4,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import { AdminMenuManager } from "@/components/admin/menu/menu-manager";
 import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { getAdminMenuHierarchy } from "@/lib/menu/queries";
-import { getAdminRecommendedMenuItems } from "@/lib/menu/recommendations";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
@@ -27,10 +26,7 @@ export default async function AdminMenuPage({ params }: PageProps) {
 
   await requireActiveAdmin();
 
-  const [menu, recommended] = await Promise.all([
-    getAdminMenuHierarchy(),
-    getAdminRecommendedMenuItems(),
-  ]);
+  const menu = await getAdminMenuHierarchy();
   const totalCategories = menu.length;
   const hiddenCategories = menu.filter((category) => !category.isActive).length;
   const totalItems = menu.reduce((sum, category) => sum + category.items.length, 0);
@@ -125,10 +121,19 @@ export default async function AdminMenuPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-3">
             <Button asChild variant="outline" size="sm">
               <Link href={withLocalePath(locale, "/admin/menu/layout")}>
                 {dict.actions?.openLayoutEditor ?? "Open layout editor"}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="sm"
+              className="bg-emerald-600 text-white hover:bg-emerald-500"
+            >
+              <Link href={withLocalePath(locale, "/admin/menu/recommended")}>
+                {dict.actions?.openRecommendations ?? "Manage recommendations"}
               </Link>
             </Button>
           </div>
@@ -153,11 +158,7 @@ export default async function AdminMenuPage({ params }: PageProps) {
       </section>
 
   <section className="mx-auto -mt-8 w-full max-w-[1360px] px-6 pb-16 lg:px-12">
-        <AdminMenuManager
-          initialMenu={menu}
-          initialRecommendations={recommended}
-          variant="workspace"
-        />
+        <AdminMenuManager initialMenu={menu} variant="workspace" />
       </section>
     </main>
     </>
