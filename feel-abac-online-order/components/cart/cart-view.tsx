@@ -116,24 +116,12 @@ export function CartView({
     }
 
     if (deliverySelection.buildingId) {
-      if (!location.buildings || !Array.isArray(location.buildings)) {
-        const errorMessage = "Selected building is no longer available. Please select a new building.";
-        setLocationValidationError(errorMessage);
-        toast.error(errorMessage);
-        setDeliverySelection({
-          mode: "preset",
-          locationId: deliverySelection.locationId,
-          buildingId: null,
-        });
-        return;
-      }
-
       const buildingExists = location.buildings.some(
         (building) => building.id === deliverySelection.buildingId
       );
 
       if (!buildingExists) {
-        const errorMessage = "Selected building is no longer available. Please select a new building.";
+        const errorMessage = deliveryDictionary.unavailableBuilding;
         setLocationValidationError(errorMessage);
         toast.error(errorMessage);
         setDeliverySelection({
@@ -146,7 +134,7 @@ export function CartView({
     }
 
     setLocationValidationError(null);
-  }, [deliverySelection, deliveryLocations, deliveryDictionary.unavailableSelection]);
+  }, [deliverySelection, deliveryLocations, deliveryDictionary]);
 
   const setItemPending = (itemId: string, isPending: boolean) => {
     setPendingItems((prev) => ({

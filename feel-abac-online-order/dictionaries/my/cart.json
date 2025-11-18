@@ -20,6 +20,7 @@
     "changeCta": "နေရာပြောင်းရန်",
     "notSelected": "မရွေးရသေးပါ",
     "unavailableSelection": "သိမ်းထားသည့်နေရာ မရရှိတော့ပါ",
+    "unavailableBuilding": "ရွေးထားသည့်အဆောက်အအုံ မရရှိတော့ပါ။ အဆောက်အအုံအသစ် ရွေးပါ။",
     "feeRangeLabel": "ပို့ဆောင်ခ",
     "customBadge": "ကိုယ်တိုင်ထည့်သည်",
     "rememberLabel": "ဒီနေရာကို မှတ်သားထားမလား",
