@@ -198,7 +198,23 @@ export function MenuItemDetail({
 
       toast.success(detail.addedToCart);
       const destination = withLocalePath(locale, "/menu");
-      if (consumeMenuReturnFlag(locale) && window.history.length > 1) {
+      const shouldReturnToMenu = consumeMenuReturnFlag(locale);
+      let isSafeSameOriginReferrer = false;
+
+      if (shouldReturnToMenu) {
+        try {
+          const referrer = document.referrer;
+          if (referrer) {
+            const referrerUrl = new URL(referrer);
+            isSafeSameOriginReferrer =
+              referrerUrl.origin === window.location.origin;
+          }
+        } catch {
+          isSafeSameOriginReferrer = false;
+        }
+      }
+
+      if (shouldReturnToMenu && isSafeSameOriginReferrer) {
         markMenuNeedsRefresh(locale);
         router.back();
       } else {
