@@ -16,6 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   CustomDeliverySelection,
   DeliveryLocationOption,
@@ -180,7 +187,7 @@ export function DeliveryLocationPicker({
           {triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg space-y-4">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dictionary.modal.title}</DialogTitle>
           <DialogDescription>{dictionary.modal.subtitle}</DialogDescription>
@@ -214,46 +221,81 @@ export function DeliveryLocationPicker({
         </div>
 
         {mode === "preset" ? (
-          <div className="space-y-4">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold text-slate-800">
+          <div className="space-y-5">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-semibold text-slate-800">
                 {dictionary.modal.condoLabel}
-              </span>
-              <select
+              </label>
+              <Select
                 value={locationId}
-                onChange={(event) => setLocationId(event.target.value)}
-                className={clsx(
-                  "rounded-xl border bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100",
-                  error ? "border-red-500" : "border-slate-200"
-                )}
+                onValueChange={setLocationId}
               >
-                <option value="">{dictionary.modal.condoPlaceholder}</option>
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.condoName} (฿{location.minFee}–{location.maxFee})
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger
+                  className={clsx(
+                    "w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-[3.5rem]",
+                    error ? "border-red-500" : "border-slate-200"
+                  )}
+                >
+                  <SelectValue placeholder={dictionary.modal.condoPlaceholder} />
+                </SelectTrigger>
+                <SelectContent 
+                  className="max-h-[60vh] sm:max-h-[50vh] w-[var(--radix-select-trigger-width)]"
+                  position="popper"
+                  sideOffset={4}
+                >
+                  {locations.map((location) => (
+                    <SelectItem
+                      key={location.id}
+                      value={location.id}
+                      textValue={`${location.condoName} (฿${location.minFee}–${location.maxFee})`}
+                      className="py-3.5 px-3 text-sm min-h-[4rem] cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
+                    >
+                      <div className="flex flex-col gap-1 w-full pr-6">
+                        <span className="font-medium text-slate-900 leading-tight">
+                          {location.condoName}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          ฿{location.minFee}–{location.maxFee}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {hasBuildings ? (
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold text-slate-800">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-slate-800">
                   {dictionary.modal.buildingLabel}
-                </span>
-                <select
+                </label>
+                <Select
                   value={buildingId}
-                  onChange={(event) => setBuildingId(event.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  onValueChange={setBuildingId}
+                  disabled={!locationId}
                 >
-                  <option value="">{dictionary.modal.buildingPlaceholder}</option>
-                  {activeLocation?.buildings.map((building) => (
-                    <option key={building.id} value={building.id}>
-                      {building.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-[3.5rem] disabled:opacity-50 disabled:cursor-not-allowed">
+                    <SelectValue placeholder={dictionary.modal.buildingPlaceholder} />
+                  </SelectTrigger>
+                  <SelectContent 
+                    className="max-h-[60vh] sm:max-h-[50vh] w-[var(--radix-select-trigger-width)]"
+                    position="popper"
+                    sideOffset={4}
+                  >
+                    {activeLocation?.buildings.map((building) => (
+                      <SelectItem
+                        key={building.id}
+                        value={building.id}
+                        className="py-3.5 px-3 text-sm min-h-[3rem] cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
+                      >
+                        <span className="font-medium text-slate-900 leading-tight">
+                          {building.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             ) : null}
 
             {activeLocation?.notes ? (
