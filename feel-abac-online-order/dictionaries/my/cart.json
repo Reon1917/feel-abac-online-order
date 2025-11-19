@@ -10,6 +10,8 @@
       "other": "{{count}} ဟင်းပွဲများ"
     },
     "subtotal": "စုစုပေါင်း",
+    "foodSubtotal": "အစားအစာ စုစုပေါင်း",
+    "vatIncluded": "VAT ပါဝင်ပြီး",
     "empty": "အော်ဒါမရှိသေးပါ",
     "checkoutCta": "Checkout သို့ ဆက်သွားရန်",
     "comingSoon": "Checkout မကြာမီလာမည်"

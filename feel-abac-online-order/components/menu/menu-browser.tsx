@@ -285,10 +285,7 @@ export function MenuBrowser({
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-3xl space-y-2">
-            <h1 className="text-3xl font-semibold text-slate-900">
-              {browser.title}
-            </h1>
+          <div className="max-w-3xl">
             <p className="text-sm text-slate-600">{browser.subtitle}</p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
@@ -549,13 +546,14 @@ function MenuItemCard({
     variant === "recommended" ? "h-44 sm:h-52" : "h-36 sm:h-40";
   const descriptionClampClass =
     variant === "recommended"
-      ? "line-clamp-2 min-h-[2.75rem]"
+      ? "line-clamp-2 h-14"
       : "line-clamp-3";
 
   const cardContent = (
     <article
       className={clsx(
         "relative flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm transition duration-200",
+        variant === "recommended" && "h-112 sm:h-128",
         isOutOfStock
           ? "border-slate-200 opacity-70 grayscale"
           : variant === "recommended"
@@ -573,7 +571,9 @@ function MenuItemCard({
               "object-cover transition duration-500",
               !isOutOfStock && "group-hover:scale-105"
             )}
-            sizes="(max-width: 768px) 100vw, 400px"
+            sizes={variant === "recommended" 
+              ? "(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+              : "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"}
             priority={shouldPreloadImage}
             loading={shouldPreloadImage ? "eager" : undefined}
           />
@@ -590,20 +590,22 @@ function MenuItemCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{displayName}</h3>
-          {descriptionCopy ? (
-            <p
-              className={clsx(
-                "text-sm leading-relaxed text-slate-600",
-                descriptionClampClass
-              )}
-            >
-              {descriptionCopy}
-            </p>
-          ) : variant === "recommended" ? (
-            <p className="text-sm text-slate-500 opacity-0">.</p>
-          ) : null}
+        <div className="flex flex-1 flex-col space-y-2">
+          <h3 className="text-base font-semibold text-slate-900 sm:text-lg line-clamp-2 min-h-12 leading-tight">{displayName}</h3>
+          <div className={variant === "recommended" ? "h-14" : ""}>
+            {descriptionCopy ? (
+              <p
+                className={clsx(
+                  "text-sm leading-relaxed text-slate-600",
+                  descriptionClampClass
+                )}
+              >
+                {descriptionCopy}
+              </p>
+            ) : variant === "recommended" ? (
+              <p className="text-sm text-slate-500 opacity-0 h-full">.</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3">
@@ -616,8 +618,8 @@ function MenuItemCard({
             aria-label={actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
-              "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-9 sm:w-9 sm:text-xl",
-              !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
+              "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow-md ring-1 ring-emerald-100 transition sm:h-9 sm:w-9 sm:text-xl",
+              !isOutOfStock && "hover:bg-emerald-600 hover:text-white group-hover:bg-emerald-600 group-hover:text-white",
               buttonDisabled && "cursor-default opacity-60"
             )}
             onClick={(event) => {

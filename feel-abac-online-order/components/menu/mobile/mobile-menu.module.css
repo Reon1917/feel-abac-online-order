@@ -236,13 +236,12 @@
 }
 
 .emptyState {
-  grid-column: 1 / -1;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.8);
   padding: 2.5rem 1.5rem;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: #64748b;
 }
 
@@ -400,7 +399,7 @@
 
 .recommendedCard {
   width: 15.5rem;
-  min-height: 14rem;
+  height: 20rem;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -453,12 +452,19 @@
   gap: 0.45rem;
   padding: 0.9rem;
   flex: 1;
+  min-height: 0;
 }
 
 .recommendedName {
   font-size: 1rem;
   font-weight: 600;
   color: #0f172a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5rem;
+  line-height: 1.25;
 }
 
 .recommendedDescription {
@@ -470,6 +476,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 2.4rem;
+  flex-shrink: 0;
 }
 
 .recommendedFooter {
@@ -477,11 +484,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.recommendedAddButton {
-  background: #0f172a;
-  color: #ecfdf5;
 }
 
 .outOfStockOverlay {

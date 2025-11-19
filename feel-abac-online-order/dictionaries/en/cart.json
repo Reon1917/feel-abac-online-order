@@ -10,6 +10,8 @@
       "other": "{{count}} items"
     },
     "subtotal": "Subtotal",
+    "foodSubtotal": "Food Subtotal",
+    "vatIncluded": "VAT INCLUDED",
     "empty": "Your cart is empty",
     "checkoutCta": "Proceed to checkout",
     "comingSoon": "Checkout is coming soon"
