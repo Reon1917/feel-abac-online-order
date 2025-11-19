@@ -440,9 +440,18 @@ export function CartView({
               {totalQuantity} {dictionary.items.quantityLabel}
             </span>
           </div>
-          <div className="flex items-center justify-between text-sm font-semibold text-slate-900">
-            <span>{dictionary.summary.subtotal}</span>
-            <span>฿{formatPrice(cart.subtotal)}</span>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-slate-900">
+                {dictionary.summary.foodSubtotal}
+              </span>
+              <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                {dictionary.summary.vatIncluded}
+              </span>
+            </div>
+            <span className="text-sm font-semibold text-slate-900">
+              ฿{formatPrice(cart.subtotal)}
+            </span>
           </div>
         </div>
 
