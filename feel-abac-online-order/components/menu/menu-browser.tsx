@@ -285,10 +285,7 @@ export function MenuBrowser({
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-3xl space-y-2">
-            <h1 className="text-3xl font-semibold text-slate-900">
-              {browser.title}
-            </h1>
+          <div className="max-w-3xl">
             <p className="text-sm text-slate-600">{browser.subtitle}</p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">

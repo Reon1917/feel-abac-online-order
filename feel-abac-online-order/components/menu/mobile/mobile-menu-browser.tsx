@@ -180,7 +180,6 @@ export function MobileMenuBrowser({
   return (
     <div className={styles.mobileRoot}>
       <header>
-        <h1 className={styles.headerTitle}>{browser.title}</h1>
         <p className={styles.headerSubtitle}>{browser.mobileSubtitle}</p>
       </header>
 
