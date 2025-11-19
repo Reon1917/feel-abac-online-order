@@ -400,7 +400,7 @@
 
 .recommendedCard {
   width: 15.5rem;
-  min-height: 14rem;
+  height: 20rem;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -453,12 +453,19 @@
   gap: 0.45rem;
   padding: 0.9rem;
   flex: 1;
+  min-height: 0;
 }
 
 .recommendedName {
   font-size: 1rem;
   font-weight: 600;
   color: #0f172a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5rem;
+  line-height: 1.25;
 }
 
 .recommendedDescription {
@@ -470,6 +477,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 2.4rem;
+  flex-shrink: 0;
 }
 
 .recommendedFooter {
@@ -477,11 +485,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.recommendedAddButton {
-  background: #0f172a;
-  color: #ecfdf5;
 }
 
 .outOfStockOverlay {

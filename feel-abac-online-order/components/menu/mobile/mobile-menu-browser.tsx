@@ -384,9 +384,13 @@ function MobileRecommendedCard({
       </div>
       <div className={styles.recommendedBody}>
         <h3 className={styles.recommendedName}>{displayName}</h3>
-        {descriptionCopy ? (
-          <p className={styles.recommendedDescription}>{descriptionCopy}</p>
-        ) : null}
+        <div className={styles.recommendedDescription}>
+          {descriptionCopy ? (
+            descriptionCopy
+          ) : (
+            <span style={{ opacity: 0 }}>.</span>
+          )}
+        </div>
         <div className={styles.recommendedFooter}>
           <span className={styles.price}>฿{formatPrice(item.price)}</span>
           <button
@@ -394,7 +398,6 @@ function MobileRecommendedCard({
             type="button"
             className={clsx(
               styles.addButton,
-              styles.recommendedAddButton,
               buttonDisabled && styles.addButtonDisabled
             )}
             aria-label={actionLabel}
