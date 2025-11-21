@@ -36,6 +36,7 @@ type DeliveryLocationPickerProps = {
   selection: DeliverySelection | null;
   dictionary: DeliveryDictionary;
   triggerLabel: string;
+  triggerClassName?: string;
   onSelectionChange: (selection: DeliverySelection | null) => void;
 };
 
@@ -44,6 +45,7 @@ export function DeliveryLocationPicker({
   selection,
   dictionary,
   triggerLabel,
+  triggerClassName,
   onSelectionChange,
 }: DeliveryLocationPickerProps) {
   const [open, setOpen] = useState(false);
@@ -182,7 +184,10 @@ export function DeliveryLocationPicker({
           type="button"
           variant="outline"
           size="sm"
-          className="rounded-full border-slate-200 text-xs font-semibold text-slate-700"
+          className={clsx(
+            "rounded-full border-slate-200 text-xs font-semibold text-slate-700",
+            triggerClassName
+          )}
         >
           {triggerLabel}
         </Button>
@@ -232,14 +237,14 @@ export function DeliveryLocationPicker({
               >
                 <SelectTrigger
                   className={clsx(
-                    "w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-[3.5rem]",
+                    "w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14",
                     error ? "border-red-500" : "border-slate-200"
                   )}
                 >
                   <SelectValue placeholder={dictionary.modal.condoPlaceholder} />
                 </SelectTrigger>
                 <SelectContent 
-                  className="max-h-[60vh] sm:max-h-[50vh] w-[var(--radix-select-trigger-width)]"
+                  className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
                   position="popper"
                   sideOffset={4}
                 >
@@ -248,7 +253,7 @@ export function DeliveryLocationPicker({
                       key={location.id}
                       value={location.id}
                       textValue={`${location.condoName} (฿${location.minFee}–${location.maxFee})`}
-                      className="py-3.5 px-3 text-sm min-h-[4rem] cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
+                      className="py-3.5 px-3 text-sm min-h-16 cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
                     >
                       <div className="flex flex-col gap-1 w-full pr-6">
                         <span className="font-medium text-slate-900 leading-tight">
@@ -274,11 +279,11 @@ export function DeliveryLocationPicker({
                   onValueChange={setBuildingId}
                   disabled={!locationId}
                 >
-                  <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-[3.5rem] disabled:opacity-50 disabled:cursor-not-allowed">
+                  <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14 disabled:opacity-50 disabled:cursor-not-allowed">
                     <SelectValue placeholder={dictionary.modal.buildingPlaceholder} />
                   </SelectTrigger>
                   <SelectContent 
-                    className="max-h-[60vh] sm:max-h-[50vh] w-[var(--radix-select-trigger-width)]"
+                    className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
                     position="popper"
                     sideOffset={4}
                   >
@@ -286,7 +291,7 @@ export function DeliveryLocationPicker({
                       <SelectItem
                         key={building.id}
                         value={building.id}
-                        className="py-3.5 px-3 text-sm min-h-[3rem] cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
+                        className="py-3.5 px-3 text-sm min-h-12 cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
                       >
                         <span className="font-medium text-slate-900 leading-tight">
                           {building.label}

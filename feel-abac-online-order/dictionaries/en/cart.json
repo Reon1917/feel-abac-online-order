@@ -65,6 +65,8 @@
     "remove": "Remove",
     "decrement": "Decrease quantity",
     "increment": "Increase quantity",
+    "removeToast": "Item removed from cart",
+    "removeError": "Unable to remove this item.",
     "confirmRemoveTitle": "Remove item?",
     "confirmRemoveBody": "This dish will be removed from your cart.",
     "confirmRemoveCancel": "Keep item",

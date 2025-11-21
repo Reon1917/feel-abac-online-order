@@ -33,7 +33,13 @@
       "fee": "ပို့ခ အပိုင်းအခြား",
       "buildings": "အဆောက်အအုံ"
     },
-    "editButton": "ပြင်ဆင်ရန်"
+    "editButton": "ပြင်ဆင်ရန်",
+    "deleteButton": "ဖျက်မည်",
+    "deletePending": "ဖျက်နေသည်...",
+    "deleteConfirmTitle": "ပို့ဆောင်နေရာကို ဖျက်မည်",
+    "deleteConfirm": "ဤ condo ကို ဖျက်လိုသည်မှာ သေချာပါသလား? ပြန်လည်ရယူ၍ မရတော့ပါ။",
+    "deleteSuccess": "ပို့ဆောင်နေရာကို ဖျက်ပြီးပါပြီ",
+    "deleteError": "ပို့ဆောင်နေရာကို ဖျက်၍ မရပါ"
   },
   "edit": {
     "title": "Condo ကိုပြင်ဆင်ရန်",

@@ -13,6 +13,7 @@ import { withLocalePath } from "@/lib/i18n/path";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { DeliveryLocationForm } from "@/components/admin/delivery/location-form";
 import { DeliveryLocationEditDialog } from "@/components/admin/delivery/location-edit-dialog";
+import { DeleteLocationButton } from "@/components/admin/delivery/delete-location-button";
 
 type PageProps = {
   params: Promise<{
@@ -109,10 +110,16 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
                           {dict.list.columns.buildings}: –
                         </p>
                       )}
-                      <DeliveryLocationEditDialog
-                        location={location}
-                        dictionary={dict}
-                      />
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <DeliveryLocationEditDialog
+                          location={location}
+                          dictionary={dict}
+                        />
+                        <DeleteLocationButton
+                          locationId={location.id}
+                          dictionary={dict}
+                        />
+                      </div>
                     </div>
                   </li>
                 ))}

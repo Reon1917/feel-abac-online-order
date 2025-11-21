@@ -65,6 +65,8 @@
     "remove": "ဖယ်ရှားရန်",
     "decrement": "အရေအတွက် လျှော့ရန်",
     "increment": "အရေအတွက် တိုးရန်",
+    "removeToast": "ဟင်းပွဲကို ကတ်ထဲမှ ဖယ်ရှားပြီးပါပြီ",
+    "removeError": "ဤဟင်းပွဲကို ဖယ်ရှား၍ မရနိုင်ပါ",
     "confirmRemoveTitle": "ဖယ်ရှားချင်သလား?",
     "confirmRemoveBody": "ဤဟင်းပွဲကို သင့်အော်ဒါမှ ဖယ်ရှားပါမည်။",
     "confirmRemoveCancel": "ထားမည်",

@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -13,6 +14,7 @@ import type {
   DeliverySelection,
 } from "@/lib/delivery/types";
 import { DeliveryLocationPicker } from "./delivery-location-picker";
+import { SwipeToRemove } from "@/components/cart/swipe-to-remove";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -84,6 +86,11 @@ export function CartView({
   const editModalRemove = dictionary.items.editModalRemove;
   const editModalCancel = dictionary.items.editModalCancel;
   const editModalSaving = dictionary.items.editModalSaving;
+  const removeSuccessMessage =
+    dictionary.items.removeToast ?? "Item removed from cart";
+  const removeErrorMessage =
+    dictionary.items.removeError ?? "Unable to remove this item.";
+  const removeLabel = dictionary.items.remove;
   const deliveryDictionary = dictionary.delivery;
   const selectedDeliveryLocation = useMemo(() => {
     if (deliverySelection?.mode !== "preset") {
@@ -141,6 +148,32 @@ export function CartView({
       ...prev,
       [itemId]: isPending,
     }));
+  };
+
+  const handleRemoveItem = async (itemId: string) => {
+    setItemPending(itemId, true);
+    try {
+      const response = await fetch(`/api/cart/items/${itemId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error ?? removeErrorMessage);
+      }
+
+      toast.success(removeSuccessMessage);
+      router.refresh();
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : removeErrorMessage;
+      toast.error(message);
+      return false;
+    } finally {
+      setItemPending(itemId, false);
+    }
   };
 
   const openEditModal = (item: CartItemRecord) => {
@@ -295,8 +328,16 @@ export function CartView({
 
   return (
     <>
+      <div className="mb-6">
+        <Link
+          href={menuHref}
+          className="inline-flex items-center justify-center rounded-full border border-emerald-200 px-5 py-2.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-50"
+        >
+          {dictionary.empty.cta}
+        </Link>
+      </div>
       <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
-      <section className="space-y-3.5">
+      <section className="space-y-3.5 pb-32 lg:pb-0">
         {cart.items.map((item) => {
           const displayName =
             menuLocale === "my"
@@ -310,137 +351,179 @@ export function CartView({
           const canEdit = !isPending;
 
           return (
-            <article
+            <SwipeToRemove
               key={item.id}
-              className="space-y-2.5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm"
+              onRemove={() => handleRemoveItem(item.id)}
+              disabled={isPending}
+              removeLabel={removeLabel}
             >
-              <header className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="text-base font-semibold text-slate-900">
-                    {displayName}
-                  </h3>
-                  <p className="text-[11px] uppercase tracking-wide text-slate-400">
-                    {quantityLabel}: {item.quantity}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    ฿{formatPrice(unitPrice)} / {quantityLabelLower}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase tracking-wide text-slate-400">
-                    {dictionary.items.priceLabel}
-                  </span>
-                  <p className="text-base font-semibold text-emerald-600">
-                    ฿{formatPrice(item.totalPrice)}
-                  </p>
-                </div>
-              </header>
-
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-emerald-700">
-                <button
-                  type="button"
-                  onClick={() => openEditModal(item)}
-                  disabled={!canEdit}
-                  className="rounded-full border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {editLabel}
-                </button>
-                {groupedChoices.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedDetails((prev) => ({
-                        ...prev,
-                        [item.id]: !isExpanded,
-                      }))
-                    }
-                    className="rounded-full border border-emerald-200 px-2.5 py-0.5 transition hover:bg-emerald-50"
-                  >
-                    {isExpanded
-                      ? dictionary.items.hideDetails
-                      : dictionary.items.showDetails}
-                  </button>
-                ) : null}
-
-                {item.note ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setVisibleNotes((prev) => ({
-                        ...prev,
-                        [item.id]: !noteVisible,
-                      }))
-                    }
-                    className="rounded-full border border-amber-200 px-2.5 py-0.5 text-amber-800 transition hover:bg-amber-50"
-                  >
-                    {noteVisible
-                      ? dictionary.items.hideNote
-                      : dictionary.items.showNote}
-                  </button>
-                ) : null}
-              </div>
-
-              {isExpanded && groupedChoices.length > 0 ? (
-                <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    {dictionary.items.choicesHeading}
-                  </p>
-                  <div className="space-y-2">
-                    {groupedChoices.map((group) => (
-                      <div key={group.id}>
-                        <p className="text-sm font-medium text-slate-700">
-                          {group.label}
-                        </p>
-                        <ul className="mt-1 space-y-1 text-[13px] text-slate-600">
-                          {group.options.map((option) => (
-                            <li
-                              key={option.id}
-                              className="flex items-center justify-between"
-                            >
-                              <span>{option.label}</span>
-                              {option.extraPrice > 0 ? (
-                                <span className="text-xs font-semibold text-emerald-600">
-                                  +฿{formatPrice(option.extraPrice)}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] uppercase tracking-wide text-slate-400">
-                                  +฿0.00
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+              <article className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+                <header className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-semibold text-slate-900">
+                      {displayName}
+                    </h3>
+                    <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                      {quantityLabel}: {item.quantity}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      ฿{formatPrice(unitPrice)} / {quantityLabelLower}
+                    </p>
                   </div>
-                </div>
-              ) : null}
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                      {dictionary.items.priceLabel}
+                    </span>
+                    <p className="text-base font-semibold text-emerald-600">
+                      ฿{formatPrice(item.totalPrice)}
+                    </p>
+                  </div>
+                </header>
 
-              {item.note && noteVisible ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800">
-                  <p className="text-xs font-semibold uppercase tracking-wide">
-                    {dictionary.items.noteLabel}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap">{item.note}</p>
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(item)}
+                    disabled={!canEdit}
+                    className="rounded-full border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {editLabel}
+                  </button>
+                  {groupedChoices.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedDetails((prev) => ({
+                          ...prev,
+                          [item.id]: !isExpanded,
+                        }))
+                      }
+                      className="rounded-full border border-emerald-200 px-2.5 py-0.5 transition hover:bg-emerald-50"
+                    >
+                      {isExpanded
+                        ? dictionary.items.hideDetails
+                        : dictionary.items.showDetails}
+                    </button>
+                  ) : null}
+
+                  {item.note ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVisibleNotes((prev) => ({
+                          ...prev,
+                          [item.id]: !noteVisible,
+                        }))
+                      }
+                      className="rounded-full border border-amber-200 px-2.5 py-0.5 text-amber-800 transition hover:bg-amber-50"
+                    >
+                      {noteVisible
+                        ? dictionary.items.hideNote
+                        : dictionary.items.showNote}
+                    </button>
+                  ) : null}
                 </div>
-              ) : null}
-            </article>
+
+                {isExpanded && groupedChoices.length > 0 ? (
+                  <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      {dictionary.items.choicesHeading}
+                    </p>
+                    <div className="space-y-2">
+                      {groupedChoices.map((group) => (
+                        <div key={group.id}>
+                          <p className="text-sm font-medium text-slate-700">
+                            {group.label}
+                          </p>
+                          <ul className="mt-1 space-y-1 text-[13px] text-slate-600">
+                            {group.options.map((option) => (
+                              <li
+                                key={option.id}
+                                className="flex items-center justify-between"
+                              >
+                                <span>{option.label}</span>
+                                {option.extraPrice > 0 ? (
+                                  <span className="text-xs font-semibold text-emerald-600">
+                                    +฿{formatPrice(option.extraPrice)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                                    +฿0.00
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {item.note && noteVisible ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800">
+                    <p className="text-xs font-semibold uppercase tracking-wide">
+                      {dictionary.items.noteLabel}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap">{item.note}</p>
+                  </div>
+                ) : null}
+              </article>
+            </SwipeToRemove>
           );
         })}
+        <div className="lg:hidden rounded-3xl border border-emerald-100 bg-white p-4 shadow-inner shadow-emerald-100/60">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                <MapPin className="h-4 w-4" aria-hidden="true" />
+                {deliveryDictionary.label}
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 leading-tight shadow-inner">
+                {locationSummaryLabel}
+              </div>
+              {locationFeeLabel ? (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                  {deliveryDictionary.feeRangeLabel}: {locationFeeLabel}
+                </span>
+              ) : null}
+              {deliverySelection?.mode === "custom" ? (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                  {deliveryDictionary.customBadge}
+                </span>
+              ) : null}
+              {locationValidationError ? (
+                <p className="text-xs font-semibold text-red-600">
+                  {locationValidationError}
+                </p>
+              ) : null}
+            </div>
+            <div className="w-full">
+              <DeliveryLocationPicker
+                locations={deliveryLocations}
+                selection={deliverySelection}
+                dictionary={deliveryDictionary}
+                triggerLabel={locationTriggerLabel}
+                triggerClassName="w-full justify-center rounded-2xl border-emerald-200 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm hover:border-emerald-300"
+                onSelectionChange={setDeliverySelection}
+              />
+            </div>
+          </div>
+        </div>
       </section>
 
-      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-        <div className="space-y-2.5">
+      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm max-lg:sticky max-lg:bottom-0 max-lg:-mx-4 max-lg:border-x-0 max-lg:border-b-0 max-lg:border-t max-lg:bg-white max-lg:px-4 max-lg:py-4 max-lg:shadow-[0_-8px_20px_rgba(15,23,42,0.12)] max-lg:backdrop-blur lg:sticky lg:top-6 lg:self-start">
+        <div className="space-y-2.5 text-sm max-lg:text-[13px]">
           <h2 className="text-base font-semibold text-slate-900">
             {dictionary.summary.heading}
           </h2>
-          <div className="flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center justify-between text-[11px] text-slate-600">
             <span>{itemCountLabel}</span>
             <span>
               {totalQuantity} {dictionary.items.quantityLabel}
             </span>
           </div>
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-2 text-sm max-lg:text-[13px]">
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-slate-900">
                 {dictionary.summary.foodSubtotal}
@@ -455,33 +538,42 @@ export function CartView({
           </div>
         </div>
 
-        <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <div className="hidden rounded-3xl border border-emerald-100 bg-white p-4 shadow-inner shadow-emerald-100/60 lg:block">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                <MapPin className="h-4 w-4" aria-hidden="true" />
                 {deliveryDictionary.label}
-              </p>
-              <p className="text-sm font-semibold text-slate-900">
+              </div>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 leading-tight shadow-inner">
                 {locationSummaryLabel}
-              </p>
+              </div>
               {locationFeeLabel ? (
-                <p className="text-xs text-slate-500">
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
                   {deliveryDictionary.feeRangeLabel}: {locationFeeLabel}
-                </p>
+                </span>
               ) : null}
               {deliverySelection?.mode === "custom" ? (
-                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
                   {deliveryDictionary.customBadge}
                 </span>
               ) : null}
+              {locationValidationError ? (
+                <p className="text-xs font-semibold text-red-600">
+                  {locationValidationError}
+                </p>
+              ) : null}
             </div>
-            <DeliveryLocationPicker
-              locations={deliveryLocations}
-              selection={deliverySelection}
-              dictionary={deliveryDictionary}
-              triggerLabel={locationTriggerLabel}
-              onSelectionChange={setDeliverySelection}
-            />
+            <div className="w-full">
+              <DeliveryLocationPicker
+                locations={deliveryLocations}
+                selection={deliverySelection}
+                dictionary={deliveryDictionary}
+                triggerLabel={locationTriggerLabel}
+                triggerClassName="w-full justify-center rounded-2xl border-emerald-200 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm hover:border-emerald-300"
+                onSelectionChange={setDeliverySelection}
+              />
+            </div>
           </div>
         </div>
 
@@ -496,12 +588,6 @@ export function CartView({
           {dictionary.summary.comingSoon}
         </p>
 
-        <Link
-          href={menuHref}
-          className="flex w-full items-center justify-center rounded-full border border-emerald-200 px-5 py-2.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-50"
-        >
-          {dictionary.empty.cta}
-        </Link>
       </aside>
     </div>
     {editingItem ? (
