@@ -128,3 +128,31 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const session = await requireActiveAdmin();
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { locationId } = await params;
+
+  const [existing] = await db
+    .select({ id: deliveryLocations.id })
+    .from(deliveryLocations)
+    .where(eq(deliveryLocations.id, locationId))
+    .limit(1);
+
+  if (!existing) {
+    return Response.json({ error: "Delivery location not found" }, { status: 404 });
+  }
+
+  try {
+    await db.delete(deliveryLocations).where(eq(deliveryLocations.id, locationId));
+    return Response.json({ success: true });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to delete delivery location";
+    return Response.json({ error: message }, { status: 500 });
+  }
+}

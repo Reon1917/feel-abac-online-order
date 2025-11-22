@@ -33,7 +33,13 @@
       "fee": "Fee range",
       "buildings": "Buildings"
     },
-    "editButton": "Edit condo"
+    "editButton": "Edit condo",
+    "deleteButton": "Delete",
+    "deletePending": "Deleting...",
+    "deleteConfirmTitle": "Remove delivery location",
+    "deleteConfirm": "Remove this condo? This action cannot be undone.",
+    "deleteSuccess": "Delivery location removed",
+    "deleteError": "Unable to delete delivery location"
   },
   "edit": {
     "title": "Edit delivery condo",
