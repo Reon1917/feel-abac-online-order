@@ -174,19 +174,60 @@ border border-white/60
 ## Data Flow
 
 ```
-User selects location in dropdown
-         ↓
-DeliveryLocationPicker updates activeLocation state
-         ↓
-activeLocation prop passed to DeliveryLocationMap
-         ↓
-getLocationCoordinates(location) called
-         ↓
-Returns coordinates or null
-         ↓
-Map centers on coordinates (or default)
-         ↓
-Marker shown if coordinates exist
+┌─────────────────────────────────────────────────────────────────┐
+│                         User Action                              │
+│                   (Selects location in dropdown)                 │
+└────────────────────────────┬─────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              DeliveryLocationPicker Component                    │
+│         (Updates activeLocation state with selection)            │
+└────────────────────────────┬─────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              Pass location prop to map component                 │
+│    <DeliveryLocationMap location={activeLocation} />            │
+└────────────────────────────┬─────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              DeliveryLocationMap Component                       │
+│        Calls: getLocationCoordinates(location)                   │
+└────────────────────────────┬─────────────────────────────────────┘
+                             ↓
+                    ┌────────┴────────┐
+                    ↓                 ↓
+        ┌───────────────────┐  ┌──────────────────┐
+        │  Coordinates      │  │  No coordinates  │
+        │  Found in map     │  │  (returns null)  │
+        └────────┬──────────┘  └────────┬─────────┘
+                 ↓                       ↓
+    ┌────────────────────────┐  ┌──────────────────────┐
+    │  Center at coordinates │  │  Center at default   │
+    │  Zoom: 16              │  │  Zoom: 13            │
+    │  Show MarkerF          │  │  Show emerald dot    │
+    └────────────────────────┘  └──────────────────────┘
+                 ↓                       ↓
+        ┌────────────────────────────────────────┐
+        │   Interactive Google Map Displayed     │
+        │   (or placeholder if error/loading)    │
+        └────────────────────────────────────────┘
+```
+
+### State Handling
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                  DeliveryLocationMap States                       │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  1. API Key Missing          → Show "unavailable" placeholder    │
+│  2. Map Loading              → Show "loading" placeholder        │
+│  3. Map Load Error           → Show "unavailable" placeholder    │
+│  4. No Location Selected     → Show "select location" placeholder│
+│  5. Location Without Coords  → Show map + emerald dot           │
+│  6. Location With Coords     → Show map + marker at coords      │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Admin Management
