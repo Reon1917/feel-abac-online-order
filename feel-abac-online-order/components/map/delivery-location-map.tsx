@@ -1,17 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
+import { GoogleMap, MarkerF } from "@react-google-maps/api";
 
 import type { DeliveryLocationOption } from "@/lib/delivery/types";
 import {
   DEFAULT_LOCATION_COORDINATE,
   getLocationCoordinates,
+  type LatLngPoint,
 } from "@/lib/delivery/location-coordinates";
+import { useGoogleMapsLoader } from "@/lib/map/use-google-maps-loader";
 import { cn } from "@/lib/utils";
 
 type DeliveryLocationMapProps = {
-  location: DeliveryLocationOption | null;
+  location?: DeliveryLocationOption | null;
+  coordinates?: LatLngPoint | null;
   className?: string;
 };
 
@@ -44,20 +47,23 @@ function MapPlaceholder({
 }
 
 export function DeliveryLocationMap({
-  location,
+  location = null,
+  coordinates = null,
   className,
 }: DeliveryLocationMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-  const coordinates = useMemo(() => getLocationCoordinates(location), [location]);
+  const resolvedCoordinates = useMemo(() => {
+    if (coordinates) {
+      return coordinates;
+    }
+    return getLocationCoordinates(location ?? null);
+  }, [coordinates, location]);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: "delivery-location-map",
-    googleMapsApiKey: apiKey,
-    preventGoogleFontsLoading: true,
-  });
+  const { isLoaded, loadError } = useGoogleMapsLoader();
 
-  const center = coordinates ?? DEFAULT_LOCATION_COORDINATE;
-  const shouldShowMarker = Boolean(coordinates);
+  const center = resolvedCoordinates ?? DEFAULT_LOCATION_COORDINATE;
+  const shouldShowMarker = Boolean(resolvedCoordinates);
+  const hasSelection = Boolean(location) || Boolean(coordinates);
 
   const containerClassName = cn(
     "h-48 w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100",
@@ -83,7 +89,7 @@ export function DeliveryLocationMap({
     );
   }
 
-  if (!location) {
+  if (!hasSelection) {
     return (
       <div className={containerClassName}>
         <MapPlaceholder label={PLACEHOLDER_LABELS.selectLocation} />

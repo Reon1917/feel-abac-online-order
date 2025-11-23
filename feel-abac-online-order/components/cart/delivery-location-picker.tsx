@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -30,6 +30,11 @@ import type {
   DeliverySelection,
   PresetDeliverySelection,
 } from "@/lib/delivery/types";
+import {
+  getLocationCoordinates,
+  type LatLngPoint,
+} from "@/lib/delivery/location-coordinates";
+import { useGoogleMapsLoader } from "@/lib/map/use-google-maps-loader";
 type DeliveryDictionary = typeof import("@/dictionaries/en/cart.json")["delivery"];
 
 type DeliveryLocationPickerProps = {
@@ -55,9 +60,18 @@ export function DeliveryLocationPicker({
   const [buildingId, setBuildingId] = useState("");
   const [customCondo, setCustomCondo] = useState("");
   const [customBuilding, setCustomBuilding] = useState("");
+  const [customCoordinates, setCustomCoordinates] = useState<LatLngPoint | null>(null);
+  const [presetCoordinates, setPresetCoordinates] = useState<LatLngPoint | null>(null);
+  const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
   const [remember, setRemember] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [placePredictions, setPlacePredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
+  const { isLoaded: isMapsApiLoaded } = useGoogleMapsLoader();
+  const canUsePlacesAutocomplete = Boolean(mapsApiKey) && isMapsApiLoaded;
 
   useEffect(() => {
     if (!open) {
@@ -85,7 +99,18 @@ export function DeliveryLocationPicker({
     }
     setRemember(false);
     setError(null);
+    setCustomCoordinates(null);
+    setPresetCoordinates(null);
+    setLastAutocompleteValue(null);
   }, [open, selection]);
+
+  useEffect(() => {
+    if (mode === "preset") {
+      setCustomCoordinates(null);
+      setLastAutocompleteValue(null);
+      setPlacePredictions([]);
+    }
+  }, [mode]);
 
   const activeLocation = useMemo(
     () => locations.find((loc) => loc.id === locationId) ?? null,
@@ -108,6 +133,187 @@ export function DeliveryLocationPicker({
   }, [activeLocation, buildingId]);
 
   const hasBuildings = (activeLocation?.buildings.length ?? 0) > 0;
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!activeLocation) {
+      setPresetCoordinates(null);
+      return;
+    }
+
+    const staticCoordinates = getLocationCoordinates(activeLocation);
+    if (staticCoordinates) {
+      setPresetCoordinates(staticCoordinates);
+      return;
+    }
+
+    if (!canUsePlacesAutocomplete) {
+      setPresetCoordinates(null);
+      return;
+    }
+
+    const service = ensurePlacesService();
+    if (!service) {
+      setPresetCoordinates(null);
+      return;
+    }
+
+    const queryParts = [activeLocation.condoName, activeLocation.area]
+      .filter(Boolean)
+      .join(" ");
+
+    service.findPlaceFromQuery(
+      {
+        query: queryParts,
+        fields: ["geometry"],
+      },
+      (results, status) => {
+        if (isCancelled) {
+          return;
+        }
+
+        if (
+          status === google.maps.places.PlacesServiceStatus.OK &&
+          results &&
+          results[0]?.geometry?.location
+        ) {
+          setPresetCoordinates({
+            lat: results[0].geometry.location.lat(),
+            lng: results[0].geometry.location.lng(),
+          });
+        } else {
+          setPresetCoordinates(null);
+        }
+      }
+    );
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeLocation, canUsePlacesAutocomplete]);
+
+  const ensureAutocompleteService = () => {
+    if (!autocompleteServiceRef.current) {
+      if (typeof window !== "undefined" && google?.maps?.places?.AutocompleteService) {
+        autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+      }
+    }
+    return autocompleteServiceRef.current;
+  };
+
+  const ensurePlacesService = () => {
+    if (!placesServiceRef.current) {
+      const dummy = typeof window !== "undefined" ? document.createElement("div") : null;
+      if (dummy) {
+        placesServiceRef.current = new google.maps.places.PlacesService(dummy);
+      }
+    }
+    return placesServiceRef.current;
+  };
+
+  const fetchPlaceGeometry = (placeId: string) => {
+    const service = ensurePlacesService();
+    if (!service) {
+      setCustomCoordinates(null);
+      return;
+    }
+
+    service.getDetails(
+      {
+        placeId,
+        fields: ["geometry", "name", "formatted_address"],
+      },
+      (result, status) => {
+        if (
+          status === google.maps.places.PlacesServiceStatus.OK &&
+          result?.geometry?.location
+        ) {
+          setCustomCoordinates({
+            lat: result.geometry.location.lat(),
+            lng: result.geometry.location.lng(),
+          });
+          if (!lastAutocompleteValue && result.name) {
+            setLastAutocompleteValue(result.name);
+          }
+        } else {
+          setCustomCoordinates(null);
+        }
+      }
+    );
+  };
+
+  const handlePredictionSelect = (
+    prediction: google.maps.places.AutocompletePrediction
+  ) => {
+    const description =
+      prediction.description ??
+      prediction.structured_formatting?.main_text ??
+      customCondo;
+
+    setCustomCondo(description);
+    setLastAutocompleteValue(description);
+    setPlacePredictions([]);
+
+    if (prediction.place_id) {
+      fetchPlaceGeometry(prediction.place_id);
+    } else {
+      setCustomCoordinates(null);
+    }
+  };
+
+  const handleCustomCondoChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const nextValue = event.target.value;
+    setCustomCondo(nextValue);
+    if (nextValue !== lastAutocompleteValue) {
+      setCustomCoordinates(null);
+      setLastAutocompleteValue(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!canUsePlacesAutocomplete) {
+      setPlacePredictions([]);
+      return;
+    }
+
+    const trimmedValue = customCondo.trim();
+    if (!trimmedValue || trimmedValue === lastAutocompleteValue) {
+      setPlacePredictions([]);
+      return;
+    }
+
+    const service = ensureAutocompleteService();
+    if (!service) {
+      setPlacePredictions([]);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      service.getPlacePredictions(
+        {
+          input: trimmedValue,
+          types: ["geocode", "establishment"],
+        },
+        (results, status) => {
+          if (
+            status === google.maps.places.PlacesServiceStatus.OK &&
+            results
+          ) {
+            setPlacePredictions(results);
+          } else {
+            setPlacePredictions([]);
+          }
+        }
+      );
+    }, 200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete]);
 
   const handleSave = async () => {
     setError(null);
@@ -309,7 +515,10 @@ export function DeliveryLocationPicker({
                 {activeLocation.notes}
               </div>
             ) : null}
-            <DeliveryLocationMap location={activeLocation} />
+            <DeliveryLocationMap
+              location={activeLocation}
+              coordinates={presetCoordinates}
+            />
 
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
               <div className="space-y-0.5">
@@ -335,10 +544,38 @@ export function DeliveryLocationPicker({
               </span>
               <Input
                 value={customCondo}
-                onChange={(event) => setCustomCondo(event.target.value)}
+                onChange={handleCustomCondoChange}
                 placeholder={dictionary.modal.customCondoPlaceholder}
                 className={clsx(error ? "border-red-500" : undefined)}
+                autoComplete="off"
               />
+              {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
+                <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <ul className="max-h-60 overflow-y-auto py-1">
+                    {placePredictions.map((prediction) => (
+                      <li key={prediction.place_id ?? prediction.description}>
+                        <button
+                          type="button"
+                          onClick={() => handlePredictionSelect(prediction)}
+                          className="w-full px-4 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50"
+                        >
+                          <p className="text-sm font-medium text-slate-900">
+                            {prediction.structured_formatting?.main_text ?? prediction.description}
+                          </p>
+                          {prediction.structured_formatting?.secondary_text ? (
+                            <p className="text-xs text-slate-500">
+                              {prediction.structured_formatting.secondary_text}
+                            </p>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
+                    Powered by Google
+                  </p>
+                </div>
+              ) : null}
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold text-slate-800">
@@ -353,6 +590,10 @@ export function DeliveryLocationPicker({
             <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
               {dictionary.modal.customHelper}
             </p>
+            <DeliveryLocationMap
+              location={null}
+              coordinates={customCoordinates}
+            />
           </div>
         )}
 
