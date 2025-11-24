@@ -15,7 +15,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -30,11 +29,7 @@ import type {
   DeliverySelection,
   PresetDeliverySelection,
 } from "@/lib/delivery/types";
-import {
-  getLocationCoordinates,
-  getUniversityAreaRectangle,
-  type LatLngPoint,
-} from "@/lib/delivery/location-coordinates";
+import { getUniversityAreaRectangle, type LatLngPoint } from "@/lib/delivery/location-coordinates";
 import {
   autocompleteNew,
   placeDetailsIdsOnly,
@@ -47,6 +42,7 @@ type DeliveryDictionary = typeof import("@/dictionaries/en/cart.json")["delivery
 type DeliveryLocationPickerProps = {
   locations: DeliveryLocationOption[];
   selection: DeliverySelection | null;
+  savedCustomSelection?: CustomDeliverySelection | null;
   dictionary: DeliveryDictionary;
   triggerLabel: string;
   triggerClassName?: string;
@@ -61,6 +57,7 @@ function generateSessionToken(): string {
 export function DeliveryLocationPicker({
   locations,
   selection,
+  savedCustomSelection = null,
   dictionary,
   triggerLabel,
   triggerClassName,
@@ -74,12 +71,11 @@ export function DeliveryLocationPicker({
   const [customBuilding, setCustomBuilding] = useState("");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [customCoordinates, setCustomCoordinates] = useState<LatLngPoint | null>(null);
-  const [presetCoordinates, setPresetCoordinates] = useState<LatLngPoint | null>(null);
-  const [showPresetMap, setShowPresetMap] = useState(false);
   const [showCustomMap, setShowCustomMap] = useState(false);
+  const [showFullCustomSummary, setShowFullCustomSummary] = useState(false);
+  const [isEditingCustom, setIsEditingCustom] = useState(false);
   const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
   const [shouldLoadMaps, setShouldLoadMaps] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placePredictions, setPlacePredictions] = useState<
@@ -96,19 +92,34 @@ export function DeliveryLocationPicker({
   const placeDetailsCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
   const canUsePlacesAutocomplete = Boolean(mapsApiKey);
+  const hasSavedCustom = Boolean(
+    savedCustomSelection?.customCondoName || selection?.mode === "custom" || customCondo
+  );
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    const customSource =
+      selection?.mode === "custom"
+        ? selection
+        : savedCustomSelection ?? null;
+
     if (selection?.mode === "preset") {
       setMode("preset");
       setLocationId(selection.locationId);
       setBuildingId(selection.buildingId ?? "");
-      setCustomCondo("");
-      setCustomBuilding("");
-      setSelectedPlaceId(null);
+      setCustomCondo(customSource?.customCondoName ?? "");
+      setCustomBuilding(customSource?.customBuildingName ?? "");
+      setSelectedPlaceId(customSource?.placeId ?? null);
+      setCustomCoordinates(customSource?.coordinates ?? null);
+      if (customSource?.placeId && !customSource.coordinates) {
+        void fetchPlaceGeometry(customSource.placeId);
+      }
+      setIsEditingCustom(false);
+      setShowCustomMap(Boolean(customSource?.coordinates));
+      setShouldLoadMaps(Boolean(customSource?.coordinates || customSource?.placeId));
     } else if (selection?.mode === "custom") {
       setMode("custom");
       setCustomCondo(selection.customCondoName);
@@ -116,10 +127,26 @@ export function DeliveryLocationPicker({
       setSelectedPlaceId(selection.placeId ?? null);
       setLocationId("");
       setBuildingId("");
-      // If placeId exists, fetch coordinates using FREE API
-      if (selection.placeId) {
+      setCustomCoordinates(selection.coordinates ?? null);
+      // If placeId exists and coordinates are not already present, fetch using FREE API
+      if (selection.placeId && !selection.coordinates) {
         void fetchPlaceGeometry(selection.placeId);
       }
+      setShowCustomMap(Boolean(selection.coordinates));
+      setShouldLoadMaps(true);
+    } else if (savedCustomSelection) {
+      setMode("preset");
+      setLocationId("");
+      setBuildingId("");
+      setCustomCondo(savedCustomSelection.customCondoName);
+      setCustomBuilding(savedCustomSelection.customBuildingName);
+      setSelectedPlaceId(savedCustomSelection.placeId ?? null);
+      setCustomCoordinates(savedCustomSelection.coordinates ?? null);
+      if (savedCustomSelection.placeId && !savedCustomSelection.coordinates) {
+        void fetchPlaceGeometry(savedCustomSelection.placeId);
+      }
+      setShowCustomMap(Boolean(savedCustomSelection.coordinates));
+      setShouldLoadMaps(Boolean(savedCustomSelection.coordinates || savedCustomSelection.placeId));
     } else {
       setMode("preset");
       setLocationId("");
@@ -127,16 +154,17 @@ export function DeliveryLocationPicker({
       setCustomCondo("");
       setCustomBuilding("");
       setSelectedPlaceId(null);
+      setCustomCoordinates(null);
+      setShowCustomMap(false);
+      setShouldLoadMaps(false);
     }
-    setRemember(false);
     setError(null);
-    setCustomCoordinates(null);
-    setPresetCoordinates(null);
-    setShowPresetMap(false);
     setShowCustomMap(false);
     setShouldLoadMaps(false);
     setLastAutocompleteValue(null);
-  }, [open, selection]);
+    setShowFullCustomSummary(false);
+    setIsEditingCustom(!hasSavedCustom || selection?.mode === "custom");
+  }, [open, selection, savedCustomSelection, hasSavedCustom]);
 
   useEffect(() => {
     if (mode === "preset") {
@@ -167,23 +195,6 @@ export function DeliveryLocationPicker({
   }, [activeLocation, buildingId]);
 
   const hasBuildings = (activeLocation?.buildings.length ?? 0) > 0;
-
-  useEffect(() => {
-    if (!activeLocation) {
-      setPresetCoordinates(null);
-      return;
-    }
-
-    // Use static coordinates from LOCATION_COORDINATES map if available
-    // Eliminated expensive findPlaceFromQuery() call ($17/1k)
-    const staticCoordinates = getLocationCoordinates(activeLocation);
-    if (staticCoordinates) {
-      setPresetCoordinates(staticCoordinates);
-    } else {
-      // No coordinates available - skip map preview for preset locations
-      setPresetCoordinates(null);
-    }
-  }, [activeLocation, showPresetMap]);
 
   const ensureSessionToken = () => {
     if (!placeSessionTokenRef.current) {
@@ -270,6 +281,7 @@ export function DeliveryLocationPicker({
     setLastAutocompleteValue(description);
     setPlacePredictions([]);
     setShouldLoadMaps(true);
+    setShowCustomMap(true);
 
     if (prediction.place_id) {
       setSelectedPlaceId(prediction.place_id);
@@ -390,30 +402,28 @@ export function DeliveryLocationPicker({
 
       setIsSubmitting(true);
       try {
-        if (remember) {
-          const response = await fetch("/api/user/delivery-location", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              locationId: payload.locationId,
-              buildingId: payload.buildingId,
-            }),
-          });
+        const response = await fetch("/api/user/delivery-location", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "preset",
+            locationId: payload.locationId,
+            buildingId: payload.buildingId,
+          }),
+        });
 
-          if (!response.ok) {
-            const data = await response.json().catch(() => null);
-            const message =
-              data && typeof data.error === "string"
-                ? data.error
-                : dictionary.rememberError;
-            throw new Error(message);
-          }
-
-          toast.success(dictionary.rememberSuccess);
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          const message =
+            data && typeof data.error === "string"
+              ? data.error
+              : dictionary.rememberError;
+          throw new Error(message);
         }
 
+        toast.success(dictionary.rememberSuccess);
         onSelectionChange(payload);
         setOpen(false);
       } catch (error) {
@@ -437,10 +447,43 @@ export function DeliveryLocationPicker({
       customCondoName: trimmedName,
       customBuildingName: customBuilding.trim(),
       placeId: selectedPlaceId ?? undefined, // Store place_id for FREE Place Details calls later
+      coordinates: customCoordinates,
     };
 
-    onSelectionChange(payload);
-    setOpen(false);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/user/delivery-location", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: "custom",
+          customCondoName: payload.customCondoName,
+          customBuildingName: payload.customBuildingName,
+          placeId: payload.placeId ?? null,
+          coordinates: customCoordinates,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message =
+          data && typeof data.error === "string"
+            ? data.error
+            : dictionary.rememberError;
+        throw new Error(message);
+      }
+
+      toast.success(dictionary.rememberSuccess);
+      onSelectionChange(payload);
+      setOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : dictionary.errorGeneric;
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -574,136 +617,149 @@ export function DeliveryLocationPicker({
                 {activeLocation.notes}
               </div>
             ) : null}
-            {showPresetMap ? (
-              <DeliveryLocationMap
-                location={activeLocation}
-                coordinates={presetCoordinates}
-              />
-            ) : (
-              <div className="flex h-48 w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {dictionary.modal.mapPreviewTitle ?? "Map preview"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {dictionary.modal.mapPreviewHelper ?? "Tap to load Google Maps for this location."}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setShowPresetMap(true);
-                    setShouldLoadMaps(true);
-                  }}
-                >
-                  {dictionary.modal.mapPreviewAction ?? "Show map"}
-                </Button>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-slate-800">
-                  {dictionary.rememberLabel}
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  {dictionary.rememberHint}
-                </p>
-              </div>
-              <Switch
-                disabled={isSubmitting}
-                checked={remember}
-                onCheckedChange={setRemember}
-              />
-            </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold text-slate-800">
-                {dictionary.modal.customCondoLabel}
-              </span>
-              <Input
-                value={customCondo}
-                onChange={handleCustomCondoChange}
-                placeholder={dictionary.modal.customCondoPlaceholder}
-                className={clsx(error ? "border-red-500" : undefined)}
-                autoComplete="off"
-                onFocus={() => setShouldLoadMaps(true)}
-              />
-              <p className="text-[11px] text-slate-500">
-                Smart location suggestions appear as you type; map preview stays optional.
-              </p>
-              {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
-                <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <ul className="max-h-60 overflow-y-auto py-1">
-                    {placePredictions.map((prediction) => (
-                      <li key={prediction.place_id ?? prediction.description}>
-                        <button
-                          type="button"
-                          onClick={() => handlePredictionSelect(prediction)}
-                          className="w-full px-4 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50"
-                        >
-                          <p className="text-sm font-medium text-slate-900">
-                            {prediction.structured_formatting?.main_text ?? prediction.description}
-                          </p>
-                          {prediction.structured_formatting?.secondary_text ? (
-                            <p className="text-xs text-slate-500">
-                              {prediction.structured_formatting.secondary_text}
-                            </p>
-                          ) : null}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
-                    Smart location search
-                  </p>
+            {hasSavedCustom && !isEditingCustom ? (
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                      {dictionary.modal.customSavedLabel ?? "Saved custom address"}
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-sm font-semibold text-slate-900",
+                        showFullCustomSummary
+                          ? "whitespace-normal break-words"
+                          : "line-clamp-2 break-words"
+                      )}
+                      title={customCondo || savedCustomSelection?.customCondoName}
+                    >
+                      {customCondo || savedCustomSelection?.customCondoName}
+                    </p>
+                    {(customBuilding || savedCustomSelection?.customBuildingName) && (
+                      <p
+                        className={clsx(
+                          "text-[12px] text-slate-600",
+                          showFullCustomSummary
+                            ? "whitespace-normal break-words"
+                            : "line-clamp-2 break-words"
+                        )}
+                        title={customBuilding || savedCustomSelection?.customBuildingName}
+                      >
+                        {customBuilding || savedCustomSelection?.customBuildingName}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-[12px] font-semibold">
+                    <button
+                      type="button"
+                      className="text-emerald-700 hover:text-emerald-800"
+                      onClick={() => setShowFullCustomSummary((prev) => !prev)}
+                    >
+                      {showFullCustomSummary
+                        ? dictionary.modal.customCollapse ?? "Show less"
+                        : dictionary.modal.customExpand ?? "Show full"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-slate-700 hover:text-slate-900"
+                      onClick={() => setIsEditingCustom(true)}
+                    >
+                      {dictionary.modal.customEdit ?? "Edit address"}
+                    </button>
+                  </div>
                 </div>
-              ) : null}
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold text-slate-800">
-                {dictionary.modal.customBuildingLabel}
-              </span>
-              <Input
-                value={customBuilding}
-                onChange={(event) => setCustomBuilding(event.target.value)}
-                placeholder={dictionary.modal.customBuildingPlaceholder}
-              />
-            </label>
-            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-              {dictionary.modal.customHelper}
-            </p>
-            {showCustomMap ? (
-              <DeliveryLocationMap
-                location={null}
-                coordinates={customCoordinates}
-              />
-            ) : (
-              <div className="flex h-48 w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {dictionary.modal.mapPreviewTitle ?? "Map preview"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {dictionary.modal.mapPreviewHelper ?? "Tap to load Google Maps for this location."}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setShowCustomMap(true);
-                    setShouldLoadMaps(true);
-                  }}
-                >
-                  {dictionary.modal.mapPreviewAction ?? "Show map"}
-                </Button>
               </div>
+            ) : null}
+            {(!hasSavedCustom || isEditingCustom) && (
+              <>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-semibold text-slate-800">
+                    {dictionary.modal.customCondoLabel}
+                  </span>
+                  <Input
+                    value={customCondo}
+                    onChange={handleCustomCondoChange}
+                    placeholder={dictionary.modal.customCondoPlaceholder}
+                    className={clsx(error ? "border-red-500" : undefined)}
+                    autoComplete="off"
+                    onFocus={() => setShouldLoadMaps(true)}
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    Smart location suggestions appear as you type; map preview stays optional.
+                  </p>
+                  {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <ul className="max-h-60 overflow-y-auto py-1">
+                        {placePredictions.map((prediction) => (
+                          <li key={prediction.place_id ?? prediction.description}>
+                            <button
+                              type="button"
+                              onClick={() => handlePredictionSelect(prediction)}
+                              className="w-full px-4 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50"
+                            >
+                              <p className="text-sm font-medium text-slate-900">
+                                {prediction.structured_formatting?.main_text ?? prediction.description}
+                              </p>
+                              {prediction.structured_formatting?.secondary_text ? (
+                                <p className="text-xs text-slate-500">
+                                  {prediction.structured_formatting.secondary_text}
+                                </p>
+                              ) : null}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
+                        Smart location search
+                      </p>
+                    </div>
+                  ) : null}
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-semibold text-slate-800">
+                    {dictionary.modal.customBuildingLabel}
+                  </span>
+                  <Input
+                    value={customBuilding}
+                    onChange={(event) => setCustomBuilding(event.target.value)}
+                    placeholder={dictionary.modal.customBuildingPlaceholder}
+                  />
+                </label>
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                  {dictionary.modal.customHelper}
+                </p>
+                {showCustomMap ? (
+                  <DeliveryLocationMap
+                    location={null}
+                    coordinates={customCoordinates}
+                  />
+                ) : (
+                  <div className="flex h-48 w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {dictionary.modal.mapPreviewTitle ?? "Map preview"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {dictionary.modal.mapPreviewHelper ?? "Tap to load Google Maps for this location."}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowCustomMap(true);
+                        setShouldLoadMaps(true);
+                      }}
+                    >
+                      {dictionary.modal.mapPreviewAction ?? "Show map"}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

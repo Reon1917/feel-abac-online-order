@@ -5,20 +5,33 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/src/db/client";
 import { deliveryLocations, deliveryBuildings } from "@/src/db/schema";
-import { updateUserDefaultDeliverySelection } from "@/lib/user-profile";
+import { updateUserDeliverySelection } from "@/lib/user-profile";
+import type { DeliverySelection } from "@/lib/delivery/types";
 
-const userDeliveryPreferenceSchema = z.object({
-  locationId: z
-    .string()
-    .uuid("Invalid location")
-    .optional()
-    .nullable(),
-  buildingId: z
-    .string()
-    .uuid("Invalid building")
-    .optional()
-    .nullable(),
-});
+const userDeliveryPreferenceSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("preset"),
+    locationId: z.string().uuid("Invalid location"),
+    buildingId: z
+      .string()
+      .uuid("Invalid building")
+      .optional()
+      .nullable(),
+  }),
+  z.object({
+    mode: z.literal("custom"),
+    customCondoName: z.string().min(1, "Condo name is required").max(255),
+    customBuildingName: z.string().max(255).optional().nullable(),
+    placeId: z.string().min(1).max(255).optional().nullable(),
+    coordinates: z
+      .object({
+        lat: z.number(),
+        lng: z.number(),
+      })
+      .optional()
+      .nullable(),
+  }),
+]);
 
 export async function PUT(request: NextRequest) {
   try {
@@ -37,10 +50,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    let locationId = parsed.data.locationId ?? null;
-    const requestedBuildingId = parsed.data.buildingId ?? null;
+    let selectionToPersist: DeliverySelection | null = null;
+    let coordinates: { lat: number; lng: number } | null = null;
 
-    if (locationId) {
+    if (parsed.data.mode === "preset") {
+      let locationId = parsed.data.locationId;
+      const requestedBuildingId = parsed.data.buildingId ?? null;
+
       const [location] = await db
         .select({ id: deliveryLocations.id })
         .from(deliveryLocations)
@@ -50,43 +66,56 @@ export async function PUT(request: NextRequest) {
       if (!location) {
         return NextResponse.json({ error: "Location not found" }, { status: 404 });
       }
+
+      let buildingIdToPersist = requestedBuildingId;
+
+      if (buildingIdToPersist) {
+        const [building] = await db
+          .select({
+            id: deliveryBuildings.id,
+            locationId: deliveryBuildings.locationId,
+          })
+          .from(deliveryBuildings)
+          .where(eq(deliveryBuildings.id, buildingIdToPersist))
+          .limit(1);
+
+        if (!building) {
+          return NextResponse.json({ error: "Building not found" }, { status: 404 });
+        }
+
+        if (locationId && building.locationId !== locationId) {
+          return NextResponse.json(
+            { error: "Building does not belong to the selected condo" },
+            { status: 400 }
+          );
+        }
+
+        if (!locationId) {
+          locationId = building.locationId;
+        }
+
+        buildingIdToPersist = building.id;
+      }
+
+      selectionToPersist = {
+        mode: "preset",
+        locationId,
+        buildingId: buildingIdToPersist ?? null,
+      };
+    } else {
+      selectionToPersist = {
+        mode: "custom",
+        customCondoName: parsed.data.customCondoName,
+        customBuildingName: parsed.data.customBuildingName ?? "",
+        placeId: parsed.data.placeId ?? undefined,
+        coordinates: parsed.data.coordinates ?? null,
+      };
+      coordinates = parsed.data.coordinates ?? null;
     }
 
-    let buildingIdToPersist = requestedBuildingId;
-
-    if (buildingIdToPersist) {
-      const [building] = await db
-        .select({
-          id: deliveryBuildings.id,
-          locationId: deliveryBuildings.locationId,
-        })
-        .from(deliveryBuildings)
-        .where(eq(deliveryBuildings.id, buildingIdToPersist))
-        .limit(1);
-
-      if (!building) {
-        return NextResponse.json({ error: "Building not found" }, { status: 404 });
-      }
-
-      if (locationId && building.locationId !== locationId) {
-        return NextResponse.json(
-          { error: "Building does not belong to the selected condo" },
-          { status: 400 }
-        );
-      }
-
-      if (!locationId) {
-        locationId = building.locationId;
-      }
-
-      buildingIdToPersist = building.id;
-    }
-
-    await updateUserDefaultDeliverySelection(
-      session.user.id,
-      locationId,
-      buildingIdToPersist
-    );
+    await updateUserDeliverySelection(session.user.id, selectionToPersist, {
+      coordinates,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
