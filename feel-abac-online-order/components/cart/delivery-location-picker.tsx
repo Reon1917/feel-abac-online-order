@@ -32,6 +32,7 @@ import type {
 } from "@/lib/delivery/types";
 import {
   getLocationCoordinates,
+  getUniversityAreaBounds,
   type LatLngPoint,
 } from "@/lib/delivery/location-coordinates";
 import { useGoogleMapsLoader } from "@/lib/map/use-google-maps-loader";
@@ -208,11 +209,16 @@ export function DeliveryLocationPicker({
       return;
     }
 
+    // Use locationBias (non-deprecated) to bias results toward university area
+    // Note: locationBias biases results but doesn't strictly restrict them,
+    // allowing flexibility while optimizing for the university zone
+    const bounds = getUniversityAreaBounds();
     service.findPlaceFromQuery(
       {
         query: queryParts,
         fields: ["geometry"],
         sessionToken: ensureSessionToken(),
+        ...(bounds ? { locationBias: bounds } : {}),
       },
       (results, status) => {
         if (isCancelled) {
@@ -362,10 +368,14 @@ export function DeliveryLocationPicker({
     }
 
     const timeoutId = window.setTimeout(() => {
+      // Use locationBias (non-deprecated) to bias autocomplete results toward university area
+      // Replaces deprecated 'bounds' parameter per Google Maps API deprecation notice (May 2023)
+      const bounds = getUniversityAreaBounds();
       service.getPlacePredictions(
         {
           input: trimmedValue,
           types: ["geocode", "establishment"],
+          ...(bounds ? { locationBias: bounds } : {}),
         },
         (results, status) => {
           if (
