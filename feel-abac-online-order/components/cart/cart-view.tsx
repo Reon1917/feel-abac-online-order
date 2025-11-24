@@ -116,8 +116,12 @@ export function CartView({
 
   // Validate selected location and building on mount and when selection changes
   useEffect(() => {
-    if (deliverySelection?.mode !== "preset") {
+    if (deliverySelection?.mode === "custom") {
       setLocationValidationError(null);
+      return;
+    }
+
+    if (!deliverySelection || deliverySelection.mode !== "preset") {
       return;
     }
 

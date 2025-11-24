@@ -1,3 +1,5 @@
+import type { LatLngPoint } from "./location-coordinates";
+
 export type DeliveryBuildingRecord = {
   id: string;
   locationId: string;
@@ -50,4 +52,3 @@ export type CustomDeliverySelection = {
 };
 
 export type DeliverySelection = PresetDeliverySelection | CustomDeliverySelection;
-import type { LatLngPoint } from "./location-coordinates";

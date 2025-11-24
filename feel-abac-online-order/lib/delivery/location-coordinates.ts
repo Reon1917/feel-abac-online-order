@@ -45,7 +45,7 @@ const UNIVERSITY_AREA_GEOJSON = {
  * parameters (non-deprecated) in Google Maps Places API calls.
  */
 export function getUniversityAreaBounds(): google.maps.LatLngBounds | null {
-  if (typeof window === "undefined" || !google?.maps?.LatLngBounds) {
+  if (typeof window === "undefined" || typeof google === "undefined" || !google.maps?.LatLngBounds) {
     return null;
   }
 

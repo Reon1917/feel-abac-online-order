@@ -128,6 +128,7 @@ export function DeliveryLocationPicker({
   const fetchPlaceGeometry = useCallback(async (placeId: string) => {
     if (placeDetailsCacheRef.current.has(placeId)) {
       setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
+      setShowCustomMap(true);
       return;
     }
 
@@ -142,6 +143,7 @@ export function DeliveryLocationPicker({
         };
         setCustomCoordinates(coords);
         placeDetailsCacheRef.current.set(placeId, coords);
+        setShowCustomMap(true);
         resetSessionToken();
         if (process.env.NODE_ENV !== "production") {
           console.info("[places] details:ids-only", { cached: false });
@@ -156,12 +158,14 @@ export function DeliveryLocationPicker({
           };
           setCustomCoordinates(coords);
           placeDetailsCacheRef.current.set(placeId, coords);
+          setShowCustomMap(true);
           resetSessionToken();
           if (process.env.NODE_ENV !== "production") {
             console.info("[places] details:standard", { cached: false });
           }
         } else {
           setCustomCoordinates(null);
+          setShowCustomMap(false);
         }
       }
     } catch (error) {
@@ -169,6 +173,7 @@ export function DeliveryLocationPicker({
         console.warn("Failed to fetch place geometry:", error);
       }
       setCustomCoordinates(null);
+      setShowCustomMap(false);
     }
   }, []);
 
@@ -256,8 +261,6 @@ export function DeliveryLocationPicker({
       setShouldLoadMaps(false);
     }
     setError(null);
-    setShowCustomMap(false);
-    setShouldLoadMaps(false);
     setLastAutocompleteValue(null);
     setShowFullCustomSummary(false);
     setIsEditingCustom(!hasDisplayCustom);
