@@ -108,6 +108,23 @@ export function DeliveryLocationPicker({
     return (a ?? "") === (b ?? "");
   };
 
+  const ensureSessionToken = () => {
+    if (!placeSessionTokenRef.current) {
+      placeSessionTokenRef.current = generateSessionToken();
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[places] session:start", { token: placeSessionTokenRef.current });
+      }
+    }
+    return placeSessionTokenRef.current;
+  };
+
+  const resetSessionToken = () => {
+    if (process.env.NODE_ENV !== "production" && placeSessionTokenRef.current) {
+      console.info("[places] session:end", { token: placeSessionTokenRef.current });
+    }
+    placeSessionTokenRef.current = null;
+  };
+
   const fetchPlaceGeometry = useCallback(async (placeId: string) => {
     if (placeDetailsCacheRef.current.has(placeId)) {
       setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
@@ -319,7 +336,7 @@ export function DeliveryLocationPicker({
   ]);
 
   const actionLabel =
-    hasChanges ? dictionary.modal.save : dictionary.modal.useCurrent ?? "Use current selection";
+    hasChanges ? dictionary.modal.save : (dictionary.modal.useCurrent ?? "Use current selection");
 
   useEffect(() => {
     if (mode === "preset") {
@@ -350,23 +367,6 @@ export function DeliveryLocationPicker({
   }, [activeLocation, buildingId]);
 
   const hasBuildings = (activeLocation?.buildings.length ?? 0) > 0;
-
-  const ensureSessionToken = () => {
-    if (!placeSessionTokenRef.current) {
-      placeSessionTokenRef.current = generateSessionToken();
-      if (process.env.NODE_ENV !== "production") {
-        console.info("[places] session:start", { token: placeSessionTokenRef.current });
-      }
-    }
-    return placeSessionTokenRef.current;
-  };
-
-  const resetSessionToken = () => {
-    if (process.env.NODE_ENV !== "production" && placeSessionTokenRef.current) {
-      console.info("[places] session:end", { token: placeSessionTokenRef.current });
-    }
-    placeSessionTokenRef.current = null;
-  };
 
   /**
    * Fetch place coordinates using NEW Places API

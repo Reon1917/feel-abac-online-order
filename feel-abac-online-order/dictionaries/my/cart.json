@@ -48,8 +48,15 @@
       "customBuildingLabel": "အဆောက်အအုံ (မလိုအပ်ပါ)",
       "customBuildingPlaceholder": "Building A, Tower 2...",
       "customHelper": "Rider များလွယ်ကူစေရန် Checkout ဗဟိုတွင် အသေးစိတ် ထပ်ဖြည့်နိုင်ပါသည်။",
+      "customSavedLabel": "သိမ်းထားသည့် custom address",
+      "customExpand": "အပြည့်အစုံ ပြရန်",
+      "customCollapse": "လျှော့ပြရန်",
+      "customEdit": "Address ပြင်ရန်",
+      "mapPreviewTitle": "မြေပုံ အစမ်းကြည့်ရန်",
+      "mapPreviewHelper": "နေရာရွေးပြီးနောက် မြေပုံကို ဖွင့်ပေးမည်။",
       "cancel": "မလုပ်တော့",
       "save": "နေရာသိမ်းမည်",
+      "useCurrent": "လက်ရှိရွေးချယ်မှုကို အသုံးပြုရန်",
       "saving": "သိမ်းဆည်းနေသည်..."
     }
   },

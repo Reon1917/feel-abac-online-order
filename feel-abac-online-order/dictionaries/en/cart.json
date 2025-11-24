@@ -48,8 +48,15 @@
       "customBuildingLabel": "Building (optional)",
       "customBuildingPlaceholder": "Building A, Tower 2...",
       "customHelper": "Add extra details later during checkout so our riders can find you quickly.",
+      "customSavedLabel": "Saved custom address",
+      "customExpand": "Show full",
+      "customCollapse": "Show less",
+      "customEdit": "Edit address",
+      "mapPreviewTitle": "Map preview",
+      "mapPreviewHelper": "Map loads after you pick a location.",
       "cancel": "Cancel",
       "save": "Save location",
+      "useCurrent": "Use current selection",
       "saving": "Saving..."
     }
   },
