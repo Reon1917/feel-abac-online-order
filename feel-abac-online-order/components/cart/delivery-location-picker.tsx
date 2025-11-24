@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -35,7 +35,6 @@ import {
   placeDetailsIdsOnly,
   placeDetailsNew,
   convertToSdkPrediction,
-  type PlacePrediction,
 } from "@/lib/map/places-api-client";
 type DeliveryDictionary = typeof import("@/dictionaries/en/cart.json")["delivery"];
 
@@ -96,6 +95,53 @@ export function DeliveryLocationPicker({
     savedCustomSelection?.customCondoName || selection?.mode === "custom" || customCondo
   );
 
+  const fetchPlaceGeometry = useCallback(async (placeId: string) => {
+    if (placeDetailsCacheRef.current.has(placeId)) {
+      setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
+      return;
+    }
+
+    try {
+      // Use FREE Place Details (IDs Only) endpoint
+      const result = await placeDetailsIdsOnly(placeId);
+
+      if (result?.location) {
+        const coords = {
+          lat: result.location.latitude,
+          lng: result.location.longitude,
+        };
+        setCustomCoordinates(coords);
+        placeDetailsCacheRef.current.set(placeId, coords);
+        resetSessionToken();
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[places] details:ids-only", { cached: false });
+        }
+      } else {
+        // Fallback to paid endpoint if FREE endpoint doesn't return location
+        const detailsResult = await placeDetailsNew(placeId, ["location"]);
+        if (detailsResult?.location) {
+          const coords = {
+            lat: detailsResult.location.latitude,
+            lng: detailsResult.location.longitude,
+          };
+          setCustomCoordinates(coords);
+          placeDetailsCacheRef.current.set(placeId, coords);
+          resetSessionToken();
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[places] details:standard", { cached: false });
+          }
+        } else {
+          setCustomCoordinates(null);
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to fetch place geometry:", error);
+      }
+      setCustomCoordinates(null);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) {
       return;
@@ -133,7 +179,7 @@ export function DeliveryLocationPicker({
         void fetchPlaceGeometry(selection.placeId);
       }
       setShowCustomMap(Boolean(selection.coordinates));
-      setShouldLoadMaps(true);
+      setShouldLoadMaps(Boolean(selection.coordinates || selection.placeId));
     } else if (savedCustomSelection) {
       setMode("preset");
       setLocationId("");
@@ -164,7 +210,7 @@ export function DeliveryLocationPicker({
     setLastAutocompleteValue(null);
     setShowFullCustomSummary(false);
     setIsEditingCustom(!hasSavedCustom || selection?.mode === "custom");
-  }, [open, selection, savedCustomSelection, hasSavedCustom]);
+  }, [open, selection, savedCustomSelection, hasSavedCustom, fetchPlaceGeometry]);
 
   useEffect(() => {
     if (mode === "preset") {
@@ -217,53 +263,6 @@ export function DeliveryLocationPicker({
    * Fetch place coordinates using NEW Places API
    * Uses FREE Place Details (IDs Only) endpoint when placeId is available
    */
-  const fetchPlaceGeometry = async (placeId: string) => {
-    if (placeDetailsCacheRef.current.has(placeId)) {
-      setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
-      return;
-    }
-
-    try {
-      // Use FREE Place Details (IDs Only) endpoint
-      const result = await placeDetailsIdsOnly(placeId);
-
-      if (result?.location) {
-        const coords = {
-          lat: result.location.latitude,
-          lng: result.location.longitude,
-        };
-        setCustomCoordinates(coords);
-        placeDetailsCacheRef.current.set(placeId, coords);
-        resetSessionToken();
-        if (process.env.NODE_ENV !== "production") {
-          console.info("[places] details:ids-only", { cached: false });
-        }
-      } else {
-        // Fallback to paid endpoint if FREE endpoint doesn't return location
-        const detailsResult = await placeDetailsNew(placeId, ["location"]);
-        if (detailsResult?.location) {
-          const coords = {
-            lat: detailsResult.location.latitude,
-            lng: detailsResult.location.longitude,
-          };
-          setCustomCoordinates(coords);
-          placeDetailsCacheRef.current.set(placeId, coords);
-          resetSessionToken();
-          if (process.env.NODE_ENV !== "production") {
-            console.info("[places] details:standard", { cached: false });
-          }
-        } else {
-          setCustomCoordinates(null);
-        }
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Failed to fetch place geometry:", error);
-      }
-      setCustomCoordinates(null);
-    }
-  };
-
   const handlePredictionSelect = (prediction: {
     place_id: string;
     description: string;
@@ -377,7 +376,7 @@ export function DeliveryLocationPicker({
           setPlacePredictions([]);
         }
       }
-    }, 220); // slightly snappier debounce without spamming requests
+    }, 265); // debounce to balance UX + quota
 
     return () => {
       isCancelled = true;
@@ -651,6 +650,14 @@ export function DeliveryLocationPicker({
                         {customBuilding || savedCustomSelection?.customBuildingName}
                       </p>
                     )}
+                  {showCustomMap && (
+                    <div className="mt-2 rounded-xl border border-slate-200 bg-white/60 p-2">
+                      <DeliveryLocationMap
+                        location={null}
+                        coordinates={customCoordinates}
+                      />
+                    </div>
+                  )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-[12px] font-semibold">
                     <button
@@ -721,44 +728,38 @@ export function DeliveryLocationPicker({
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="font-semibold text-slate-800">
                     {dictionary.modal.customBuildingLabel}
-                  </span>
-                  <Input
-                    value={customBuilding}
-                    onChange={(event) => setCustomBuilding(event.target.value)}
-                    placeholder={dictionary.modal.customBuildingPlaceholder}
-                  />
-                </label>
+              </span>
+              <Input
+                value={customBuilding}
+                onChange={(event) => setCustomBuilding(event.target.value)}
+                placeholder={
+                  dictionary.modal.customBuildingPlaceholder ??
+                  "Add building (optional)"
+                }
+              />
+            </label>
                 <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
                   {dictionary.modal.customHelper}
                 </p>
-                {showCustomMap ? (
-                  <DeliveryLocationMap
-                    location={null}
-                    coordinates={customCoordinates}
-                  />
-                ) : (
-                  <div className="flex h-48 w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-slate-800">
-                        {dictionary.modal.mapPreviewTitle ?? "Map preview"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {dictionary.modal.mapPreviewHelper ?? "Tap to load Google Maps for this location."}
-                      </p>
+                <div className="rounded-2xl border border-slate-200 bg-white/60 p-2">
+                  {showCustomMap ? (
+                    <DeliveryLocationMap
+                      location={null}
+                      coordinates={customCoordinates}
+                    />
+                  ) : (
+                    <div className="flex h-48 w-full items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {dictionary.modal.mapPreviewTitle ?? "Map preview"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {dictionary.modal.mapPreviewHelper ?? "Map loads after you pick a location."}
+                        </p>
+                      </div>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setShowCustomMap(true);
-                        setShouldLoadMaps(true);
-                      }}
-                    >
-                      {dictionary.modal.mapPreviewAction ?? "Show map"}
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
           </div>

@@ -22,9 +22,10 @@ export function useGoogleMapsLoader(
 ) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
   // Memoize libraries to avoid recreating arrays and reloading the script.
+  const libraryList = options?.libraries ?? null;
   const libraries = useMemo(
-    () => (options?.libraries ? mergeLibraries(BASE_LIBRARIES, options.libraries) : BASE_LIBRARIES),
-    [options?.libraries ? options.libraries.join(",") : "base"]
+    () => (libraryList ? mergeLibraries(BASE_LIBRARIES, libraryList) : BASE_LIBRARIES),
+    [libraryList]
   );
 
   return useJsApiLoader({
