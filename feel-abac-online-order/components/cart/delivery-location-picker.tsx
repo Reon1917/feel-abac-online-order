@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -46,6 +46,20 @@ type DeliveryLocationPickerProps = {
   onSelectionChange: (selection: DeliverySelection | null) => void;
 };
 
+function GoogleMapsLoaderGate({
+  onStatus,
+}: {
+  onStatus: (isLoaded: boolean, loadError: Error | null) => void;
+}) {
+  const { isLoaded, loadError } = useGoogleMapsLoader();
+
+  useEffect(() => {
+    onStatus(isLoaded, (loadError as Error | null) ?? null);
+  }, [isLoaded, loadError, onStatus]);
+
+  return null;
+}
+
 export function DeliveryLocationPicker({
   locations,
   selection,
@@ -65,15 +79,33 @@ export function DeliveryLocationPicker({
   const [showPresetMap, setShowPresetMap] = useState(false);
   const [showCustomMap, setShowCustomMap] = useState(false);
   const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
+  const [shouldLoadMaps, setShouldLoadMaps] = useState(false);
+  const [isMapsApiLoaded, setIsMapsApiLoaded] = useState(false);
+  const [, setMapsLoadError] = useState<Error | null>(null);
   const [remember, setRemember] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placePredictions, setPlacePredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
   const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
+  const placeSessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const placeDetailsCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
+  const findPlaceCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-  const { isLoaded: isMapsApiLoaded } = useGoogleMapsLoader();
   const canUsePlacesAutocomplete = Boolean(mapsApiKey) && isMapsApiLoaded;
+  const handleMapsStatus = useCallback(
+    (loaded: boolean, loadError: Error | null) => {
+      setIsMapsApiLoaded(loaded);
+      setMapsLoadError(loadError);
+      if (loadError && process.env.NODE_ENV !== "production") {
+        console.warn("Google Maps failed to load:", loadError);
+      }
+      if (!mapsApiKey && process.env.NODE_ENV !== "production") {
+        console.warn("Set NEXT_PUBLIC_GOOGLE_MAPS_KEY to enable map and places preview.");
+      }
+    },
+    [mapsApiKey]
+  );
 
   useEffect(() => {
     if (!open) {
@@ -105,6 +137,9 @@ export function DeliveryLocationPicker({
     setPresetCoordinates(null);
     setShowPresetMap(false);
     setShowCustomMap(false);
+    setShouldLoadMaps(false);
+    setIsMapsApiLoaded(false);
+    setMapsLoadError(null);
     setLastAutocompleteValue(null);
   }, [open, selection]);
 
@@ -152,8 +187,18 @@ export function DeliveryLocationPicker({
       return;
     }
 
-    if (!canUsePlacesAutocomplete) {
+    if (!showPresetMap || !canUsePlacesAutocomplete) {
       setPresetCoordinates(null);
+      return;
+    }
+
+    const queryParts = [activeLocation.condoName, activeLocation.area]
+      .filter(Boolean)
+      .join(" ");
+
+    const cached = findPlaceCacheRef.current.get(queryParts);
+    if (cached) {
+      setPresetCoordinates(cached);
       return;
     }
 
@@ -163,14 +208,11 @@ export function DeliveryLocationPicker({
       return;
     }
 
-    const queryParts = [activeLocation.condoName, activeLocation.area]
-      .filter(Boolean)
-      .join(" ");
-
     service.findPlaceFromQuery(
       {
         query: queryParts,
         fields: ["geometry"],
+        sessionToken: ensureSessionToken(),
       },
       (results, status) => {
         if (isCancelled) {
@@ -182,10 +224,12 @@ export function DeliveryLocationPicker({
           results &&
           results[0]?.geometry?.location
         ) {
-          setPresetCoordinates({
+          const coords = {
             lat: results[0].geometry.location.lat(),
             lng: results[0].geometry.location.lng(),
-          });
+          };
+          setPresetCoordinates(coords);
+          findPlaceCacheRef.current.set(queryParts, coords);
         } else {
           setPresetCoordinates(null);
         }
@@ -195,7 +239,7 @@ export function DeliveryLocationPicker({
     return () => {
       isCancelled = true;
     };
-  }, [activeLocation, canUsePlacesAutocomplete]);
+  }, [activeLocation, canUsePlacesAutocomplete, showPresetMap]);
 
   const ensureAutocompleteService = () => {
     if (!autocompleteServiceRef.current) {
@@ -216,7 +260,23 @@ export function DeliveryLocationPicker({
     return placesServiceRef.current;
   };
 
+  const ensureSessionToken = () => {
+    if (!placeSessionTokenRef.current && typeof window !== "undefined" && google?.maps?.places?.AutocompleteSessionToken) {
+      placeSessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+    }
+    return placeSessionTokenRef.current ?? undefined;
+  };
+
+  const resetSessionToken = () => {
+    placeSessionTokenRef.current = null;
+  };
+
   const fetchPlaceGeometry = (placeId: string) => {
+    if (placeDetailsCacheRef.current.has(placeId)) {
+      setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
+      return;
+    }
+
     const service = ensurePlacesService();
     if (!service) {
       setCustomCoordinates(null);
@@ -227,19 +287,23 @@ export function DeliveryLocationPicker({
       {
         placeId,
         fields: ["geometry", "name", "formatted_address"],
+        sessionToken: ensureSessionToken(),
       },
       (result, status) => {
         if (
           status === google.maps.places.PlacesServiceStatus.OK &&
           result?.geometry?.location
         ) {
-          setCustomCoordinates({
+          const coords = {
             lat: result.geometry.location.lat(),
             lng: result.geometry.location.lng(),
-          });
+          };
+          setCustomCoordinates(coords);
+          placeDetailsCacheRef.current.set(placeId, coords);
           if (!lastAutocompleteValue && result.name) {
             setLastAutocompleteValue(result.name);
           }
+          resetSessionToken();
         } else {
           setCustomCoordinates(null);
         }
@@ -258,6 +322,7 @@ export function DeliveryLocationPicker({
     setCustomCondo(description);
     setLastAutocompleteValue(description);
     setPlacePredictions([]);
+    setShouldLoadMaps(true);
 
     if (prediction.place_id) {
       fetchPlaceGeometry(prediction.place_id);
@@ -271,6 +336,7 @@ export function DeliveryLocationPicker({
   ) => {
     const nextValue = event.target.value;
     setCustomCondo(nextValue);
+    setShouldLoadMaps(true);
     if (nextValue !== lastAutocompleteValue) {
       setCustomCoordinates(null);
       setLastAutocompleteValue(null);
@@ -278,7 +344,7 @@ export function DeliveryLocationPicker({
   };
 
   useEffect(() => {
-    if (!canUsePlacesAutocomplete) {
+    if (!shouldLoadMaps || !canUsePlacesAutocomplete) {
       setPlacePredictions([]);
       return;
     }
@@ -306,7 +372,7 @@ export function DeliveryLocationPicker({
             status === google.maps.places.PlacesServiceStatus.OK &&
             results
           ) {
-            setPlacePredictions(results);
+            setPlacePredictions(results.slice(0, 5));
           } else {
             setPlacePredictions([]);
           }
@@ -317,7 +383,7 @@ export function DeliveryLocationPicker({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete]);
+  }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete, shouldLoadMaps]);
 
   const handleSave = async () => {
     setError(null);
@@ -408,6 +474,9 @@ export function DeliveryLocationPicker({
           <DialogTitle>{dictionary.modal.title}</DialogTitle>
           <DialogDescription>{dictionary.modal.subtitle}</DialogDescription>
         </DialogHeader>
+        {shouldLoadMaps ? (
+          <GoogleMapsLoaderGate onStatus={handleMapsStatus} />
+        ) : null}
 
         <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
           <button
@@ -538,7 +607,10 @@ export function DeliveryLocationPicker({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setShowPresetMap(true)}
+                  onClick={() => {
+                    setShowPresetMap(true);
+                    setShouldLoadMaps(true);
+                  }}
                 >
                   {dictionary.modal.mapPreviewAction ?? "Show map"}
                 </Button>
@@ -573,7 +645,11 @@ export function DeliveryLocationPicker({
                 placeholder={dictionary.modal.customCondoPlaceholder}
                 className={clsx(error ? "border-red-500" : undefined)}
                 autoComplete="off"
+                onFocus={() => setShouldLoadMaps(true)}
               />
+              <p className="text-[11px] text-slate-500">
+                Smart location suggestions appear as you type; map preview stays optional.
+              </p>
               {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
                 <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <ul className="max-h-60 overflow-y-auto py-1">
@@ -597,7 +673,7 @@ export function DeliveryLocationPicker({
                     ))}
                   </ul>
                   <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
-                    Powered by Google
+                    Smart location search
                   </p>
                 </div>
               ) : null}
@@ -634,7 +710,10 @@ export function DeliveryLocationPicker({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setShowCustomMap(true)}
+                  onClick={() => {
+                    setShowCustomMap(true);
+                    setShouldLoadMaps(true);
+                  }}
                 >
                   {dictionary.modal.mapPreviewAction ?? "Show map"}
                 </Button>
