@@ -89,11 +89,24 @@ export function DeliveryLocationPicker({
   >([]);
   const placeSessionTokenRef = useRef<string | null>(null);
   const placeDetailsCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
+  const initialSelectionRef = useRef<DeliverySelection | null>(null);
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
   const canUsePlacesAutocomplete = Boolean(mapsApiKey);
-  const hasSavedCustom = Boolean(
-    savedCustomSelection?.customCondoName || selection?.mode === "custom" || customCondo
-  );
+  const displayedCustomSelection =
+    selection?.mode === "custom"
+      ? selection
+      : savedCustomSelection ?? null;
+  const hasDisplayCustom = Boolean(displayedCustomSelection?.customCondoName);
+
+  const coordinatesEqual = (a: LatLngPoint | null | undefined, b: LatLngPoint | null | undefined) => {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return a.lat === b.lat && a.lng === b.lng;
+  };
+
+  const placeIdEqual = (a?: string | null, b?: string | null) => {
+    return (a ?? "") === (b ?? "");
+  };
 
   const fetchPlaceGeometry = useCallback(async (placeId: string) => {
     if (placeDetailsCacheRef.current.has(placeId)) {
@@ -147,6 +160,8 @@ export function DeliveryLocationPicker({
       return;
     }
 
+    initialSelectionRef.current = null;
+
     const customSource =
       selection?.mode === "custom"
         ? selection
@@ -163,6 +178,11 @@ export function DeliveryLocationPicker({
       if (customSource?.placeId && !customSource.coordinates) {
         void fetchPlaceGeometry(customSource.placeId);
       }
+      initialSelectionRef.current = {
+        mode: "preset",
+        locationId: selection.locationId,
+        buildingId: selection.buildingId ?? null,
+      };
       setIsEditingCustom(false);
       setShowCustomMap(Boolean(customSource?.coordinates));
       setShouldLoadMaps(Boolean(customSource?.coordinates || customSource?.placeId));
@@ -180,6 +200,13 @@ export function DeliveryLocationPicker({
       }
       setShowCustomMap(Boolean(selection.coordinates));
       setShouldLoadMaps(Boolean(selection.coordinates || selection.placeId));
+      initialSelectionRef.current = {
+        mode: "custom",
+        customCondoName: selection.customCondoName,
+        customBuildingName: selection.customBuildingName,
+        placeId: selection.placeId ?? undefined,
+        coordinates: selection.coordinates ?? null,
+      };
     } else if (savedCustomSelection) {
       setMode("preset");
       setLocationId("");
@@ -193,6 +220,13 @@ export function DeliveryLocationPicker({
       }
       setShowCustomMap(Boolean(savedCustomSelection.coordinates));
       setShouldLoadMaps(Boolean(savedCustomSelection.coordinates || savedCustomSelection.placeId));
+      initialSelectionRef.current = {
+        mode: "custom",
+        customCondoName: savedCustomSelection.customCondoName,
+        customBuildingName: savedCustomSelection.customBuildingName,
+        placeId: savedCustomSelection.placeId ?? undefined,
+        coordinates: savedCustomSelection.coordinates ?? null,
+      };
     } else {
       setMode("preset");
       setLocationId("");
@@ -209,8 +243,83 @@ export function DeliveryLocationPicker({
     setShouldLoadMaps(false);
     setLastAutocompleteValue(null);
     setShowFullCustomSummary(false);
-    setIsEditingCustom(!hasSavedCustom || selection?.mode === "custom");
-  }, [open, selection, savedCustomSelection, hasSavedCustom, fetchPlaceGeometry]);
+    setIsEditingCustom(!hasDisplayCustom);
+  }, [open, selection, savedCustomSelection, hasDisplayCustom, fetchPlaceGeometry]);
+
+  const referenceSelection = useMemo(() => {
+    if (mode === "preset") {
+      return selection?.mode === "preset" ? selection : null;
+    }
+    if (selection?.mode === "custom") return selection;
+    return savedCustomSelection ?? null;
+  }, [mode, selection, savedCustomSelection]);
+
+  const hasChanges = useMemo(() => {
+    if (mode === "preset") {
+      const refPreset = referenceSelection && referenceSelection.mode === "preset"
+        ? referenceSelection
+        : null;
+      if (!refPreset) {
+        return Boolean(locationId || buildingId);
+      }
+      return !(
+        refPreset.locationId === locationId &&
+        (refPreset.buildingId ?? null) === (buildingId || null)
+      );
+    }
+
+    const refCustom = referenceSelection && referenceSelection.mode === "custom"
+      ? referenceSelection
+      : null;
+    const trimmedName = customCondo.trim();
+    const trimmedBuilding = customBuilding.trim();
+    const coordsEqualOrPopulated =
+      coordinatesEqual(refCustom?.coordinates, customCoordinates) ||
+      (refCustom?.coordinates == null &&
+        customCoordinates != null &&
+        placeIdEqual(refCustom?.placeId, selectedPlaceId));
+
+    if (!refCustom) {
+      const initialCustom = initialSelectionRef.current && initialSelectionRef.current.mode === "custom"
+        ? initialSelectionRef.current
+        : null;
+      const baseCompare = initialCustom ?? null;
+
+      if (baseCompare) {
+        const baseCoordsEqual =
+          coordinatesEqual(baseCompare.coordinates, customCoordinates) ||
+          (baseCompare.coordinates == null &&
+            customCoordinates != null &&
+            placeIdEqual(baseCompare.placeId, selectedPlaceId));
+        return !(
+          baseCompare.customCondoName === trimmedName &&
+          (baseCompare.customBuildingName ?? "") === trimmedBuilding &&
+          placeIdEqual(baseCompare.placeId, selectedPlaceId) &&
+          baseCoordsEqual
+        );
+      }
+      return Boolean(trimmedName || trimmedBuilding || selectedPlaceId || customCoordinates);
+    }
+
+    return !(
+      refCustom.customCondoName === trimmedName &&
+      (refCustom.customBuildingName ?? "") === trimmedBuilding &&
+      placeIdEqual(refCustom.placeId, selectedPlaceId) &&
+      coordsEqualOrPopulated
+    );
+  }, [
+    mode,
+    referenceSelection,
+    locationId,
+    buildingId,
+    customCondo,
+    customBuilding,
+    selectedPlaceId,
+    customCoordinates,
+  ]);
+
+  const actionLabel =
+    hasChanges ? dictionary.modal.save : dictionary.modal.useCurrent ?? "Use current selection";
 
   useEffect(() => {
     if (mode === "preset") {
@@ -399,6 +508,13 @@ export function DeliveryLocationPicker({
         buildingId: buildingId || null,
       };
 
+      // If nothing changed, just update selection locally and close
+      if (!hasChanges) {
+        onSelectionChange(payload);
+        setOpen(false);
+        return;
+      }
+
       setIsSubmitting(true);
       try {
         const response = await fetch("/api/user/delivery-location", {
@@ -448,6 +564,12 @@ export function DeliveryLocationPicker({
       placeId: selectedPlaceId ?? undefined, // Store place_id for FREE Place Details calls later
       coordinates: customCoordinates,
     };
+
+    if (!hasChanges) {
+      onSelectionChange(payload);
+      setOpen(false);
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -516,6 +638,7 @@ export function DeliveryLocationPicker({
                 ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
                 : "text-slate-500"
             )}
+            aria-live="polite"
           >
             {dictionary.modal.savedTab}
           </button>
@@ -619,7 +742,7 @@ export function DeliveryLocationPicker({
           </div>
         ) : (
           <div className="space-y-4">
-            {hasSavedCustom && !isEditingCustom ? (
+            {hasDisplayCustom && !isEditingCustom ? (
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
                   <div className="min-w-0 space-y-1">
@@ -633,11 +756,11 @@ export function DeliveryLocationPicker({
                           ? "whitespace-normal break-words"
                           : "line-clamp-2 break-words"
                       )}
-                      title={customCondo || savedCustomSelection?.customCondoName}
+                      title={customCondo || displayedCustomSelection?.customCondoName}
                     >
-                      {customCondo || savedCustomSelection?.customCondoName}
+                      {customCondo || displayedCustomSelection?.customCondoName}
                     </p>
-                    {(customBuilding || savedCustomSelection?.customBuildingName) && (
+                    {(customBuilding || displayedCustomSelection?.customBuildingName) && (
                       <p
                         className={clsx(
                           "text-[12px] text-slate-600",
@@ -645,9 +768,9 @@ export function DeliveryLocationPicker({
                             ? "whitespace-normal break-words"
                             : "line-clamp-2 break-words"
                         )}
-                        title={customBuilding || savedCustomSelection?.customBuildingName}
+                        title={customBuilding || displayedCustomSelection?.customBuildingName}
                       >
-                        {customBuilding || savedCustomSelection?.customBuildingName}
+                        {customBuilding || displayedCustomSelection?.customBuildingName}
                       </p>
                     )}
                   {showCustomMap && (
@@ -680,7 +803,7 @@ export function DeliveryLocationPicker({
                 </div>
               </div>
             ) : null}
-            {(!hasSavedCustom || isEditingCustom) && (
+            {(!hasDisplayCustom || isEditingCustom) && (
               <>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="font-semibold text-slate-800">
@@ -782,7 +905,7 @@ export function DeliveryLocationPicker({
             onClick={handleSave}
             disabled={isSubmitting}
           >
-            {isSubmitting ? dictionary.modal.saving : dictionary.modal.save}
+            {isSubmitting ? dictionary.modal.saving : actionLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
