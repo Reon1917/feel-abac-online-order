@@ -45,6 +45,7 @@ export type CustomDeliverySelection = {
   mode: "custom";
   customCondoName: string;
   customBuildingName: string;
+  placeId?: string; // Google Maps place_id - enables FREE Place Details (IDs Only) calls
 };
 
 export type DeliverySelection = PresetDeliverySelection | CustomDeliverySelection;

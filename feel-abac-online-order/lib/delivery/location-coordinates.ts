@@ -95,4 +95,86 @@ export function getLocationCoordinates(
   return LOCATION_COORDINATES[location.slug] ?? null;
 }
 
+/**
+ * Converts LatLngBounds to NEW Places API rectangle format for locationRestriction
+ */
+export function boundsToRectangle(
+  bounds: google.maps.LatLngBounds
+): {
+  rectangle: {
+    low: { latitude: number; longitude: number };
+    high: { latitude: number; longitude: number };
+  };
+} {
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+
+  return {
+    rectangle: {
+      low: {
+        latitude: sw.lat(),
+        longitude: sw.lng(),
+      },
+      high: {
+        latitude: ne.lat(),
+        longitude: ne.lng(),
+      },
+    },
+  };
+}
+
+/**
+ * Converts GeoJSON bounds directly to NEW Places API rectangle format
+ * Useful when Google Maps API is not loaded yet
+ */
+export function getUniversityAreaRectangle(): {
+  rectangle: {
+    low: { latitude: number; longitude: number };
+    high: { latitude: number; longitude: number };
+  };
+} | null {
+  try {
+    const polygon = UNIVERSITY_AREA_GEOJSON.features[0]?.geometry;
+    if (!polygon || polygon.type !== "Polygon") {
+      return null;
+    }
+
+    const coordinates = polygon.coordinates[0];
+    if (!coordinates || coordinates.length < 4) {
+      return null;
+    }
+
+    // Extract all lng/lat pairs and find min/max
+    let minLng = Infinity;
+    let maxLng = -Infinity;
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+
+    for (const [lng, lat] of coordinates) {
+      minLng = Math.min(minLng, lng);
+      maxLng = Math.max(maxLng, lng);
+      minLat = Math.min(minLat, lat);
+      maxLat = Math.max(maxLat, lat);
+    }
+
+    return {
+      rectangle: {
+        low: {
+          latitude: minLat,
+          longitude: minLng,
+        },
+        high: {
+          latitude: maxLat,
+          longitude: maxLng,
+        },
+      },
+    };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to create university area rectangle:", error);
+    }
+    return null;
+  }
+}
+
 export { DEFAULT_LOCATION_COORDINATE };

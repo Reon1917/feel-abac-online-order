@@ -32,10 +32,16 @@ import type {
 } from "@/lib/delivery/types";
 import {
   getLocationCoordinates,
-  getUniversityAreaBounds,
+  getUniversityAreaRectangle,
   type LatLngPoint,
 } from "@/lib/delivery/location-coordinates";
-import { useGoogleMapsLoader } from "@/lib/map/use-google-maps-loader";
+import {
+  autocompleteNew,
+  placeDetailsIdsOnly,
+  placeDetailsNew,
+  convertToSdkPrediction,
+  type PlacePrediction,
+} from "@/lib/map/places-api-client";
 type DeliveryDictionary = typeof import("@/dictionaries/en/cart.json")["delivery"];
 
 type DeliveryLocationPickerProps = {
@@ -47,18 +53,9 @@ type DeliveryLocationPickerProps = {
   onSelectionChange: (selection: DeliverySelection | null) => void;
 };
 
-function GoogleMapsLoaderGate({
-  onStatus,
-}: {
-  onStatus: (isLoaded: boolean, loadError: Error | null) => void;
-}) {
-  const { isLoaded, loadError } = useGoogleMapsLoader();
-
-  useEffect(() => {
-    onStatus(isLoaded, (loadError as Error | null) ?? null);
-  }, [isLoaded, loadError, onStatus]);
-
-  return null;
+// Session token generator for NEW Places API
+function generateSessionToken(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
 
 export function DeliveryLocationPicker({
@@ -75,38 +72,30 @@ export function DeliveryLocationPicker({
   const [buildingId, setBuildingId] = useState("");
   const [customCondo, setCustomCondo] = useState("");
   const [customBuilding, setCustomBuilding] = useState("");
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [customCoordinates, setCustomCoordinates] = useState<LatLngPoint | null>(null);
   const [presetCoordinates, setPresetCoordinates] = useState<LatLngPoint | null>(null);
   const [showPresetMap, setShowPresetMap] = useState(false);
   const [showCustomMap, setShowCustomMap] = useState(false);
   const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
   const [shouldLoadMaps, setShouldLoadMaps] = useState(false);
-  const [isMapsApiLoaded, setIsMapsApiLoaded] = useState(false);
-  const [, setMapsLoadError] = useState<Error | null>(null);
   const [remember, setRemember] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [placePredictions, setPlacePredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
-  const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
-  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
-  const placeSessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const [placePredictions, setPlacePredictions] = useState<
+    Array<{
+      place_id: string;
+      description: string;
+      structured_formatting?: {
+        main_text: string;
+        secondary_text?: string;
+      };
+    }>
+  >([]);
+  const placeSessionTokenRef = useRef<string | null>(null);
   const placeDetailsCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
-  const findPlaceCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-  const canUsePlacesAutocomplete = Boolean(mapsApiKey) && isMapsApiLoaded;
-  const handleMapsStatus = useCallback(
-    (loaded: boolean, loadError: Error | null) => {
-      setIsMapsApiLoaded(loaded);
-      setMapsLoadError(loadError);
-      if (loadError && process.env.NODE_ENV !== "production") {
-        console.warn("Google Maps failed to load:", loadError);
-      }
-      if (!mapsApiKey && process.env.NODE_ENV !== "production") {
-        console.warn("Set NEXT_PUBLIC_GOOGLE_MAPS_KEY to enable map and places preview.");
-      }
-    },
-    [mapsApiKey]
-  );
+  const canUsePlacesAutocomplete = Boolean(mapsApiKey);
 
   useEffect(() => {
     if (!open) {
@@ -123,8 +112,13 @@ export function DeliveryLocationPicker({
       setMode("custom");
       setCustomCondo(selection.customCondoName);
       setCustomBuilding(selection.customBuildingName);
+      setSelectedPlaceId(selection.placeId ?? null);
       setLocationId("");
       setBuildingId("");
+      // If placeId exists, fetch coordinates using FREE API
+      if (selection.placeId) {
+        void fetchPlaceGeometry(selection.placeId);
+      }
     } else {
       setMode("preset");
       setLocationId("");
@@ -139,9 +133,8 @@ export function DeliveryLocationPicker({
     setShowPresetMap(false);
     setShowCustomMap(false);
     setShouldLoadMaps(false);
-    setIsMapsApiLoaded(false);
-    setMapsLoadError(null);
     setLastAutocompleteValue(null);
+    setSelectedPlaceId(null);
   }, [open, selection]);
 
   useEffect(() => {
@@ -175,151 +168,98 @@ export function DeliveryLocationPicker({
   const hasBuildings = (activeLocation?.buildings.length ?? 0) > 0;
 
   useEffect(() => {
-    let isCancelled = false;
-
     if (!activeLocation) {
       setPresetCoordinates(null);
       return;
     }
 
+    // Use static coordinates from LOCATION_COORDINATES map if available
+    // Eliminated expensive findPlaceFromQuery() call ($17/1k)
     const staticCoordinates = getLocationCoordinates(activeLocation);
     if (staticCoordinates) {
       setPresetCoordinates(staticCoordinates);
-      return;
-    }
-
-    if (!showPresetMap || !canUsePlacesAutocomplete) {
+    } else {
+      // No coordinates available - skip map preview for preset locations
       setPresetCoordinates(null);
-      return;
     }
-
-    const queryParts = [activeLocation.condoName, activeLocation.area]
-      .filter(Boolean)
-      .join(" ");
-
-    const cached = findPlaceCacheRef.current.get(queryParts);
-    if (cached) {
-      setPresetCoordinates(cached);
-      return;
-    }
-
-    const service = ensurePlacesService();
-    if (!service) {
-      setPresetCoordinates(null);
-      return;
-    }
-
-    // Use locationBias (non-deprecated) to bias results toward university area
-    // Note: locationBias biases results but doesn't strictly restrict them,
-    // allowing flexibility while optimizing for the university zone
-    const bounds = getUniversityAreaBounds();
-    service.findPlaceFromQuery(
-      {
-        query: queryParts,
-        fields: ["geometry"],
-        sessionToken: ensureSessionToken(),
-        ...(bounds ? { locationBias: bounds } : {}),
-      },
-      (results, status) => {
-        if (isCancelled) {
-          return;
-        }
-
-        if (
-          status === google.maps.places.PlacesServiceStatus.OK &&
-          results &&
-          results[0]?.geometry?.location
-        ) {
-          const coords = {
-            lat: results[0].geometry.location.lat(),
-            lng: results[0].geometry.location.lng(),
-          };
-          setPresetCoordinates(coords);
-          findPlaceCacheRef.current.set(queryParts, coords);
-        } else {
-          setPresetCoordinates(null);
-        }
-      }
-    );
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeLocation, canUsePlacesAutocomplete, showPresetMap]);
-
-  const ensureAutocompleteService = () => {
-    if (!autocompleteServiceRef.current) {
-      if (typeof window !== "undefined" && google?.maps?.places?.AutocompleteService) {
-        autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
-      }
-    }
-    return autocompleteServiceRef.current;
-  };
-
-  const ensurePlacesService = () => {
-    if (!placesServiceRef.current) {
-      const dummy = typeof window !== "undefined" ? document.createElement("div") : null;
-      if (dummy) {
-        placesServiceRef.current = new google.maps.places.PlacesService(dummy);
-      }
-    }
-    return placesServiceRef.current;
-  };
+  }, [activeLocation, showPresetMap]);
 
   const ensureSessionToken = () => {
-    if (!placeSessionTokenRef.current && typeof window !== "undefined" && google?.maps?.places?.AutocompleteSessionToken) {
-      placeSessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+    if (!placeSessionTokenRef.current) {
+      placeSessionTokenRef.current = generateSessionToken();
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[places] session:start", { token: placeSessionTokenRef.current });
+      }
     }
-    return placeSessionTokenRef.current ?? undefined;
+    return placeSessionTokenRef.current;
   };
 
   const resetSessionToken = () => {
+    if (process.env.NODE_ENV !== "production" && placeSessionTokenRef.current) {
+      console.info("[places] session:end", { token: placeSessionTokenRef.current });
+    }
     placeSessionTokenRef.current = null;
   };
 
-  const fetchPlaceGeometry = (placeId: string) => {
+  /**
+   * Fetch place coordinates using NEW Places API
+   * Uses FREE Place Details (IDs Only) endpoint when placeId is available
+   */
+  const fetchPlaceGeometry = async (placeId: string) => {
     if (placeDetailsCacheRef.current.has(placeId)) {
       setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
       return;
     }
 
-    const service = ensurePlacesService();
-    if (!service) {
-      setCustomCoordinates(null);
-      return;
-    }
+    try {
+      // Use FREE Place Details (IDs Only) endpoint
+      const result = await placeDetailsIdsOnly(placeId);
 
-    service.getDetails(
-      {
-        placeId,
-        fields: ["geometry", "name", "formatted_address"],
-        sessionToken: ensureSessionToken(),
-      },
-      (result, status) => {
-        if (
-          status === google.maps.places.PlacesServiceStatus.OK &&
-          result?.geometry?.location
-        ) {
+      if (result?.location) {
+        const coords = {
+          lat: result.location.latitude,
+          lng: result.location.longitude,
+        };
+        setCustomCoordinates(coords);
+        placeDetailsCacheRef.current.set(placeId, coords);
+        resetSessionToken();
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[places] details:ids-only", { cached: false });
+        }
+      } else {
+        // Fallback to paid endpoint if FREE endpoint doesn't return location
+        const detailsResult = await placeDetailsNew(placeId, ["location"]);
+        if (detailsResult?.location) {
           const coords = {
-            lat: result.geometry.location.lat(),
-            lng: result.geometry.location.lng(),
+            lat: detailsResult.location.latitude,
+            lng: detailsResult.location.longitude,
           };
           setCustomCoordinates(coords);
           placeDetailsCacheRef.current.set(placeId, coords);
-          if (!lastAutocompleteValue && result.name) {
-            setLastAutocompleteValue(result.name);
-          }
           resetSessionToken();
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[places] details:standard", { cached: false });
+          }
         } else {
           setCustomCoordinates(null);
         }
       }
-    );
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to fetch place geometry:", error);
+      }
+      setCustomCoordinates(null);
+    }
   };
 
-  const handlePredictionSelect = (
-    prediction: google.maps.places.AutocompletePrediction
-  ) => {
+  const handlePredictionSelect = (prediction: {
+    place_id: string;
+    description: string;
+    structured_formatting?: {
+      main_text: string;
+      secondary_text?: string;
+    };
+  }) => {
     const description =
       prediction.description ??
       prediction.structured_formatting?.main_text ??
@@ -331,8 +271,10 @@ export function DeliveryLocationPicker({
     setShouldLoadMaps(true);
 
     if (prediction.place_id) {
+      setSelectedPlaceId(prediction.place_id);
       fetchPlaceGeometry(prediction.place_id);
     } else {
+      setSelectedPlaceId(null);
       setCustomCoordinates(null);
     }
   };
@@ -361,36 +303,71 @@ export function DeliveryLocationPicker({
       return;
     }
 
-    const service = ensureAutocompleteService();
-    if (!service) {
-      setPlacePredictions([]);
-      return;
-    }
+    let isCancelled = false;
 
-    const timeoutId = window.setTimeout(() => {
-      // Use locationBias (non-deprecated) to bias autocomplete results toward university area
-      // Replaces deprecated 'bounds' parameter per Google Maps API deprecation notice (May 2023)
-      const bounds = getUniversityAreaBounds();
-      service.getPlacePredictions(
-        {
-          input: trimmedValue,
-          types: ["geocode", "establishment"],
-          ...(bounds ? { locationBias: bounds } : {}),
-        },
-        (results, status) => {
-          if (
-            status === google.maps.places.PlacesServiceStatus.OK &&
-            results
-          ) {
-            setPlacePredictions(results.slice(0, 5));
-          } else {
-            setPlacePredictions([]);
-          }
+    // Debounce to balance UX + quota (tighter than 400ms to feel responsive)
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const sessionToken = ensureSessionToken();
+        const locationRestriction = getUniversityAreaRectangle();
+
+        const runAutocomplete = async (withRestriction: boolean) => {
+          return autocompleteNew({
+            input: trimmedValue,
+            locationRestriction: withRestriction ? locationRestriction ?? undefined : undefined,
+            // Broad results for addresses/places; leave types open to improve hit-rate
+            sessionToken,
+            languageCode: "en",
+          });
+        };
+
+        // Try restricted first (if available), then fall back to unrestricted when empty
+        const restrictedResponse = locationRestriction ? await runAutocomplete(true) : null;
+        const restrictedSuggestions = restrictedResponse?.suggestions ?? [];
+
+        const shouldFallback =
+          (!restrictedSuggestions || restrictedSuggestions.length === 0) && locationRestriction;
+
+        const fallbackResponse = shouldFallback ? await runAutocomplete(false) : null;
+        const fallbackSuggestions = fallbackResponse?.suggestions ?? [];
+
+        if (isCancelled) {
+          return;
         }
-      );
-    }, 200);
+
+        const combinedSuggestions = [...restrictedSuggestions, ...fallbackSuggestions];
+
+        if (combinedSuggestions.length) {
+          // Convert NEW API format to SDK-compatible format for component
+          const predictions = combinedSuggestions
+            .filter((s) => s.placePrediction)
+            .map((s) => convertToSdkPrediction(s.placePrediction!))
+            .slice(0, 5); // Show up to 5 results for better coverage
+
+          setPlacePredictions(predictions);
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[places] autocomplete", {
+              inputLength: trimmedValue.length,
+              restricted: restrictedSuggestions.length,
+              fallback: fallbackSuggestions.length,
+              returned: predictions.length,
+            });
+          }
+        } else {
+          setPlacePredictions([]);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Autocomplete API error:", error);
+        }
+        if (!isCancelled) {
+          setPlacePredictions([]);
+        }
+      }
+    }, 220); // slightly snappier debounce without spamming requests
 
     return () => {
+      isCancelled = true;
       window.clearTimeout(timeoutId);
     };
   }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete, shouldLoadMaps]);
@@ -458,6 +435,7 @@ export function DeliveryLocationPicker({
       mode: "custom",
       customCondoName: trimmedName,
       customBuildingName: customBuilding.trim(),
+      placeId: selectedPlaceId ?? undefined, // Store place_id for FREE Place Details calls later
     };
 
     onSelectionChange(payload);
@@ -484,9 +462,6 @@ export function DeliveryLocationPicker({
           <DialogTitle>{dictionary.modal.title}</DialogTitle>
           <DialogDescription>{dictionary.modal.subtitle}</DialogDescription>
         </DialogHeader>
-        {shouldLoadMaps ? (
-          <GoogleMapsLoaderGate onStatus={handleMapsStatus} />
-        ) : null}
 
         <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
           <button
