@@ -412,10 +412,17 @@ export function DeliveryLocationPicker({
     if (nextValue !== lastAutocompleteValue) {
       setCustomCoordinates(null);
       setLastAutocompleteValue(null);
+      setSelectedPlaceId(null);
+      setShowCustomMap(false);
     }
   };
 
   useEffect(() => {
+    if (mode !== "custom") {
+      setPlacePredictions([]);
+      return;
+    }
+
     if (!shouldLoadMaps || !canUsePlacesAutocomplete) {
       setPlacePredictions([]);
       return;
@@ -494,7 +501,7 @@ export function DeliveryLocationPicker({
       isCancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete, shouldLoadMaps]);
+  }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete, shouldLoadMaps, mode]);
 
   const handleSave = async () => {
     setError(null);
