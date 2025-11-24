@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -15,7 +15,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -23,26 +22,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DeliveryLocationMap } from "@/components/map/delivery-location-map";
 import type {
   CustomDeliverySelection,
   DeliveryLocationOption,
   DeliverySelection,
   PresetDeliverySelection,
 } from "@/lib/delivery/types";
+import { getUniversityAreaRectangle, type LatLngPoint } from "@/lib/delivery/location-coordinates";
+import {
+  autocompleteNew,
+  placeDetailsIdsOnly,
+  placeDetailsNew,
+  convertToSdkPrediction,
+} from "@/lib/map/places-api-client";
 type DeliveryDictionary = typeof import("@/dictionaries/en/cart.json")["delivery"];
 
 type DeliveryLocationPickerProps = {
   locations: DeliveryLocationOption[];
   selection: DeliverySelection | null;
+  savedCustomSelection?: CustomDeliverySelection | null;
   dictionary: DeliveryDictionary;
   triggerLabel: string;
   triggerClassName?: string;
   onSelectionChange: (selection: DeliverySelection | null) => void;
 };
 
+// Session token generator for NEW Places API
+function generateSessionToken(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+}
+
 export function DeliveryLocationPicker({
   locations,
   selection,
+  savedCustomSelection = null,
   dictionary,
   triggerLabel,
   triggerClassName,
@@ -54,37 +68,286 @@ export function DeliveryLocationPicker({
   const [buildingId, setBuildingId] = useState("");
   const [customCondo, setCustomCondo] = useState("");
   const [customBuilding, setCustomBuilding] = useState("");
-  const [remember, setRemember] = useState(false);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [customCoordinates, setCustomCoordinates] = useState<LatLngPoint | null>(null);
+  const [showCustomMap, setShowCustomMap] = useState(false);
+  const [showFullCustomSummary, setShowFullCustomSummary] = useState(false);
+  const [isEditingCustom, setIsEditingCustom] = useState(false);
+  const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
+  const [shouldLoadMaps, setShouldLoadMaps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [placePredictions, setPlacePredictions] = useState<
+    Array<{
+      place_id: string;
+      description: string;
+      structured_formatting?: {
+        main_text: string;
+        secondary_text?: string;
+      };
+    }>
+  >([]);
+  const placeSessionTokenRef = useRef<string | null>(null);
+  const placeDetailsCacheRef = useRef<Map<string, LatLngPoint>>(new Map());
+  const initialSelectionRef = useRef<DeliverySelection | null>(null);
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
+  const canUsePlacesAutocomplete = Boolean(mapsApiKey);
+  const displayedCustomSelection =
+    selection?.mode === "custom"
+      ? selection
+      : savedCustomSelection ?? null;
+  const hasDisplayCustom = Boolean(displayedCustomSelection?.customCondoName);
+
+  const coordinatesEqual = (a: LatLngPoint | null | undefined, b: LatLngPoint | null | undefined) => {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return a.lat === b.lat && a.lng === b.lng;
+  };
+
+  const placeIdEqual = (a?: string | null, b?: string | null) => {
+    return (a ?? "") === (b ?? "");
+  };
+
+  const ensureSessionToken = () => {
+    if (!placeSessionTokenRef.current) {
+      placeSessionTokenRef.current = generateSessionToken();
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[places] session:start", { token: placeSessionTokenRef.current });
+      }
+    }
+    return placeSessionTokenRef.current;
+  };
+
+  const resetSessionToken = () => {
+    if (process.env.NODE_ENV !== "production" && placeSessionTokenRef.current) {
+      console.info("[places] session:end", { token: placeSessionTokenRef.current });
+    }
+    placeSessionTokenRef.current = null;
+  };
+
+  const fetchPlaceGeometry = useCallback(async (placeId: string) => {
+    if (placeDetailsCacheRef.current.has(placeId)) {
+      setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
+      setShowCustomMap(true);
+      return;
+    }
+
+    try {
+      // Use FREE Place Details (IDs Only) endpoint
+      const result = await placeDetailsIdsOnly(placeId);
+
+      if (result?.location) {
+        const coords = {
+          lat: result.location.latitude,
+          lng: result.location.longitude,
+        };
+        setCustomCoordinates(coords);
+        placeDetailsCacheRef.current.set(placeId, coords);
+        setShowCustomMap(true);
+        resetSessionToken();
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[places] details:ids-only", { cached: false });
+        }
+      } else {
+        // Fallback to paid endpoint if FREE endpoint doesn't return location
+        const detailsResult = await placeDetailsNew(placeId, ["location"]);
+        if (detailsResult?.location) {
+          const coords = {
+            lat: detailsResult.location.latitude,
+            lng: detailsResult.location.longitude,
+          };
+          setCustomCoordinates(coords);
+          placeDetailsCacheRef.current.set(placeId, coords);
+          setShowCustomMap(true);
+          resetSessionToken();
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[places] details:standard", { cached: false });
+          }
+        } else {
+          setCustomCoordinates(null);
+          setShowCustomMap(false);
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to fetch place geometry:", error);
+      }
+      setCustomCoordinates(null);
+      setShowCustomMap(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    initialSelectionRef.current = null;
+
+    const customSource =
+      selection?.mode === "custom"
+        ? selection
+        : savedCustomSelection ?? null;
+
     if (selection?.mode === "preset") {
       setMode("preset");
       setLocationId(selection.locationId);
       setBuildingId(selection.buildingId ?? "");
-      setCustomCondo("");
-      setCustomBuilding("");
+      setCustomCondo(customSource?.customCondoName ?? "");
+      setCustomBuilding(customSource?.customBuildingName ?? "");
+      setSelectedPlaceId(customSource?.placeId ?? null);
+      setCustomCoordinates(customSource?.coordinates ?? null);
+      if (customSource?.placeId && !customSource.coordinates) {
+        void fetchPlaceGeometry(customSource.placeId);
+      }
+      initialSelectionRef.current = {
+        mode: "preset",
+        locationId: selection.locationId,
+        buildingId: selection.buildingId ?? null,
+      };
+      setIsEditingCustom(false);
+      setShowCustomMap(Boolean(customSource?.coordinates));
+      setShouldLoadMaps(Boolean(customSource?.coordinates || customSource?.placeId));
     } else if (selection?.mode === "custom") {
       setMode("custom");
       setCustomCondo(selection.customCondoName);
       setCustomBuilding(selection.customBuildingName);
+      setSelectedPlaceId(selection.placeId ?? null);
       setLocationId("");
       setBuildingId("");
+      setCustomCoordinates(selection.coordinates ?? null);
+      // If placeId exists and coordinates are not already present, fetch using FREE API
+      if (selection.placeId && !selection.coordinates) {
+        void fetchPlaceGeometry(selection.placeId);
+      }
+      setShowCustomMap(Boolean(selection.coordinates));
+      setShouldLoadMaps(Boolean(selection.coordinates || selection.placeId));
+      initialSelectionRef.current = {
+        mode: "custom",
+        customCondoName: selection.customCondoName,
+        customBuildingName: selection.customBuildingName,
+        placeId: selection.placeId ?? undefined,
+        coordinates: selection.coordinates ?? null,
+      };
+    } else if (savedCustomSelection) {
+      setMode("preset");
+      setLocationId("");
+      setBuildingId("");
+      setCustomCondo(savedCustomSelection.customCondoName);
+      setCustomBuilding(savedCustomSelection.customBuildingName);
+      setSelectedPlaceId(savedCustomSelection.placeId ?? null);
+      setCustomCoordinates(savedCustomSelection.coordinates ?? null);
+      if (savedCustomSelection.placeId && !savedCustomSelection.coordinates) {
+        void fetchPlaceGeometry(savedCustomSelection.placeId);
+      }
+      setShowCustomMap(Boolean(savedCustomSelection.coordinates));
+      setShouldLoadMaps(Boolean(savedCustomSelection.coordinates || savedCustomSelection.placeId));
+      initialSelectionRef.current = {
+        mode: "custom",
+        customCondoName: savedCustomSelection.customCondoName,
+        customBuildingName: savedCustomSelection.customBuildingName,
+        placeId: savedCustomSelection.placeId ?? undefined,
+        coordinates: savedCustomSelection.coordinates ?? null,
+      };
     } else {
       setMode("preset");
       setLocationId("");
       setBuildingId("");
       setCustomCondo("");
       setCustomBuilding("");
+      setSelectedPlaceId(null);
+      setCustomCoordinates(null);
+      setShowCustomMap(false);
+      setShouldLoadMaps(false);
     }
-    setRemember(false);
     setError(null);
-  }, [open, selection]);
+    setLastAutocompleteValue(null);
+    setShowFullCustomSummary(false);
+    setIsEditingCustom(!hasDisplayCustom);
+  }, [open, selection, savedCustomSelection, hasDisplayCustom, fetchPlaceGeometry]);
+
+  const referenceSelection = useMemo(() => {
+    if (mode === "preset") {
+      return selection?.mode === "preset" ? selection : null;
+    }
+    if (selection?.mode === "custom") return selection;
+    return savedCustomSelection ?? null;
+  }, [mode, selection, savedCustomSelection]);
+
+  const hasChanges = useMemo(() => {
+    if (mode === "preset") {
+      const refPreset = referenceSelection && referenceSelection.mode === "preset"
+        ? referenceSelection
+        : null;
+      if (!refPreset) {
+        return Boolean(locationId || buildingId);
+      }
+      return !(
+        refPreset.locationId === locationId &&
+        (refPreset.buildingId ?? null) === (buildingId || null)
+      );
+    }
+
+    const refCustom = referenceSelection && referenceSelection.mode === "custom"
+      ? referenceSelection
+      : null;
+    const trimmedName = customCondo.trim();
+    const trimmedBuilding = customBuilding.trim();
+    const coordsEqualOrPopulated =
+      coordinatesEqual(refCustom?.coordinates, customCoordinates) ||
+      (refCustom?.coordinates == null &&
+        customCoordinates != null &&
+        placeIdEqual(refCustom?.placeId, selectedPlaceId));
+
+    if (!refCustom) {
+      const initialCustom = initialSelectionRef.current && initialSelectionRef.current.mode === "custom"
+        ? initialSelectionRef.current
+        : null;
+      const baseCompare = initialCustom ?? null;
+
+      if (baseCompare) {
+        const baseCoordsEqual =
+          coordinatesEqual(baseCompare.coordinates, customCoordinates) ||
+          (baseCompare.coordinates == null &&
+            customCoordinates != null &&
+            placeIdEqual(baseCompare.placeId, selectedPlaceId));
+        return !(
+          baseCompare.customCondoName === trimmedName &&
+          (baseCompare.customBuildingName ?? "") === trimmedBuilding &&
+          placeIdEqual(baseCompare.placeId, selectedPlaceId) &&
+          baseCoordsEqual
+        );
+      }
+      return Boolean(trimmedName || trimmedBuilding || selectedPlaceId || customCoordinates);
+    }
+
+    return !(
+      refCustom.customCondoName === trimmedName &&
+      (refCustom.customBuildingName ?? "") === trimmedBuilding &&
+      placeIdEqual(refCustom.placeId, selectedPlaceId) &&
+      coordsEqualOrPopulated
+    );
+  }, [
+    mode,
+    referenceSelection,
+    locationId,
+    buildingId,
+    customCondo,
+    customBuilding,
+    selectedPlaceId,
+    customCoordinates,
+  ]);
+
+  const actionLabel =
+    hasChanges ? dictionary.modal.save : (dictionary.modal.useCurrent ?? "Use current selection");
+
+  useEffect(() => {
+    if (mode === "preset") {
+      setCustomCoordinates(null);
+      setLastAutocompleteValue(null);
+      setPlacePredictions([]);
+    }
+  }, [mode]);
 
   const activeLocation = useMemo(
     () => locations.find((loc) => loc.id === locationId) ?? null,
@@ -108,6 +371,138 @@ export function DeliveryLocationPicker({
 
   const hasBuildings = (activeLocation?.buildings.length ?? 0) > 0;
 
+  /**
+   * Fetch place coordinates using NEW Places API
+   * Uses FREE Place Details (IDs Only) endpoint when placeId is available
+   */
+  const handlePredictionSelect = (prediction: {
+    place_id: string;
+    description: string;
+    structured_formatting?: {
+      main_text: string;
+      secondary_text?: string;
+    };
+  }) => {
+    const description =
+      prediction.description ??
+      prediction.structured_formatting?.main_text ??
+      customCondo;
+
+    setCustomCondo(description);
+    setLastAutocompleteValue(description);
+    setPlacePredictions([]);
+    setShouldLoadMaps(true);
+    setShowCustomMap(true);
+
+    if (prediction.place_id) {
+      setSelectedPlaceId(prediction.place_id);
+      fetchPlaceGeometry(prediction.place_id);
+    } else {
+      setSelectedPlaceId(null);
+      setCustomCoordinates(null);
+    }
+  };
+
+  const handleCustomCondoChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const nextValue = event.target.value;
+    setCustomCondo(nextValue);
+    setShouldLoadMaps(true);
+    if (nextValue !== lastAutocompleteValue) {
+      setCustomCoordinates(null);
+      setLastAutocompleteValue(null);
+      setSelectedPlaceId(null);
+      setShowCustomMap(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mode !== "custom") {
+      setPlacePredictions([]);
+      return;
+    }
+
+    if (!shouldLoadMaps || !canUsePlacesAutocomplete) {
+      setPlacePredictions([]);
+      return;
+    }
+
+    const trimmedValue = customCondo.trim();
+    if (!trimmedValue || trimmedValue === lastAutocompleteValue) {
+      setPlacePredictions([]);
+      return;
+    }
+
+    let isCancelled = false;
+
+    // Debounce to balance UX + quota (tighter than 400ms to feel responsive)
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const sessionToken = ensureSessionToken();
+        const locationRestriction = getUniversityAreaRectangle();
+
+        const runAutocomplete = async (withRestriction: boolean) => {
+          return autocompleteNew({
+            input: trimmedValue,
+            locationRestriction: withRestriction ? locationRestriction ?? undefined : undefined,
+            // Broad results for addresses/places; leave types open to improve hit-rate
+            sessionToken,
+            languageCode: "en",
+          });
+        };
+
+        // Try restricted first (if available), then fall back to unrestricted when empty
+        const restrictedResponse = locationRestriction ? await runAutocomplete(true) : null;
+        const restrictedSuggestions = restrictedResponse?.suggestions ?? [];
+
+        const shouldFallback =
+          (!restrictedSuggestions || restrictedSuggestions.length === 0) && locationRestriction;
+
+        const fallbackResponse = shouldFallback ? await runAutocomplete(false) : null;
+        const fallbackSuggestions = fallbackResponse?.suggestions ?? [];
+
+        if (isCancelled) {
+          return;
+        }
+
+        const combinedSuggestions = [...restrictedSuggestions, ...fallbackSuggestions];
+
+        if (combinedSuggestions.length) {
+          // Convert NEW API format to SDK-compatible format for component
+          const predictions = combinedSuggestions
+            .filter((s) => s.placePrediction)
+            .map((s) => convertToSdkPrediction(s.placePrediction!))
+            .slice(0, 5); // Show up to 5 results for better coverage
+
+          setPlacePredictions(predictions);
+          if (process.env.NODE_ENV !== "production") {
+            console.info("[places] autocomplete", {
+              inputLength: trimmedValue.length,
+              restricted: restrictedSuggestions.length,
+              fallback: fallbackSuggestions.length,
+              returned: predictions.length,
+            });
+          }
+        } else {
+          setPlacePredictions([]);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Autocomplete API error:", error);
+        }
+        if (!isCancelled) {
+          setPlacePredictions([]);
+        }
+      }
+    }, 265); // debounce to balance UX + quota
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [customCondo, lastAutocompleteValue, canUsePlacesAutocomplete, shouldLoadMaps, mode]);
+
   const handleSave = async () => {
     setError(null);
 
@@ -123,32 +518,37 @@ export function DeliveryLocationPicker({
         buildingId: buildingId || null,
       };
 
+      // If nothing changed, just update selection locally and close
+      if (!hasChanges) {
+        onSelectionChange(payload);
+        setOpen(false);
+        return;
+      }
+
       setIsSubmitting(true);
       try {
-        if (remember) {
-          const response = await fetch("/api/user/delivery-location", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              locationId: payload.locationId,
-              buildingId: payload.buildingId,
-            }),
-          });
+        const response = await fetch("/api/user/delivery-location", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "preset",
+            locationId: payload.locationId,
+            buildingId: payload.buildingId,
+          }),
+        });
 
-          if (!response.ok) {
-            const data = await response.json().catch(() => null);
-            const message =
-              data && typeof data.error === "string"
-                ? data.error
-                : dictionary.rememberError;
-            throw new Error(message);
-          }
-
-          toast.success(dictionary.rememberSuccess);
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          const message =
+            data && typeof data.error === "string"
+              ? data.error
+              : dictionary.rememberError;
+          throw new Error(message);
         }
 
+        toast.success(dictionary.rememberSuccess);
         onSelectionChange(payload);
         setOpen(false);
       } catch (error) {
@@ -171,10 +571,50 @@ export function DeliveryLocationPicker({
       mode: "custom",
       customCondoName: trimmedName,
       customBuildingName: customBuilding.trim(),
+      placeId: selectedPlaceId ?? undefined, // Store place_id for FREE Place Details calls later
+      coordinates: customCoordinates,
     };
 
-    onSelectionChange(payload);
-    setOpen(false);
+    if (!hasChanges) {
+      onSelectionChange(payload);
+      setOpen(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/user/delivery-location", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: "custom",
+          customCondoName: payload.customCondoName,
+          customBuildingName: payload.customBuildingName,
+          placeId: payload.placeId ?? null,
+          coordinates: customCoordinates,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message =
+          data && typeof data.error === "string"
+            ? data.error
+            : dictionary.rememberError;
+        throw new Error(message);
+      }
+
+      toast.success(dictionary.rememberSuccess);
+      onSelectionChange(payload);
+      setOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : dictionary.errorGeneric;
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -208,6 +648,7 @@ export function DeliveryLocationPicker({
                 ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
                 : "text-slate-500"
             )}
+            aria-live="polite"
           >
             {dictionary.modal.savedTab}
           </button>
@@ -308,49 +749,152 @@ export function DeliveryLocationPicker({
                 {activeLocation.notes}
               </div>
             ) : null}
-
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-slate-800">
-                  {dictionary.rememberLabel}
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  {dictionary.rememberHint}
-                </p>
-              </div>
-              <Switch
-                disabled={isSubmitting}
-                checked={remember}
-                onCheckedChange={setRemember}
-              />
-            </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold text-slate-800">
-                {dictionary.modal.customCondoLabel}
-              </span>
-              <Input
-                value={customCondo}
-                onChange={(event) => setCustomCondo(event.target.value)}
-                placeholder={dictionary.modal.customCondoPlaceholder}
-                className={clsx(error ? "border-red-500" : undefined)}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold text-slate-800">
-                {dictionary.modal.customBuildingLabel}
+            {hasDisplayCustom && !isEditingCustom ? (
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                      {dictionary.modal.customSavedLabel ?? "Saved custom address"}
+                    </p>
+                    <p
+                      className={clsx(
+                        "text-sm font-semibold text-slate-900",
+                        showFullCustomSummary
+                          ? "whitespace-normal break-words"
+                          : "line-clamp-2 break-words"
+                      )}
+                      title={customCondo || displayedCustomSelection?.customCondoName}
+                    >
+                      {customCondo || displayedCustomSelection?.customCondoName}
+                    </p>
+                    {(customBuilding || displayedCustomSelection?.customBuildingName) && (
+                      <p
+                        className={clsx(
+                          "text-[12px] text-slate-600",
+                          showFullCustomSummary
+                            ? "whitespace-normal break-words"
+                            : "line-clamp-2 break-words"
+                        )}
+                        title={customBuilding || displayedCustomSelection?.customBuildingName}
+                      >
+                        {customBuilding || displayedCustomSelection?.customBuildingName}
+                      </p>
+                    )}
+                  {showCustomMap && (
+                    <div className="mt-2 rounded-xl border border-slate-200 bg-white/60 p-2">
+                      <DeliveryLocationMap
+                        location={null}
+                        coordinates={customCoordinates}
+                      />
+                    </div>
+                  )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-[12px] font-semibold">
+                    <button
+                      type="button"
+                      className="text-emerald-700 hover:text-emerald-800"
+                      onClick={() => setShowFullCustomSummary((prev) => !prev)}
+                    >
+                      {showFullCustomSummary
+                        ? dictionary.modal.customCollapse ?? "Show less"
+                        : dictionary.modal.customExpand ?? "Show full"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-slate-700 hover:text-slate-900"
+                      onClick={() => setIsEditingCustom(true)}
+                    >
+                      {dictionary.modal.customEdit ?? "Edit address"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {(!hasDisplayCustom || isEditingCustom) && (
+              <>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-semibold text-slate-800">
+                    {dictionary.modal.customCondoLabel}
+                  </span>
+                  <Input
+                    value={customCondo}
+                    onChange={handleCustomCondoChange}
+                    placeholder={dictionary.modal.customCondoPlaceholder}
+                    className={clsx(error ? "border-red-500" : undefined)}
+                    autoComplete="off"
+                    onFocus={() => setShouldLoadMaps(true)}
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    Smart location suggestions appear as you type; map preview stays optional.
+                  </p>
+                  {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
+                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <ul className="max-h-60 overflow-y-auto py-1">
+                        {placePredictions.map((prediction) => (
+                          <li key={prediction.place_id ?? prediction.description}>
+                            <button
+                              type="button"
+                              onClick={() => handlePredictionSelect(prediction)}
+                              className="w-full px-4 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50"
+                            >
+                              <p className="text-sm font-medium text-slate-900">
+                                {prediction.structured_formatting?.main_text ?? prediction.description}
+                              </p>
+                              {prediction.structured_formatting?.secondary_text ? (
+                                <p className="text-xs text-slate-500">
+                                  {prediction.structured_formatting.secondary_text}
+                                </p>
+                              ) : null}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
+                        Smart location search
+                      </p>
+                    </div>
+                  ) : null}
+                </label>
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-semibold text-slate-800">
+                    {dictionary.modal.customBuildingLabel}
               </span>
               <Input
                 value={customBuilding}
                 onChange={(event) => setCustomBuilding(event.target.value)}
-                placeholder={dictionary.modal.customBuildingPlaceholder}
+                placeholder={
+                  dictionary.modal.customBuildingPlaceholder ??
+                  "Add building (optional)"
+                }
               />
             </label>
-            <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-              {dictionary.modal.customHelper}
-            </p>
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                  {dictionary.modal.customHelper}
+                </p>
+                <div className="rounded-2xl border border-slate-200 bg-white/60 p-2">
+                  {showCustomMap ? (
+                    <DeliveryLocationMap
+                      location={null}
+                      coordinates={customCoordinates}
+                    />
+                  ) : (
+                    <div className="flex h-48 w-full items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {dictionary.modal.mapPreviewTitle ?? "Map preview"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {dictionary.modal.mapPreviewHelper ?? "Map loads after you pick a location."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -371,7 +915,7 @@ export function DeliveryLocationPicker({
             onClick={handleSave}
             disabled={isSubmitting}
           >
-            {isSubmitting ? dictionary.modal.saving : dictionary.modal.save}
+            {isSubmitting ? dictionary.modal.saving : actionLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

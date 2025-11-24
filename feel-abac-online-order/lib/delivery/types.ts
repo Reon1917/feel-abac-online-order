@@ -1,3 +1,5 @@
+import type { LatLngPoint } from "./location-coordinates";
+
 export type DeliveryBuildingRecord = {
   id: string;
   locationId: string;
@@ -45,6 +47,8 @@ export type CustomDeliverySelection = {
   mode: "custom";
   customCondoName: string;
   customBuildingName: string;
+  placeId?: string; // Google Maps place_id - enables FREE Place Details (IDs Only) calls
+  coordinates?: LatLngPoint | null;
 };
 
 export type DeliverySelection = PresetDeliverySelection | CustomDeliverySelection;

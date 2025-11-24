@@ -7,9 +7,14 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getSession } from "@/lib/session";
-import { getUserProfile } from "@/lib/user-profile";
+import {
+  getUserProfile,
+  buildDeliverySelectionFromProfile,
+  buildCustomSelectionFromProfile,
+} from "@/lib/user-profile";
 import { getActiveCartForUser } from "@/lib/cart/queries";
 import { getActiveDeliveryLocations } from "@/lib/delivery/queries";
+import type { DeliverySelection } from "@/lib/delivery/types";
 
 type PageProps = {
   params: Promise<{
@@ -37,13 +42,10 @@ export default async function CartPage({ params }: PageProps) {
   const cart = await getActiveCartForUser(sessionData.session.user.id);
   const deliveryLocations = await getActiveDeliveryLocations();
   const menuHref = withLocalePath(locale, "/menu");
-  const defaultDeliverySelection =
-    profile.defaultDeliveryLocationId != null
-      ? {
-          locationId: profile.defaultDeliveryLocationId,
-          buildingId: profile.defaultDeliveryBuildingId,
-        }
-      : null;
+  const defaultDeliverySelection: DeliverySelection | null =
+    buildDeliverySelectionFromProfile(profile);
+  const savedCustomSelection: DeliverySelection | null =
+    buildCustomSelectionFromProfile(profile);
 
   return (
     <>
@@ -56,6 +58,7 @@ export default async function CartPage({ params }: PageProps) {
             menuHref={menuHref}
             deliveryLocations={deliveryLocations}
             defaultDeliverySelection={defaultDeliverySelection}
+            savedCustomSelection={savedCustomSelection}
           />
         </div>
       </main>

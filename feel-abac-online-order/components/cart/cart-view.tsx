@@ -23,10 +23,8 @@ type CartViewProps = {
   dictionary: CartDictionary;
   menuHref: string;
   deliveryLocations: DeliveryLocationOption[];
-  defaultDeliverySelection: {
-    locationId: string;
-    buildingId: string | null;
-  } | null;
+  defaultDeliverySelection: DeliverySelection | null;
+  savedCustomSelection: DeliverySelection | null;
 };
 
 type CartItemRecord = CartRecord["items"][number];
@@ -44,6 +42,7 @@ export function CartView({
   menuHref,
   deliveryLocations,
   defaultDeliverySelection,
+  savedCustomSelection,
 }: CartViewProps) {
   const { menuLocale } = useMenuLocale();
   const router = useRouter();
@@ -53,23 +52,35 @@ export function CartView({
   const [editingItem, setEditingItem] = useState<CartItemRecord | null>(null);
   const [editingQuantity, setEditingQuantity] = useState(1);
   const [locationValidationError, setLocationValidationError] = useState<string | null>(null);
-  const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(() => {
-    if (!defaultDeliverySelection?.locationId) {
-      return null;
+  const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(
+    () => {
+      if (!defaultDeliverySelection) {
+        return null;
+      }
+
+      if (defaultDeliverySelection.mode === "preset") {
+        const locationExists = deliveryLocations.some(
+          (location) => location.id === defaultDeliverySelection.locationId
+        );
+        if (!locationExists) {
+          return null;
+        }
+        return {
+          mode: "preset",
+          locationId: defaultDeliverySelection.locationId,
+          buildingId: defaultDeliverySelection.buildingId ?? null,
+        };
+      }
+
+      return {
+        mode: "custom",
+        customCondoName: defaultDeliverySelection.customCondoName,
+        customBuildingName: defaultDeliverySelection.customBuildingName,
+        placeId: defaultDeliverySelection.placeId,
+        coordinates: defaultDeliverySelection.coordinates,
+      };
     }
-    // Verify location exists in deliveryLocations array
-    const locationExists = deliveryLocations.some(
-      (location) => location.id === defaultDeliverySelection.locationId
-    );
-    if (!locationExists) {
-      return null;
-    }
-    return {
-      mode: "preset",
-      locationId: defaultDeliverySelection.locationId,
-      buildingId: defaultDeliverySelection.buildingId ?? null,
-    };
-  });
+  );
   const quantityLabel = dictionary.items.quantityLabel;
   const quantityLabelLower = quantityLabel.toLowerCase();
   const decrementAria = dictionary.items.decrement;
@@ -105,8 +116,12 @@ export function CartView({
 
   // Validate selected location and building on mount and when selection changes
   useEffect(() => {
-    if (deliverySelection?.mode !== "preset") {
+    if (deliverySelection?.mode === "custom") {
       setLocationValidationError(null);
+      return;
+    }
+
+    if (!deliverySelection || deliverySelection.mode !== "preset") {
       return;
     }
 
@@ -502,6 +517,11 @@ export function CartView({
               <DeliveryLocationPicker
                 locations={deliveryLocations}
                 selection={deliverySelection}
+                savedCustomSelection={
+                  savedCustomSelection?.mode === "custom"
+                    ? savedCustomSelection
+                    : null
+                }
                 dictionary={deliveryDictionary}
                 triggerLabel={locationTriggerLabel}
                 triggerClassName="w-full justify-center rounded-2xl border-emerald-200 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm hover:border-emerald-300"
@@ -568,6 +588,11 @@ export function CartView({
               <DeliveryLocationPicker
                 locations={deliveryLocations}
                 selection={deliverySelection}
+                savedCustomSelection={
+                  savedCustomSelection?.mode === "custom"
+                    ? savedCustomSelection
+                    : null
+                }
                 dictionary={deliveryDictionary}
                 triggerLabel={locationTriggerLabel}
                 triggerClassName="w-full justify-center rounded-2xl border-emerald-200 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm hover:border-emerald-300"
