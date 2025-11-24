@@ -1,4 +1,5 @@
 import { useJsApiLoader, type UseLoadScriptOptions } from "@react-google-maps/api";
+import { useMemo } from "react";
 
 const SCRIPT_ID = "feel-abac-google-maps";
 const BASE_LIBRARIES: UseLoadScriptOptions["libraries"] = ["places"];
@@ -20,7 +21,11 @@ export function useGoogleMapsLoader(
   options?: Partial<UseLoadScriptOptions>
 ) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
-  const libraries = mergeLibraries(BASE_LIBRARIES, options?.libraries);
+  // Memoize libraries to avoid recreating arrays and reloading the script.
+  const libraries = useMemo(
+    () => (options?.libraries ? mergeLibraries(BASE_LIBRARIES, options.libraries) : BASE_LIBRARIES),
+    [options?.libraries ? options.libraries.join(",") : "base"]
+  );
 
   return useJsApiLoader({
     id: SCRIPT_ID,

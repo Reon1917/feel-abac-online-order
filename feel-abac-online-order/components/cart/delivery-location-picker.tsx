@@ -62,6 +62,8 @@ export function DeliveryLocationPicker({
   const [customBuilding, setCustomBuilding] = useState("");
   const [customCoordinates, setCustomCoordinates] = useState<LatLngPoint | null>(null);
   const [presetCoordinates, setPresetCoordinates] = useState<LatLngPoint | null>(null);
+  const [showPresetMap, setShowPresetMap] = useState(false);
+  const [showCustomMap, setShowCustomMap] = useState(false);
   const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
   const [remember, setRemember] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,6 +103,8 @@ export function DeliveryLocationPicker({
     setError(null);
     setCustomCoordinates(null);
     setPresetCoordinates(null);
+    setShowPresetMap(false);
+    setShowCustomMap(false);
     setLastAutocompleteValue(null);
   }, [open, selection]);
 
@@ -515,10 +519,31 @@ export function DeliveryLocationPicker({
                 {activeLocation.notes}
               </div>
             ) : null}
-            <DeliveryLocationMap
-              location={activeLocation}
-              coordinates={presetCoordinates}
-            />
+            {showPresetMap ? (
+              <DeliveryLocationMap
+                location={activeLocation}
+                coordinates={presetCoordinates}
+              />
+            ) : (
+              <div className="flex h-48 w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {dictionary.modal.mapPreviewTitle ?? "Map preview"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {dictionary.modal.mapPreviewHelper ?? "Tap to load Google Maps for this location."}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowPresetMap(true)}
+                >
+                  {dictionary.modal.mapPreviewAction ?? "Show map"}
+                </Button>
+              </div>
+            )}
 
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
               <div className="space-y-0.5">
@@ -590,10 +615,31 @@ export function DeliveryLocationPicker({
             <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
               {dictionary.modal.customHelper}
             </p>
-            <DeliveryLocationMap
-              location={null}
-              coordinates={customCoordinates}
-            />
+            {showCustomMap ? (
+              <DeliveryLocationMap
+                location={null}
+                coordinates={customCoordinates}
+              />
+            ) : (
+              <div className="flex h-48 w-full items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {dictionary.modal.mapPreviewTitle ?? "Map preview"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {dictionary.modal.mapPreviewHelper ?? "Tap to load Google Maps for this location."}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowCustomMap(true)}
+                >
+                  {dictionary.modal.mapPreviewAction ?? "Show map"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
