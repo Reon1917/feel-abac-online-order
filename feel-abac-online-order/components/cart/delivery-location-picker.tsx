@@ -108,6 +108,7 @@ export function DeliveryLocationPicker({
       setBuildingId(selection.buildingId ?? "");
       setCustomCondo("");
       setCustomBuilding("");
+      setSelectedPlaceId(null);
     } else if (selection?.mode === "custom") {
       setMode("custom");
       setCustomCondo(selection.customCondoName);
@@ -125,6 +126,7 @@ export function DeliveryLocationPicker({
       setBuildingId("");
       setCustomCondo("");
       setCustomBuilding("");
+      setSelectedPlaceId(null);
     }
     setRemember(false);
     setError(null);
@@ -134,7 +136,6 @@ export function DeliveryLocationPicker({
     setShowCustomMap(false);
     setShouldLoadMaps(false);
     setLastAutocompleteValue(null);
-    setSelectedPlaceId(null);
   }, [open, selection]);
 
   useEffect(() => {

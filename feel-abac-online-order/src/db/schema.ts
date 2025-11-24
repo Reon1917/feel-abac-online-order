@@ -119,6 +119,7 @@ export const userProfiles = pgTable("user_profiles", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   phoneNumber: text("phone_number").notNull(),
+  deliverySelectionMode: text("delivery_selection_mode"),
   defaultDeliveryLocationId: uuid("default_delivery_location_id").references(
     () => deliveryLocations.id,
     { onDelete: "set null" }
@@ -127,6 +128,12 @@ export const userProfiles = pgTable("user_profiles", {
     () => deliveryBuildings.id,
     { onDelete: "set null" }
   ),
+  customCondoName: text("custom_condo_name"),
+  customBuildingName: text("custom_building_name"),
+  customPlaceId: text("custom_place_id"),
+  customLat: numeric("custom_lat", { precision: 10, scale: 6 }),
+  customLng: numeric("custom_lng", { precision: 10, scale: 6 }),
+  customUpdatedAt: timestamp("custom_updated_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

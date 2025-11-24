@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { GoogleMap, MarkerF } from "@react-google-maps/api";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { GoogleMap } from "@react-google-maps/api";
 
 import type { DeliveryLocationOption } from "@/lib/delivery/types";
 import {
@@ -61,14 +61,74 @@ export function DeliveryLocationMap({
 
   const { isLoaded, loadError } = useGoogleMapsLoader();
 
-  const center = resolvedCoordinates ?? DEFAULT_LOCATION_COORDINATE;
+  const center = useMemo(
+    () => resolvedCoordinates ?? DEFAULT_LOCATION_COORDINATE,
+    [resolvedCoordinates]
+  );
   const shouldShowMarker = Boolean(resolvedCoordinates);
   const hasSelection = Boolean(location) || Boolean(coordinates);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
 
   const containerClassName = cn(
     "h-48 w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100",
     className
   );
+
+  const cleanupMarker = useCallback(() => {
+    if (markerRef.current) {
+      markerRef.current.map = null;
+      markerRef.current = null;
+    }
+  }, []);
+
+  const renderMarker = useCallback(async () => {
+    const map = mapRef.current;
+
+    if (!map) {
+      return;
+    }
+
+    if (!shouldShowMarker) {
+      cleanupMarker();
+      return;
+    }
+
+    try {
+      const { AdvancedMarkerElement } = (await google.maps.importLibrary(
+        "marker"
+      )) as google.maps.MarkerLibrary;
+
+      cleanupMarker();
+
+      markerRef.current = new AdvancedMarkerElement({
+        map,
+        position: center,
+        title: location?.condoName ?? "Delivery location",
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to render AdvancedMarkerElement:", error);
+      }
+    }
+  }, [center, cleanupMarker, location?.condoName, shouldShowMarker]);
+
+  const handleMapLoad = useCallback(
+    (map: google.maps.Map) => {
+      mapRef.current = map;
+      void renderMarker();
+    },
+    [renderMarker]
+  );
+
+  const handleMapUnmount = useCallback(() => {
+    mapRef.current = null;
+    cleanupMarker();
+  }, [cleanupMarker]);
+
+  useEffect(() => {
+    void renderMarker();
+  }, [renderMarker]);
 
   if (!apiKey) {
     if (process.env.NODE_ENV !== "production") {
@@ -121,8 +181,9 @@ export function DeliveryLocationMap({
             fullscreenControl: false,
           }}
           mapContainerStyle={{ height: "100%", width: "100%" }}
+          onLoad={handleMapLoad}
+          onUnmount={handleMapUnmount}
         >
-          {shouldShowMarker ? <MarkerF position={center} /> : null}
         </GoogleMap>
 
         {!shouldShowMarker ? (
