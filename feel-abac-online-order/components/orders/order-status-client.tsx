@@ -124,6 +124,9 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
 
   useEffect(() => {
     const pusher = getPusherClient();
+    if (!pusher) {
+      return;
+    }
     const channelName = buildOrderChannelName(order.displayId);
     const channel = pusher.subscribe(channelName);
 

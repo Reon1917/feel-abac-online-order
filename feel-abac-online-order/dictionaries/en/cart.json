@@ -13,8 +13,7 @@
     "foodSubtotal": "Food Subtotal",
     "vatIncluded": "VAT INCLUDED",
     "empty": "Your cart is empty",
-    "checkoutCta": "Proceed to checkout",
-    "comingSoon": "Checkout is coming soon"
+    "checkoutCta": "Send order"
   },
   "delivery": {
     "label": "Delivery location",

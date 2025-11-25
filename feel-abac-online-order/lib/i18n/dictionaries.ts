@@ -4,6 +4,7 @@ import cartEn from "@/dictionaries/en/cart.json";
 import adminDashboardEn from "@/dictionaries/en/admin-dashboard.json";
 import adminMenuEn from "@/dictionaries/en/admin-menu.json";
 import adminDeliveryEn from "@/dictionaries/en/admin-delivery.json";
+import adminOrdersEn from "@/dictionaries/en/admin-orders.json";
 import commonEn from "@/dictionaries/en/common.json";
 import orderEn from "@/dictionaries/en/order.json";
 
@@ -13,6 +14,7 @@ import cartMy from "@/dictionaries/my/cart.json";
 import adminDashboardMy from "@/dictionaries/my/admin-dashboard.json";
 import adminMenuMy from "@/dictionaries/my/admin-menu.json";
 import adminDeliveryMy from "@/dictionaries/my/admin-delivery.json";
+import adminOrdersMy from "@/dictionaries/my/admin-orders.json";
 import commonMy from "@/dictionaries/my/common.json";
 import orderMy from "@/dictionaries/my/order.json";
 
@@ -26,6 +28,7 @@ export const DICTIONARIES = {
     adminDashboard: adminDashboardEn,
     adminMenu: adminMenuEn,
     adminDelivery: adminDeliveryEn,
+    adminOrders: adminOrdersEn,
     common: commonEn,
     order: orderEn,
   },
@@ -36,6 +39,7 @@ export const DICTIONARIES = {
     adminDashboard: adminDashboardMy,
     adminMenu: adminMenuMy,
     adminDelivery: adminDeliveryMy,
+    adminOrders: adminOrdersMy,
     common: commonMy,
     order: orderMy,
   },

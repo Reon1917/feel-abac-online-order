@@ -1,0 +1,17 @@
+{
+  "pageTitle": "Orders",
+  "listTitle": "Recent orders",
+  "orderIdLabel": "Order",
+  "customerLabel": "Customer",
+  "locationLabel": "Location",
+  "totalLabel": "Total",
+  "statusLabel": "Status",
+  "createdLabel": "Created",
+  "viewOrder": "View",
+  "emptyState": "No orders yet",
+  "accept": "Accept",
+  "cancel": "Cancel",
+  "newOrderToast": "New order received",
+  "statusUpdatedToast": "Order status updated",
+  "errorLoading": "Unable to load order"
+}

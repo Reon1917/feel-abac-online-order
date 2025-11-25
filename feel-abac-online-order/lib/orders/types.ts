@@ -50,6 +50,11 @@ export type OrderRecord = {
   deliveryFee: number | null;
   discountTotal: number;
   totalAmount: number;
+  deliveryMode: "preset" | "custom" | null;
+  deliveryLocationId?: string | null;
+  deliveryBuildingId?: string | null;
+  customCondoName?: string | null;
+  customBuildingName?: string | null;
   customerName: string;
   customerPhone: string;
   createdAt: string;
@@ -64,3 +69,14 @@ export type OrderRecord = {
 };
 
 export type OrderEventMetadata = Json;
+
+export type OrderAdminSummary = {
+  id: string;
+  displayId: string;
+  status: OrderStatus;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: number;
+  deliveryLabel: string;
+  createdAt: string;
+};

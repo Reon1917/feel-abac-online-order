@@ -3,13 +3,7 @@
 import Pusher from "pusher-js";
 
 let pusherClient: Pusher | null = null;
-
-function getEnvOrThrow(value: string | undefined, key: string) {
-  if (!value || value.trim().length === 0) {
-    throw new Error(`Missing Pusher client env: ${key}`);
-  }
-  return value;
-}
+let warnedMissingEnv = false;
 
 export function getPusherClient() {
   if (typeof window === "undefined") {
@@ -20,11 +14,18 @@ export function getPusherClient() {
     return pusherClient;
   }
 
-  const key = getEnvOrThrow(process.env.NEXT_PUBLIC_PUSHER_KEY, "NEXT_PUBLIC_PUSHER_KEY");
-  const cluster = getEnvOrThrow(
-    process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
-    "NEXT_PUBLIC_PUSHER_CLUSTER"
-  );
+  const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+  const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+  if (!key || !cluster) {
+    if (!warnedMissingEnv) {
+      console.warn(
+        "[pusher-client] Missing NEXT_PUBLIC_PUSHER_KEY or NEXT_PUBLIC_PUSHER_CLUSTER; realtime disabled."
+      );
+      warnedMissingEnv = true;
+    }
+    return null;
+  }
 
   if (process.env.NODE_ENV !== "production") {
     Pusher.logToConsole = true;

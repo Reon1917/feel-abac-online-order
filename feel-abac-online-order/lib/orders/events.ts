@@ -15,6 +15,7 @@ export function parseOrderChannelName(channelName: string) {
 }
 
 export const ORDER_STATUS_CHANGED_EVENT = "order.status.changed";
+export const ORDER_SUBMITTED_EVENT = "order.submitted";
 
 export type OrderStatusChangedPayload = {
   orderId: string;
@@ -24,4 +25,15 @@ export type OrderStatusChangedPayload = {
   actorType: "admin" | "user" | "system";
   reason?: string | null;
   at: string;
+};
+
+export type OrderSubmittedPayload = {
+  orderId: string;
+  displayId: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryLabel: string;
+  totalAmount: number;
+  status: OrderStatus;
+  submittedAt: string;
 };

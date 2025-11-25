@@ -8,11 +8,14 @@ import {
   orderItemChoices,
   orderItems,
   orders,
+  deliveryLocations,
+  deliveryBuildings,
 } from "@/src/db/schema";
 import type {
   OrderItemChoice,
   OrderItemRecord,
   OrderRecord,
+  OrderAdminSummary,
   OrderStatus,
 } from "./types";
 
@@ -70,7 +73,11 @@ function mapOrder(
     id: row.id,
     displayId: row.displayId,
     displayCounter: row.displayCounter,
-    displayDay: typeof row.displayDay === "string" ? row.displayDay : row.displayDay.toISOString().slice(0, 10),
+    displayDay: row.displayDay
+      ? typeof row.displayDay === "string"
+        ? row.displayDay
+        : row.displayDay.toISOString().slice(0, 10)
+      : "",
     status: row.status as OrderStatus,
     orderNote: row.orderNote,
     adminNote: row.adminNote,
@@ -79,6 +86,11 @@ function mapOrder(
     deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : null,
     discountTotal: numericToNumber(row.discountTotal),
     totalAmount: numericToNumber(row.totalAmount),
+    deliveryMode: row.deliveryMode as "preset" | "custom" | null,
+    deliveryLocationId: row.deliveryLocationId,
+    deliveryBuildingId: row.deliveryBuildingId,
+    customCondoName: row.customCondoName ?? null,
+    customBuildingName: row.customBuildingName ?? null,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     createdAt: dateToIso(row.createdAt) ?? "",
@@ -185,4 +197,57 @@ export async function appendOrderEvent(input: {
   };
 
   await db.insert(orderEvents).values(payload);
+}
+
+export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSummary[]> {
+  const rows = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      status: orders.status,
+      customerName: orders.customerName,
+      customerPhone: orders.customerPhone,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+      deliveryMode: orders.deliveryMode,
+      deliveryLocationId: orders.deliveryLocationId,
+      deliveryBuildingId: orders.deliveryBuildingId,
+      customCondoName: orders.customCondoName,
+      customBuildingName: orders.customBuildingName,
+      locationCondoName: deliveryLocations.condoName,
+      buildingLabel: deliveryBuildings.label,
+    })
+    .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
+    .orderBy(desc(orders.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => {
+    const deliveryLabel =
+      row.deliveryMode === "custom"
+        ? `${row.customCondoName ?? "Custom"}${
+            row.customBuildingName ? `, ${row.customBuildingName}` : ""
+          }`
+        : `${row.locationCondoName ?? "Unknown"}${
+            row.buildingLabel ? `, ${row.buildingLabel}` : ""
+          }`;
+
+    return {
+      id: row.id,
+      displayId: row.displayId,
+      status: row.status as OrderStatus,
+      customerName: row.customerName,
+      customerPhone: row.customerPhone,
+      totalAmount: numericToNumber(row.totalAmount),
+      deliveryLabel,
+      createdAt: dateToIso(row.createdAt) ?? "",
+    };
+  });
 }
