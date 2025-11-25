@@ -5,6 +5,11 @@
 - Keep payloads small to control Pusher message counts and cost.
 - Provide audible alerts on admin side for every diner-initiated event.
 
+## MVP Scope (now)
+- Diner submits order; admin receives realtime card + can accept or cancel.
+- Status changes (accept → `order_in_kitchen` or cancel) reflect on both diner and admin UIs instantly.
+- No payment flows yet; keep payloads minimal and reuse order displayId.
+
 ## Channel Topology
 - `private-admin-orders` – admins subscribe after auth; receives new orders, receipts, and status changes needing attention.
 - `private-order-{displayId}` – per-order channel for diner + relevant admins; carries status/payment updates, tracking link changes, and errors.
@@ -20,6 +25,29 @@
 - `courier.tracking.updated` (diner) – `{orderId, displayId, vendor, trackingUrl, etaMinutes?}`.
 - `order.closed` (both) – `{orderId, displayId, closedAt, finalStatus}`.
 - Keep payload fields flat; no menu item arrays to keep message size down.
+
+## Coding Plan (MVP: submit + accept/cancel)
+- **Env & config**
+  - Add `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER` to `.env.local.example`.
+  - Create `lib/pusher-server.ts` exporting configured Pusher server client (lazy singleton).
+  - Create `lib/pusher-client.ts` wrapping the browser SDK; guard to only load in client components.
+  - Add `lib/pusher-channels.ts` helpers to build channel names (`private-admin-orders`, `private-order-${displayId}`).
+- **Auth endpoint**
+  - New route `app/api/pusher/auth/route.ts` that validates session/admin status, authorizes `private-admin-orders` only for admins, per-order channel for diners/admins tied to that order.
+  - Return `{ auth }` payload expected by Pusher; use existing session lookup utilities.
+- **Server emitters**
+  - Add small helper `emitOrderEvent({ displayId, type, payload })` that publishes to both channels where needed.
+  - On order creation: emit `order.submitted` to `private-admin-orders` and `private-order-{displayId}`.
+  - On admin accept: update DB (`orders.status = 'order_in_kitchen'`), write `order_events`, emit `order.status.changed`.
+  - On admin cancel: update DB (`status = 'cancelled'` + reason), write `order_events`, emit `order.status.changed`.
+- **UI wiring**
+  - Diner page (order confirmation view): subscribe to `private-order-{displayId}` via `pusher-client`, update local status state on `order.status.changed`.
+  - Admin orders list/detail: subscribe to `private-admin-orders`; on `order.submitted` prepend card, on `order.status.changed` update card state; play audio on `order.submitted`.
+  - Keep subscriptions inside client components with cleanup; expose `usePusherChannel` hook for reuse.
+- **Safety & costs**
+  - Payloads limited to `{ orderId, displayId, status, fromStatus, actorType, at, reason? }`.
+  - Use server-side fetch after receiving an event to refresh full order state instead of sending bulky payloads.
+  - Unsubscribe from per-order channel once `isClosed` is true.
 
 ## Client Handling
 - Admin UI: subscribe to `private-admin-orders`; show toast + play short audio (local asset) for diner-triggered events (`order.submitted`, `payment.receipt_uploaded`). Throttle audio to once per event type per order to avoid noise.
