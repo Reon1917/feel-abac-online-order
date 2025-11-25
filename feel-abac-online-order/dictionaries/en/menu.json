@@ -66,6 +66,11 @@
     },
     "totalLabel": "Subtotal"
   },
+  "resumeOrder": {
+    "title": "Return to your order",
+    "subtitle": "You have an order in progress. Jump back to track it.",
+    "cta": "View order"
+  },
   "quickAdd": {
     "success": "Added to your cart.",
     "error": "Couldn't add this item. Try again."

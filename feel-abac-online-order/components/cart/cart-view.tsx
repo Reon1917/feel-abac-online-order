@@ -266,6 +266,11 @@ export function CartView({
 
       const displayId: string = payload.order.displayId;
       toast.success(dictionary.summary.checkoutCta);
+      try {
+        localStorage.setItem("lastOrderDisplayId", displayId);
+      } catch {
+        // ignore storage failures
+      }
       router.push(withLocalePath(locale, `/orders/${displayId}`));
     } catch (error) {
       const message =

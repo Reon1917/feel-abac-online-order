@@ -51,3 +51,10 @@
 - Provide fallbacks for any new image surfaces to keep `next/image` happy when assets are missing or hosts unapproved.
 - Respect the active `[lang]` segment—route via `withLocalePath` and hydrate UI copy through `getDictionary` so English/Burmese stay aligned.
 - Always expose the menu-language toggle around menu data; persist updates through the `menuLocale` cookie/provider.
+- Neon HTTP client does **not** support transactions; prefer single-statement operations or retry-on-conflict patterns. Avoid multi-statement `db.transaction` or use idempotent retries with `onConflictDoNothing`.
+- Dynamic API routes receive `params` as a Promise; always `await params` before accessing properties in route handlers to avoid Next.js “params is a Promise” errors.
+- Order system (in progress):
+  - DB tables: `orders`, `order_items`, `order_item_choices`, `order_payments`, `order_events`. Orders use Bangkok day-based OR counters (`display_day`, `display_counter`, `display_id`) and THB-only amounts.
+  - Public order tracking page: `app/[lang]/orders/[displayId]/page.tsx` (customer view only). Last order ID is stored in localStorage to surface a “Return to your order” banner on the menu page.
+  - Admin order list: `app/[lang]/admin/orders/page.tsx` with realtime Pusher updates and inline accept/cancel actions hitting `/api/admin/orders/[displayId]/status`.
+  - Pusher auth uses BetterAuth + `admins` table lookup (`resolveUserId`); server envs must include `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER` and client envs `NEXT_PUBLIC_PUSHER_KEY`, `NEXT_PUBLIC_PUSHER_CLUSTER`.

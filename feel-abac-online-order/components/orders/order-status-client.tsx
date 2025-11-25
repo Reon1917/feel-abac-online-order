@@ -194,6 +194,14 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
   const statusText = statusLabel(order.status, dictionary);
   const cancelled = order.status === "cancelled";
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("lastOrderDisplayId", order.displayId);
+    } catch {
+      // ignore storage failures
+    }
+  }, [order.displayId]);
+
   return (
     <div className="flex flex-col gap-6">
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -375,61 +383,7 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
         </div>
       </section>
 
-      {isAdmin ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-slate-900">
-              {dictionary.adminActionsLabel}
-            </h3>
-            {order.status === "order_in_kitchen" ? (
-              <span className="text-sm font-medium text-emerald-700">
-                {dictionary.accepted}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-              disabled={
-                actionState !== "idle" ||
-                order.status === "order_in_kitchen" ||
-                order.status === "cancelled"
-              }
-              onClick={() => void handleAdminAction("accept")}
-            >
-              {actionState === "accepting"
-                ? dictionary.accepting
-                : dictionary.acceptOrder}
-            </button>
-            <div className="flex-1 space-y-3">
-              <label className="block text-sm font-semibold text-slate-700">
-                {dictionary.cancelReasonLabel}
-              </label>
-              <textarea
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                rows={3}
-                value={cancelReason}
-                onChange={(event) => setCancelReason(event.target.value)}
-                placeholder={dictionary.cancelReasonLabel}
-                disabled={actionState === "accepting"}
-              />
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={
-                  actionState !== "idle" || order.status === "cancelled"
-                }
-                onClick={() => void handleAdminAction("cancel")}
-              >
-                {actionState === "cancelling"
-                  ? dictionary.cancelling
-                  : dictionary.cancelOrder}
-              </button>
-            </div>
-          </div>
-        </section>
-      ) : null}
+      {/* Admin actions removed on user-facing page; admins manage via admin orders list */}
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
 import { OrderStatusClient } from "@/components/orders/order-status-client";
-import { AdminBar } from "@/components/admin/admin-bar";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
@@ -40,13 +39,12 @@ export default async function OrderPage({ params }: PageProps) {
 
   return (
     <>
-      {session.isAdmin && <AdminBar />}
       <main className="min-h-screen w-full bg-slate-50">
         <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <OrderStatusClient
             initialOrder={order}
             dictionary={dictionary}
-            isAdmin={session.isAdmin === true}
+            isAdmin={false}
           />
         </div>
       </main>

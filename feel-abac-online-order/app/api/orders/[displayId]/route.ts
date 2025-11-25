@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
 
 import { getOrderByDisplayId } from "@/lib/orders/queries";
-import { getSession } from "@/lib/session";
+import { resolveUserId } from "@/lib/api/require-user";
+import { db } from "@/src/db/client";
+import { admins } from "@/src/db/schema";
 
 type Params = {
   displayId: string;
@@ -9,13 +12,22 @@ type Params = {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
-  const session = await getSession();
-  const viewerUserId = session?.session?.user.id;
-  const isAdmin = session?.isAdmin === true;
+  const resolvedParams = await params;
+  const viewerUserId = await resolveUserId(_req);
 
-  const order = await getOrderByDisplayId(params.displayId, {
+  const adminRow =
+    viewerUserId &&
+    (await db
+      .select({ id: admins.id })
+      .from(admins)
+      .where(eq(admins.userId, viewerUserId))
+      .limit(1))[0];
+
+  const isAdmin = Boolean(adminRow);
+
+  const order = await getOrderByDisplayId(resolvedParams.displayId, {
     userId: viewerUserId,
     isAdmin,
   });

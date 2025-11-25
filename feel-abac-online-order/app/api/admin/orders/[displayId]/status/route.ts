@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { desc, eq } from "drizzle-orm";
 
-import { getSession } from "@/lib/session";
+import { resolveUserId } from "@/lib/api/require-user";
 import { db } from "@/src/db/client";
-import { orderEvents, orders } from "@/src/db/schema";
+import { admins, orderEvents, orders } from "@/src/db/schema";
 import type { OrderStatus } from "@/lib/orders/types";
 import { broadcastOrderStatusChanged } from "@/lib/orders/realtime";
+import { eq as eqOp } from "drizzle-orm";
 
 type Params = {
   displayId: string;
@@ -13,10 +14,22 @@ type Params = {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
-  const session = await getSession();
-  if (!session?.isAdmin || !session.session?.user?.id) {
+  const resolvedParams = await params;
+  const userId = await resolveUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const adminRow =
+    (await db
+      .select({ id: admins.id })
+      .from(admins)
+      .where(eqOp(admins.userId, userId))
+      .limit(1))[0] ?? null;
+
+  if (!adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -37,7 +50,7 @@ export async function PATCH(
   const [order] = await db
     .select()
     .from(orders)
-    .where(eq(orders.displayId, params.displayId))
+    .where(eq(orders.displayId, resolvedParams.displayId))
     .orderBy(desc(orders.createdAt))
     .limit(1);
 
@@ -70,21 +83,19 @@ export async function PATCH(
     updatePayload.closedAt = now;
   }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(orders)
-      .set(updatePayload)
-      .where(eq(orders.id, order.id));
+  await db
+    .update(orders)
+    .set(updatePayload)
+    .where(eq(orders.id, order.id));
 
-    await tx.insert(orderEvents).values({
-      orderId: order.id,
-      actorType: "admin",
-      actorId: session.session.user.id,
-      eventType: "status_updated",
-      fromStatus: order.status,
-      toStatus: nextStatus,
-      metadata: cancelReason ? { reason: cancelReason } : null,
-    });
+  await db.insert(orderEvents).values({
+    orderId: order.id,
+    actorType: "admin",
+    actorId: userId,
+    eventType: "status_updated",
+    fromStatus: order.status,
+    toStatus: nextStatus,
+    metadata: cancelReason ? { reason: cancelReason } : null,
   });
 
   await broadcastOrderStatusChanged({

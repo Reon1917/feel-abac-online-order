@@ -81,6 +81,7 @@ function statusLabel(status: OrderStatus) {
 
 export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
   const [orders, setOrders] = useState<OrderAdminSummary[]>(initialOrders);
+  const [actionState, setActionState] = useState<Record<string, "idle" | "saving">>({});
 
   useEffect(() => {
     const pusher = getPusherClient();
@@ -146,6 +147,38 @@ export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
     };
   }, [dictionary.errorLoading, dictionary.newOrderToast, dictionary.statusUpdatedToast]);
 
+  const updateOrderStatus = async (
+    order: OrderAdminSummary,
+    action: "accept" | "cancel"
+  ) => {
+    setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
+    try {
+      const response = await fetch(`/api/admin/orders/${order.displayId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to update order");
+      }
+      const nextStatus =
+        action === "accept" ? "order_in_kitchen" : "cancelled";
+      setOrders((prev) =>
+        prev.map((item) =>
+          item.id === order.id ? { ...item, status: nextStatus } : item
+        )
+      );
+      toast.success(dictionary.statusUpdatedToast);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : dictionary.errorLoading
+      );
+    } finally {
+      setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -196,6 +229,31 @@ export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
                   <p className="text-xs text-slate-500">
                     {formatTimestamp(order.createdAt)}
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={
+                      order.status === "order_in_kitchen" ||
+                      order.status === "cancelled" ||
+                      actionState[order.id] === "saving"
+                    }
+                    onClick={() => void updateOrderStatus(order, "accept")}
+                  >
+                    {dictionary.accept}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={
+                      order.status === "cancelled" ||
+                      actionState[order.id] === "saving"
+                    }
+                    onClick={() => void updateOrderStatus(order, "cancel")}
+                  >
+                    {dictionary.cancel}
+                  </button>
                 </div>
                 <Link
                   href={withLocalePath(locale, `/orders/${order.displayId}`)}
