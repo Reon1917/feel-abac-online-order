@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, sql, desc, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import {
@@ -270,6 +270,13 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       .update(carts)
       .set({ status: "submitted", updatedAt: bangkokNow })
       .where(eq(carts.id, cart.id));
+
+    // Clear cart items so user can reuse the cart
+    const cartItemIds = cart.items.map((item) => item.id);
+    if (cartItemIds.length > 0) {
+      await db.delete(cartItemChoices).where(inArray(cartItemChoices.cartItemId, cartItemIds));
+      await db.delete(cartItems).where(inArray(cartItems.id, cartItemIds));
+    }
 
     await db.insert(orderEvents).values({
       orderId,

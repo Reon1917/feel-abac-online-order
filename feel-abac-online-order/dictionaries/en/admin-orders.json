@@ -13,5 +13,13 @@
   "cancel": "Cancel",
   "newOrderToast": "New order received",
   "statusUpdatedToast": "Order status updated",
-  "errorLoading": "Unable to load order"
+  "errorLoading": "Unable to load order",
+  "statusProcessing": "Processing",
+  "statusAwaitingFoodPayment": "Awaiting Food Payment",
+  "statusFoodPaymentReview": "Food Payment Review",
+  "statusKitchen": "In Kitchen",
+  "statusOutForDelivery": "Out for Delivery",
+  "statusAwaitingDeliveryFee": "Awaiting Delivery Fee",
+  "statusDelivered": "Delivered",
+  "statusCancelled": "Cancelled"
 }

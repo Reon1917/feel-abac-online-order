@@ -11,6 +11,8 @@ import {
   type OrderStatusChangedPayload,
 } from "@/lib/orders/events";
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
+import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -141,6 +143,19 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
         cancelReason: payload.reason ?? prev.cancelReason,
         isClosed: payload.toStatus === "cancelled" ? true : prev.isClosed,
       }));
+      if (payload.toStatus === "cancelled") {
+        try {
+          localStorage.removeItem("lastOrderDisplayId");
+        } catch {
+          // ignore
+        }
+        const pusher = getPusherClient();
+        if (pusher) {
+          pusher.unsubscribe(channelName);
+        }
+        window.location.href = withLocalePath(window.location.pathname.split("/")[1] as Locale, "/menu");
+        return;
+      }
       void refreshOrder();
     };
 
@@ -196,11 +211,15 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
 
   useEffect(() => {
     try {
-      localStorage.setItem("lastOrderDisplayId", order.displayId);
+      if (order.status === "cancelled") {
+        localStorage.removeItem("lastOrderDisplayId");
+      } else {
+        localStorage.setItem("lastOrderDisplayId", order.displayId);
+      }
     } catch {
       // ignore storage failures
     }
-  }, [order.displayId]);
+  }, [order.displayId, order.status]);
 
   return (
     <div className="flex flex-col gap-6">

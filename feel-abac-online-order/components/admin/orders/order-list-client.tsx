@@ -56,24 +56,24 @@ function statusBadgeClass(status: OrderStatus) {
   return "bg-amber-50 text-amber-800 ring-1 ring-amber-200";
 }
 
-function statusLabel(status: OrderStatus) {
+function statusLabel(status: OrderStatus, dictionary: AdminOrdersDictionary) {
   switch (status) {
     case "order_processing":
-      return "Processing";
+      return dictionary.statusProcessing ?? "Processing";
     case "awaiting_food_payment":
-      return "Awaiting Food Payment";
+      return dictionary.statusAwaitingFoodPayment ?? "Awaiting Food Payment";
     case "food_payment_review":
-      return "Food Payment Review";
+      return dictionary.statusFoodPaymentReview ?? "Food Payment Review";
     case "order_in_kitchen":
-      return "In Kitchen";
+      return dictionary.statusKitchen ?? "In Kitchen";
     case "order_out_for_delivery":
-      return "Out for Delivery";
+      return dictionary.statusOutForDelivery ?? "Out for Delivery";
     case "awaiting_delivery_fee_payment":
-      return "Awaiting Delivery Fee";
+      return dictionary.statusAwaitingDeliveryFee ?? "Awaiting Delivery Fee";
     case "delivered":
-      return "Delivered";
+      return dictionary.statusDelivered ?? "Delivered";
     case "cancelled":
-      return "Cancelled";
+      return dictionary.statusCancelled ?? "Cancelled";
     default:
       return status;
   }
@@ -211,7 +211,7 @@ export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
                       statusBadgeClass(order.status)
                     )}
                   >
-                    {statusLabel(order.status)}
+                    {statusLabel(order.status, dictionary)}
                   </span>
                 </div>
                 <p className="text-sm text-slate-700">

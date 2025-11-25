@@ -36,5 +36,9 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
+  if (!isAdmin && order.status === "cancelled") {
+    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+
   return NextResponse.json({ order });
 }

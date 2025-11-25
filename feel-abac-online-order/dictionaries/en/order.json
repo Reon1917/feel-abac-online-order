@@ -32,5 +32,6 @@
   "orderTotalLabel": "Order total",
   "statusUpdatedToast": "Order status updated",
   "statusUpdateFailed": "Unable to update order",
-  "orderNotFound": "Order not found"
+  "orderNotFound": "Order not found",
+  "backToMenu": "Back to menu"
 }

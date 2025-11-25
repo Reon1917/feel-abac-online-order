@@ -86,6 +86,24 @@ export default async function AdminDashboard({ params }: PageProps) {
             </div>
           </header>
 
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  Orders
+                </p>
+                <p className="text-sm text-slate-600">
+                  Jump to order management and live updates.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href={withLocalePath(locale, "/admin/orders")}>
+                  Go to orders
+                </Link>
+              </Button>
+            </div>
+          </section>
+
           <AdminWorkspace
             adminList={adminList}
             currentUserId={sessionData.session.user.id}
@@ -97,4 +115,3 @@ export default async function AdminDashboard({ params }: PageProps) {
     </>
   );
 }
-
