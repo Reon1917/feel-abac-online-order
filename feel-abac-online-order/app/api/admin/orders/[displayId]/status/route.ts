@@ -151,8 +151,7 @@ export async function PATCH(
     updatePayload.deliveredAt = now;
     updatePayload.isClosed = true;
     updatePayload.closedAt = now;
-  } else {
-    // cancel
+  } else if (action === "cancel") {
     updatePayload.cancelledAt = now;
     updatePayload.cancelReason = reason;
     updatePayload.isClosed = true;
