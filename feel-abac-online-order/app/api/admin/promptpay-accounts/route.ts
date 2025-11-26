@@ -20,8 +20,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const accounts = await listPromptPayAccounts();
-  return NextResponse.json({ accounts });
+  try {
+    const accounts = await listPromptPayAccounts();
+    return NextResponse.json({ accounts });
+  } catch (error) {
+    console.error("Failed to list PromptPay accounts:", error);
+    return NextResponse.json(
+      { error: "Failed to retrieve accounts" },
+      { status: 500 }
+    );
+  }
 }
 
 const createAccountSchema = z.object({
