@@ -15,5 +15,6 @@
   "createFirstHint": "Create at least one account before accepting orders.",
   "toastSaved": "PromptPay account saved",
   "toastActivated": "Active account updated",
-  "invalidPhone": "Enter a 10-digit Thai mobile number starting with 0"
+  "invalidPhone": "Enter a 10-digit Thai mobile number starting with 0",
+  "activationFailed": "Unable to activate account"
 }

@@ -102,7 +102,15 @@ export async function PATCH(
     })
     .returning({ id: orderEvents.id });
 
-  const eventId = statusEvent?.id ?? "";
+  const eventId = statusEvent?.id;
+  if (!eventId) {
+    console.error("[orders/cancel] missing event id", {
+      orderId: order.id,
+      displayId: order.displayId,
+      reason,
+    });
+    throw new Error("Failed to record cancellation event");
+  }
 
   await broadcastOrderStatusChanged({
     eventId,

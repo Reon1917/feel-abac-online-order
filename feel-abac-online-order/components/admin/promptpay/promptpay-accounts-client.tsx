@@ -109,7 +109,9 @@ export function PromptPayAccountsClient({
       );
       toast.success(dictionary.toastActivated);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : dictionary.invalidPhone);
+      toast.error(
+        error instanceof Error ? error.message : dictionary.activationFailed
+      );
     } finally {
       setActivatingId(null);
     }

@@ -109,7 +109,9 @@ export function OrderDetailModal({
               <span className="font-semibold text-slate-900 break-words">{order.customerName}</span>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
-              <span className="text-slate-500">Phone</span>
+              <span className="text-slate-500">
+                {dictionary.phoneLabel ?? "Phone"}
+              </span>
               <span className="font-semibold text-slate-900">{order.customerPhone}</span>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
@@ -199,7 +201,7 @@ export function OrderDetailModal({
             {order.orderNote && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Order Note
+                  {dictionary.orderNoteLabel ?? "Order Note"}
                 </p>
                 <p className="mt-1 text-sm text-slate-700 break-words">{order.orderNote}</p>
               </div>
@@ -207,7 +209,7 @@ export function OrderDetailModal({
             {order.deliveryNotes && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  Delivery Note
+                  {dictionary.deliveryNoteLabel ?? "Delivery Note"}
                 </p>
                 <p className="mt-1 text-sm text-slate-700 break-words">{order.deliveryNotes}</p>
               </div>

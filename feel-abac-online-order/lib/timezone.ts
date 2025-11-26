@@ -56,7 +56,7 @@ export function pgDateToString(value: Date | string | null | undefined): string 
       return `${year}-${month}-${day}`;
     }
     
-    return dateStr;
+    return "";
   }
   
   // It's a Date object
@@ -125,4 +125,3 @@ export function formatBangkokTimestamp(
 export function isToday(dateStr: string): boolean {
   return dateStr === getBangkokDateString();
 }
-

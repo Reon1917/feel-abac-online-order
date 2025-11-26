@@ -30,5 +30,8 @@
   "backToToday": "Back to Today's Orders",
   "noArchivedOrders": "No past orders found",
   "itemsTitle": "Items",
-  "subtotalLabel": "Subtotal"
+  "subtotalLabel": "Subtotal",
+  "phoneLabel": "Phone",
+  "orderNoteLabel": "Order Note",
+  "deliveryNoteLabel": "Delivery Note"
 }

@@ -12,7 +12,7 @@ import { requireAdmin } from "@/lib/api/require-admin";
 export async function GET(req: NextRequest) {
   const userId = await resolveUserId(req);
   if (!userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const adminRow = await requireAdmin(userId);
@@ -33,7 +33,7 @@ const createAccountSchema = z.object({
 export async function POST(req: NextRequest) {
   const userId = await resolveUserId(req);
   if (!userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const adminRow = await requireAdmin(userId);
