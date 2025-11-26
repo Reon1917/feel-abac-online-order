@@ -17,6 +17,7 @@ import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
+import { toast } from "sonner";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -83,6 +84,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-TH", {
   timeStyle: "short",
 });
 
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 function formatCurrency(amount: number | null | undefined) {
   const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
   return currencyFormatter.format(safe);
@@ -100,6 +103,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [cancelState, setCancelState] = useState<"idle" | "cancelling">("idle");
   
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
@@ -120,6 +124,22 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     const parts = [foodPayment.payeeName ?? null, phone || null].filter(Boolean);
     return parts.join(" · ");
   }, [foodPayment]);
+
+  const canCancel = useMemo(() => {
+    if (order.isClosed || order.status === "cancelled" || order.status === "delivered") {
+      return false;
+    }
+    if (IS_DEV) return true;
+
+    if (order.status === "order_processing") return true;
+    if (order.status === "awaiting_food_payment") {
+      const receiptUploaded =
+        Boolean(foodPayment?.receiptUploadedAt) ||
+        (foodPayment?.status && foodPayment.status !== "pending");
+      return !receiptUploaded;
+    }
+    return false;
+  }, [foodPayment?.receiptUploadedAt, foodPayment?.status, order.isClosed, order.status]);
 
   const refreshOrder = useCallback(async () => {
     setIsRefreshing(true);
@@ -204,15 +224,39 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     };
   }, [order.displayId, order.id, refreshOrder]);
 
-  const handleCopyPayload = useCallback(async () => {
-    if (!foodPayment?.qrPayload) return;
+  const handleCancelOrder = useCallback(async () => {
+    setError(null);
+    setCancelState("cancelling");
     try {
-      await navigator.clipboard.writeText(foodPayment.qrPayload);
-      setCopied(true);
-    } catch {
-      setCopied(false);
+      const response = await fetch(`/api/orders/${order.displayId}/cancel`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? dictionary.statusUpdateFailed);
+      }
+      const cancelledAt = payload?.cancelledAt ?? new Date().toISOString();
+      setOrder((prev) => ({
+        ...prev,
+        status: "cancelled",
+        cancelledAt,
+        cancelReason: payload?.reason ?? prev.cancelReason,
+        isClosed: true,
+        updatedAt: cancelledAt,
+      }));
+      toast.success(dictionary.statusUpdatedToast);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : dictionary.statusUpdateFailed
+      );
+      toast.error(
+        err instanceof Error ? err.message : dictionary.statusUpdateFailed
+      );
+    } finally {
+      setCancelState("idle");
     }
-  }, [foodPayment?.qrPayload]);
+  }, [dictionary.statusUpdateFailed, dictionary.statusUpdatedToast, order.displayId]);
 
   const statusText = statusLabel(order.status, dictionary);
   const cancelled = order.status === "cancelled";
@@ -350,6 +394,23 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               </button>
             </div>
           )}
+          {!isClosed && canCancel && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleCancelOrder()}
+                disabled={cancelState === "cancelling"}
+                className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancelState === "cancelling"
+                  ? dictionary.cancelling
+                  : dictionary.cancelOrder}
+              </button>
+              <p className="text-xs text-slate-600">
+                {dictionary.orderProcessingSubtitle}
+              </p>
+            </div>
+          )}
         </div>
       </header>
 
@@ -363,9 +424,6 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               <p className="text-sm text-slate-700">
                 {dictionary.paymentSectionSubtitle}
               </p>
-              <p className="mt-1 text-xs text-amber-700">
-                {dictionary.awaitingPaymentCopy}
-              </p>
             </div>
             {foodPayment ? (
               <div className="text-right text-sm font-semibold text-slate-900">
@@ -375,7 +433,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
           </div>
 
           {foodPayment?.qrPayload ? (
-            <div className="mt-4 grid gap-4 sm:grid-cols-[220px_1fr]">
+            <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center justify-center rounded-2xl border border-white bg-white/70 p-4 shadow-inner">
                 <QRCodeSVG
                   value={foodPayment.qrPayload}
@@ -384,37 +442,14 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
                   fgColor="#064e3b"
                 />
               </div>
-              <div className="space-y-3 rounded-2xl border border-amber-100 bg-white p-4 shadow-inner">
-                <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span className="font-medium">{dictionary.paymentAmountLabel}</span>
-                  <span className="text-base font-semibold text-slate-900">
-                    {formatCurrency(foodPayment.amount)}
-                  </span>
+              <div className="space-y-2 text-sm text-slate-700">
+                <div className="font-semibold text-slate-900">
+                  {dictionary.paymentAccountLabel}
                 </div>
-                <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span className="font-medium">{dictionary.paymentAccountLabel}</span>
-                  <span className="text-right font-semibold text-slate-900">
-                    {foodPaymentAccountLabel ||
-                      formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber) ||
-                      "PromptPay account"}
-                  </span>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                  <p className="font-semibold text-slate-900">
-                    {dictionary.paymentCodeLabel}
-                  </p>
-                  <p className="mt-1 break-all font-mono text-[11px] leading-relaxed text-slate-700">
-                    {foodPayment.qrPayload}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleCopyPayload()}
-                    className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-60"
-                  >
-                    {copied ? dictionary.copied : dictionary.copyCode}
-                  </button>
+                <div className="text-base font-bold text-slate-900">
+                  {foodPaymentAccountLabel ||
+                    formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber) ||
+                    "PromptPay account"}
                 </div>
               </div>
             </div>
