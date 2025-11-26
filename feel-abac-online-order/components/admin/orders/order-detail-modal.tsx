@@ -129,15 +129,15 @@ export function OrderDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl lg:max-w-3xl">
         <DialogHeader>
           <div className="flex items-center justify-between gap-4">
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-xl font-bold sm:text-2xl">
               {dictionary.orderIdLabel} {order.displayId}
             </DialogTitle>
             <span
               className={clsx(
-                "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold",
+                "inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-semibold sm:px-4 sm:py-1.5 sm:text-sm",
                 statusBadgeClass(order.status)
               )}
             >
@@ -146,22 +146,22 @@ export function OrderDetailModal({
           </div>
         </DialogHeader>
 
-        {/* Customer Info - Larger spacing */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <div className="grid gap-3 text-base">
-            <div className="flex justify-between">
+        {/* Customer Info - Compact grid for long addresses */}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="grid gap-2 text-sm">
+            <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.customerLabel}</span>
-              <span className="font-semibold text-slate-900">{order.customerName}</span>
+              <span className="font-semibold text-slate-900 break-words">{order.customerName}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">Phone</span>
               <span className="font-semibold text-slate-900">{order.customerPhone}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.locationLabel}</span>
-              <span className="font-semibold text-slate-900">{deliveryLabel}</span>
+              <span className="font-semibold text-slate-900 break-words leading-snug">{deliveryLabel}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.createdLabel ?? "Created"}</span>
               <span className="font-semibold text-slate-900">{formatTimestamp(order.createdAt)}</span>
             </div>
@@ -169,16 +169,16 @@ export function OrderDetailModal({
         </div>
 
         {/* Order Items - Table/Kitchen Receipt Style */}
-        <div className="space-y-3">
-          <h3 className="text-base font-semibold text-slate-700">
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-slate-700">
             {dictionary.itemsTitle ?? "Items"}
           </h3>
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
             {/* Table Header */}
-            <div className="grid grid-cols-[3.5rem_4.5rem_1fr] gap-4 border-b-2 border-slate-300 bg-slate-100 px-5 py-3">
-              <span className="text-sm font-bold uppercase tracking-wider text-slate-600">Qty</span>
-              <span className="text-sm font-bold uppercase tracking-wider text-slate-600">Code</span>
-              <span className="text-sm font-bold uppercase tracking-wider text-slate-600">Item</span>
+            <div className="grid grid-cols-[2.5rem_3.5rem_1fr] gap-3 border-b-2 border-slate-300 bg-slate-100 px-4 py-2 sm:grid-cols-[3rem_4rem_1fr] sm:gap-4 sm:px-5 sm:py-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Qty</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Code</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Item</span>
             </div>
             
             {/* Table Body */}
@@ -191,30 +191,30 @@ export function OrderDetailModal({
                 return (
                   <div
                     key={item.id}
-                    className="grid grid-cols-[3.5rem_4.5rem_1fr] gap-4 px-5 py-4"
+                    className="grid grid-cols-[2.5rem_3.5rem_1fr] gap-3 px-4 py-3 sm:grid-cols-[3rem_4rem_1fr] sm:gap-4 sm:px-5 sm:py-4"
                   >
                     {/* Quantity - FIRST, large and bold */}
-                    <span className="text-xl font-bold text-slate-900">
+                    <span className="text-lg font-bold text-slate-900 sm:text-xl">
                       {item.quantity}
                     </span>
                     
                     {/* Menu Code */}
-                    <span className="font-mono text-base font-semibold text-slate-600">
+                    <span className="font-mono text-xs font-semibold text-slate-500 sm:text-sm">
                       {item.menuCode || "—"}
                     </span>
                     
                     {/* Item Name + Choices/Notes */}
-                    <div className="space-y-1">
-                      <p className="text-lg font-semibold text-slate-900">
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 break-words sm:text-base">
                         {item.menuItemName}
                       </p>
                       {choicesStr && (
-                        <p className="text-base text-slate-600">
+                        <p className="text-xs text-slate-600 break-words sm:text-sm">
                           {choicesStr}
                         </p>
                       )}
                       {item.note && (
-                        <p className="text-base italic text-amber-700">
+                        <p className="text-xs italic text-amber-700 break-words sm:text-sm">
                           → {item.note}
                         </p>
                       )}
@@ -225,12 +225,12 @@ export function OrderDetailModal({
             </div>
             
             {/* Subtotal Footer */}
-            <div className="border-t-2 border-slate-300 bg-slate-100 px-5 py-4">
+            <div className="border-t-2 border-slate-300 bg-slate-100 px-4 py-3 sm:px-5 sm:py-4">
               <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-slate-700">
+                <span className="text-sm font-bold text-slate-700">
                   {dictionary.subtotalLabel ?? "Subtotal"}
                 </span>
-                <span className="text-2xl font-bold text-slate-900">
+                <span className="text-xl font-bold text-slate-900 sm:text-2xl">
                   {formatCurrency(order.subtotal)}
                 </span>
               </div>
@@ -238,34 +238,34 @@ export function OrderDetailModal({
           </div>
         </div>
 
-        {/* Notes - Larger */}
+        {/* Notes */}
         {(order.orderNote || order.deliveryNotes) && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {order.orderNote && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   Order Note
                 </p>
-                <p className="mt-2 text-base text-slate-700">{order.orderNote}</p>
+                <p className="mt-1 text-sm text-slate-700 break-words">{order.orderNote}</p>
               </div>
             )}
             {order.deliveryNotes && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   Delivery Note
                 </p>
-                <p className="mt-2 text-base text-slate-700">{order.deliveryNotes}</p>
+                <p className="mt-1 text-sm text-slate-700 break-words">{order.deliveryNotes}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Actions - Larger buttons */}
+        {/* Actions */}
         {order.status !== "cancelled" && order.status !== "delivered" && (
-          <div className="flex items-center justify-end gap-4 border-t border-slate-200 pt-5">
+          <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
             <button
               type="button"
-              className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-6 py-3 text-base font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={actionState !== "idle"}
               onClick={() => void handleAction("cancel")}
             >
@@ -273,7 +273,7 @@ export function OrderDetailModal({
             </button>
             <button
               type="button"
-              className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={
                 order.status === "order_in_kitchen" ||
                 actionState !== "idle"
@@ -286,7 +286,7 @@ export function OrderDetailModal({
         )}
 
         {order.status === "cancelled" && order.cancelReason && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-base text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <strong>Cancelled:</strong> {order.cancelReason}
           </div>
         )}

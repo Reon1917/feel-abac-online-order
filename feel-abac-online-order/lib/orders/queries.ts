@@ -199,41 +199,24 @@ export async function appendOrderEvent(input: {
   await db.insert(orderEvents).values(payload);
 }
 
-export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSummary[]> {
-  const rows = await db
-    .select({
-      id: orders.id,
-      displayId: orders.displayId,
-      displayDay: orders.displayDay,
-      status: orders.status,
-      customerName: orders.customerName,
-      customerPhone: orders.customerPhone,
-      totalAmount: orders.totalAmount,
-      createdAt: orders.createdAt,
-      deliveryMode: orders.deliveryMode,
-      deliveryLocationId: orders.deliveryLocationId,
-      deliveryBuildingId: orders.deliveryBuildingId,
-      customCondoName: orders.customCondoName,
-      customBuildingName: orders.customBuildingName,
-      locationCondoName: deliveryLocations.condoName,
-      buildingLabel: deliveryBuildings.label,
-    })
-    .from(orders)
-    .leftJoin(
-      deliveryLocations,
-      eq(orders.deliveryLocationId, deliveryLocations.id)
-    )
-    .leftJoin(
-      deliveryBuildings,
-      eq(orders.deliveryBuildingId, deliveryBuildings.id)
-    )
-    .orderBy(desc(orders.createdAt))
-    .limit(limit);
+// Optimized: Only select columns needed for admin summary
+const adminSummarySelect = {
+  id: orders.id,
+  displayId: orders.displayId,
+  displayDay: orders.displayDay,
+  status: orders.status,
+  customerName: orders.customerName,
+  customerPhone: orders.customerPhone,
+  totalAmount: orders.totalAmount,
+  createdAt: orders.createdAt,
+  deliveryMode: orders.deliveryMode,
+  customCondoName: orders.customCondoName,
+  customBuildingName: orders.customBuildingName,
+  locationCondoName: deliveryLocations.condoName,
+  buildingLabel: deliveryBuildings.label,
+} as const;
 
-  return rows.map((row) => mapOrderAdminSummary(row));
-}
-
-function mapOrderAdminSummary(row: {
+type AdminSummaryRow = {
   id: string;
   displayId: string;
   displayDay: Date | null;
@@ -247,7 +230,9 @@ function mapOrderAdminSummary(row: {
   customBuildingName: string | null;
   locationCondoName: string | null;
   buildingLabel: string | null;
-}): OrderAdminSummary {
+};
+
+function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
   const deliveryLabel =
     row.deliveryMode === "custom"
       ? `${row.customCondoName ?? "Custom"}${
@@ -272,28 +257,31 @@ function mapOrderAdminSummary(row: {
   };
 }
 
+export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSummary[]> {
+  const rows = await db
+    .select(adminSummarySelect)
+    .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
+    .orderBy(desc(orders.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => mapOrderAdminSummary(row));
+}
+
 /**
  * Get today's orders for admin (Bangkok timezone).
+ * All orders from today show here regardless of status (including cancelled).
  */
 export async function getTodayOrdersForAdmin(): Promise<OrderAdminSummary[]> {
   const rows = await db
-    .select({
-      id: orders.id,
-      displayId: orders.displayId,
-      displayDay: orders.displayDay,
-      status: orders.status,
-      customerName: orders.customerName,
-      customerPhone: orders.customerPhone,
-      totalAmount: orders.totalAmount,
-      createdAt: orders.createdAt,
-      deliveryMode: orders.deliveryMode,
-      deliveryLocationId: orders.deliveryLocationId,
-      deliveryBuildingId: orders.deliveryBuildingId,
-      customCondoName: orders.customCondoName,
-      customBuildingName: orders.customBuildingName,
-      locationCondoName: deliveryLocations.condoName,
-      buildingLabel: deliveryBuildings.label,
-    })
+    .select(adminSummarySelect)
     .from(orders)
     .leftJoin(
       deliveryLocations,
@@ -312,29 +300,14 @@ export async function getTodayOrdersForAdmin(): Promise<OrderAdminSummary[]> {
 }
 
 /**
- * Get past orders (before today) for admin, grouped by displayDay.
+ * Get past orders (before today) for admin.
+ * Groups by displayDay in the client. Excludes today's orders.
  */
 export async function getArchivedOrdersForAdmin(
   limit = 100
 ): Promise<OrderAdminSummary[]> {
   const rows = await db
-    .select({
-      id: orders.id,
-      displayId: orders.displayId,
-      displayDay: orders.displayDay,
-      status: orders.status,
-      customerName: orders.customerName,
-      customerPhone: orders.customerPhone,
-      totalAmount: orders.totalAmount,
-      createdAt: orders.createdAt,
-      deliveryMode: orders.deliveryMode,
-      deliveryLocationId: orders.deliveryLocationId,
-      deliveryBuildingId: orders.deliveryBuildingId,
-      customCondoName: orders.customCondoName,
-      customBuildingName: orders.customBuildingName,
-      locationCondoName: deliveryLocations.condoName,
-      buildingLabel: deliveryBuildings.label,
-    })
+    .select(adminSummarySelect)
     .from(orders)
     .leftJoin(
       deliveryLocations,
