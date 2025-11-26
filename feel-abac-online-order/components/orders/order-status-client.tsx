@@ -18,6 +18,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
 import { toast } from "sonner";
+import { statusLabel } from "@/lib/orders/format";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -33,27 +34,6 @@ const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }>
     { key: "order_out_for_delivery", labelKey: "statusOutForDelivery" },
     { key: "delivered", labelKey: "statusDelivered" },
   ];
-
-function statusLabel(status: OrderStatus, dictionary: OrderDictionary) {
-  switch (status) {
-    case "order_processing":
-      return dictionary.statusProcessing;
-    case "awaiting_food_payment":
-      return dictionary.statusAwaitingFoodPayment;
-    case "order_in_kitchen":
-      return dictionary.statusKitchen;
-    case "order_out_for_delivery":
-      return dictionary.statusOutForDelivery;
-    case "awaiting_delivery_fee_payment":
-      return dictionary.statusAwaitingDeliveryFee;
-    case "delivered":
-      return dictionary.statusDelivered;
-    case "cancelled":
-      return dictionary.statusCancelled;
-    default:
-      return status;
-  }
-}
 
 function resolveStep(status: OrderStatus) {
   switch (status) {

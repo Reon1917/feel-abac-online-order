@@ -4,9 +4,7 @@ import { getPusherServer } from "@/lib/pusher/server";
 import { ADMIN_ORDERS_CHANNEL, parseOrderChannelName } from "@/lib/orders/events";
 import { getOrderAccessInfo } from "@/lib/orders/queries";
 import { resolveUserId } from "@/lib/api/require-user";
-import { db } from "@/src/db/client";
-import { admins } from "@/src/db/schema";
-import { eq } from "drizzle-orm";
+import { requireAdmin } from "@/lib/api/require-admin";
 
 type AuthPayload = {
   socket_id?: string;
@@ -55,14 +53,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const adminRow =
-    (await db
-      .select({ id: admins.id })
-      .from(admins)
-      .where(eq(admins.userId, viewerUserId))
-      .limit(1))[0] ?? null;
-
-  const isAdmin = Boolean(adminRow);
+  const isAdmin = Boolean(await requireAdmin(viewerUserId));
 
 
   if (channelName === ADMIN_ORDERS_CHANNEL && !isAdmin) {
@@ -76,8 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const isOwner =
-      accessInfo.userId === null || accessInfo.userId === viewerUserId;
+    const isOwner = accessInfo.userId !== null && accessInfo.userId === viewerUserId;
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

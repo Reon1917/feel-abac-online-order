@@ -24,12 +24,7 @@ import type {
   OrderPaymentType,
 } from "./types";
 import { pgDateToString } from "@/lib/timezone";
-
-function numericToNumber(value: string | null): number {
-  if (!value) return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
+import { numericToNumber } from "@/lib/db/numeric";
 
 function dateToIso(value: Date | string | null | undefined) {
   if (!value) return null;

@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
-
 import { resolveUserId } from "@/lib/api/require-user";
 import { activatePromptPayAccount } from "@/lib/payments/queries";
-import { db } from "@/src/db/client";
-import { admins } from "@/src/db/schema";
+import { requireAdmin } from "@/lib/api/require-admin";
 
 type Params = {
   id: string;
@@ -26,13 +23,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const adminRow =
-    (await db
-      .select({ id: admins.id })
-      .from(admins)
-      .where(eq(admins.userId, userId))
-      .limit(1))[0] ?? null;
-
+  const adminRow = await requireAdmin(userId);
   if (!adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

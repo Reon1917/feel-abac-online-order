@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { desc, eq } from "drizzle-orm";
 
 import { resolveUserId } from "@/lib/api/require-user";
+import { requireAdmin } from "@/lib/api/require-admin";
 import { db } from "@/src/db/client";
-import { admins, orderEvents, orderPayments, orders } from "@/src/db/schema";
+import { orderEvents, orderPayments, orders } from "@/src/db/schema";
 import type { OrderStatus } from "@/lib/orders/types";
 import { broadcastOrderStatusChanged, broadcastOrderClosed } from "@/lib/orders/realtime";
 import { cleanupTransientEvents } from "@/lib/orders/cleanup";
-import { eq as eqOp } from "drizzle-orm";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
 
@@ -25,12 +25,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const adminRow =
-    (await db
-      .select({ id: admins.id })
-      .from(admins)
-      .where(eqOp(admins.userId, userId))
-      .limit(1))[0] ?? null;
+  const adminRow = await requireAdmin(userId);
 
   if (!adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -163,11 +158,14 @@ export async function PATCH(
     .set(updatePayload)
     .where(eq(orders.id, order.id));
 
+  const isTerminalState = action === "cancel" || action === "delivered";
+  const criticalEventType = action === "cancel" ? "order_cancelled" : "order_delivered";
+
   const [insertedEvent] = await db.insert(orderEvents).values({
     orderId: order.id,
     actorType: "admin",
     actorId: userId,
-    eventType: "status_updated",
+    eventType: isTerminalState ? criticalEventType : "status_updated",
     fromStatus: order.status,
     toStatus: nextStatus,
     metadata: reason ? { reason } : null,
@@ -185,24 +183,9 @@ export async function PATCH(
   });
 
   // If order is now closed (cancelled or delivered), broadcast close event and cleanup transient events
-  const isTerminalState = action === "cancel" || action === "delivered";
   if (isTerminalState) {
-    const criticalEventType = action === "cancel" ? "order_cancelled" : "order_delivered";
-    
-    // Insert critical event for the terminal state
-    const [closedEvent] = await db.insert(orderEvents).values({
-      orderId: order.id,
-      actorType: "admin",
-      actorId: userId,
-      eventType: criticalEventType,
-      fromStatus: order.status,
-      toStatus: nextStatus,
-      metadata: reason ? { reason } : null,
-    }).returning({ id: orderEvents.id });
-
-    // Broadcast order.closed for client channel cleanup
     await broadcastOrderClosed({
-      eventId: closedEvent?.id ?? "",
+      eventId: insertedEvent?.id ?? "",
       orderId: order.id,
       displayId: order.displayId,
       finalStatus: nextStatus,

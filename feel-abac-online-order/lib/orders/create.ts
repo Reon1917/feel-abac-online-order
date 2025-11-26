@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import {
@@ -117,83 +117,88 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   let displayCounter: number | null = null;
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log(
-        "[createOrderFromCart] attempt",
-        attempt + 1,
-        "displayDay",
-        displayDay,
-        "userId",
-        userId
-      );
-    }
-
-    // Query using the same UTC midnight date for consistency
-    const [counterRow] = await db
-      .select({ displayCounter: orders.displayCounter })
-      .from(orders)
-      .where(eq(orders.displayDay, displayDayDate))
-      .orderBy(desc(orders.displayCounter))
-      .limit(1);
-
-    const nextCounter = (counterRow?.displayCounter ?? 0) + 1;
-    const nextDisplayId = `OR${String(nextCounter).padStart(4, "0")}`;
-
     try {
-      const [createdOrder] = await db
-        .insert(orders)
-        .values({
-          displayDay: displayDayDate,
-          displayCounter: nextCounter,
-          displayId: nextDisplayId,
-          cartId: cart.id,
-          userId,
-          sessionToken: cart.sessionToken ?? null,
+      const insertResult = await db.execute<{ id: string; display_id: string; display_counter: number }>(sql`
+        INSERT INTO orders (
+          display_day,
+          display_counter,
+          display_id,
+          cart_id,
+          user_id,
+          session_token,
           status,
-          totalItems: cart.items.length,
-          subtotal: subtotalString,
-          discountTotal: "0.00",
-          totalAmount: totalAmountString,
-          customerName: userName,
-          customerPhone: profile.phoneNumber,
-          deliveryMode: deliverySelection.mode,
-          deliveryLocationId:
-            deliverySelection.mode === "preset"
-              ? deliverySelection.locationId
-              : null,
-          deliveryBuildingId:
-            deliverySelection.mode === "preset"
-              ? deliverySelection.buildingId
-              : null,
-          customCondoName: isCustom ? deliverySelection.customCondoName : null,
-          customBuildingName: isCustom
-            ? deliverySelection.customBuildingName ?? null
-            : null,
-          customPlaceId: isCustom ? deliverySelection.placeId ?? null : null,
-          customLat:
+          total_items,
+          subtotal,
+          discount_total,
+          total_amount,
+          customer_name,
+          customer_phone,
+          delivery_mode,
+          delivery_location_id,
+          delivery_building_id,
+          custom_condo_name,
+          custom_building_name,
+          custom_place_id,
+          custom_lat,
+          custom_lng,
+          delivery_notes,
+          order_note,
+          is_closed
+        )
+        SELECT
+          ${displayDayDate}::date,
+          COALESCE(MAX(display_counter), 0) + 1 AS display_counter,
+          CONCAT('OR', LPAD((COALESCE(MAX(display_counter), 0) + 1)::text, 4, '0')) AS display_id,
+          ${cart.id},
+          ${userId},
+          ${cart.sessionToken ?? null},
+          ${status},
+          ${cart.items.length},
+          ${subtotalString},
+          '0.00',
+          ${totalAmountString},
+          ${userName},
+          ${profile.phoneNumber},
+          ${deliverySelection.mode},
+          ${deliverySelection.mode === "preset" ? deliverySelection.locationId : null},
+          ${deliverySelection.mode === "preset" ? deliverySelection.buildingId : null},
+          ${isCustom ? deliverySelection.customCondoName : null},
+          ${isCustom ? deliverySelection.customBuildingName ?? null : null},
+          ${isCustom ? deliverySelection.placeId ?? null : null},
+          ${
             isCustom && deliverySelection.coordinates
               ? deliverySelection.coordinates.lat
-              : null,
-          customLng:
+              : null
+          },
+          ${
             isCustom && deliverySelection.coordinates
               ? deliverySelection.coordinates.lng
-              : null,
-          deliveryNotes: null,
-          orderNote: null,
-          isClosed: false,
-        })
-        .onConflictDoNothing({
-          target: [orders.displayDay, orders.displayCounter],
-        })
-        .returning();
+              : null
+          },
+          null,
+          null,
+          false
+        FROM orders
+        WHERE display_day = ${displayDayDate}
+        ON CONFLICT (display_day, display_counter) DO NOTHING
+        RETURNING id, display_id, display_counter;
+      `);
+
+      const createdOrder = insertResult.rows?.[0];
 
       if (!createdOrder) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[createOrderFromCart] counter conflict, retrying", {
+            attempt,
+            displayDay,
+          });
+        }
         continue;
       }
 
       orderId = createdOrder.id;
-      displayId = createdOrder.displayId;
-      displayCounter = createdOrder.displayCounter;
+      displayId = createdOrder.display_id;
+      displayCounter = createdOrder.display_counter;
       break;
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {
@@ -203,15 +208,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
           displayDay,
         });
       }
-      const message = error instanceof Error ? error.message : String(error);
-      const conflict =
-        message.includes("orders_display_day_counter_unique") ||
-        message.includes("display_day_counter_unique");
-
-      if (conflict && attempt < 4) {
-        continue;
-      }
-
       throw error;
     }
   }
@@ -227,46 +223,48 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         itemCount: cart.items.length,
       });
     }
-    const orderItemRows = [];
-    for (const [index, item] of cart.items.entries()) {
-      const [orderItem] = await db
-        .insert(orderItems)
-        .values({
-          orderId,
-          menuItemId: item.menuItemId,
-          menuItemName: item.menuItemName,
-          menuItemNameMm: item.menuItemNameMm,
-          menuCode: item.menuCode ?? null,
-          basePrice: toNumericString(item.basePrice),
-          addonsTotal: toNumericString(item.addonsTotal),
-          quantity: item.quantity,
-          note: item.note,
-          totalPrice: toNumericString(item.totalPrice),
-          displayOrder: index,
-        })
-        .returning({ id: orderItems.id });
+    const orderItemValues = cart.items.map((item, index) => ({
+      orderId,
+      menuItemId: item.menuItemId,
+      menuItemName: item.menuItemName,
+      menuItemNameMm: item.menuItemNameMm,
+      menuCode: item.menuCode ?? null,
+      basePrice: toNumericString(item.basePrice),
+      addonsTotal: toNumericString(item.addonsTotal),
+      quantity: item.quantity,
+      note: item.note,
+      totalPrice: toNumericString(item.totalPrice),
+      displayOrder: index,
+    }));
 
-      if (!orderItem) {
-        throw new Error("Failed to create order item");
-      }
+    const insertedItems = await db
+      .insert(orderItems)
+      .values(orderItemValues)
+      .returning({ id: orderItems.id });
 
-      orderItemRows.push({ id: orderItem.id, source: item });
+    if (insertedItems.length !== orderItemValues.length) {
+      throw new Error("Failed to create order items");
     }
 
-    for (const row of orderItemRows) {
-      const item = row.source;
-      if (item.choices && item.choices.length > 0) {
-        await db.insert(orderItemChoices).values(
-          item.choices.map((choice) => ({
+    const choiceValues = [];
+    insertedItems.forEach((row, idx) => {
+      const source = cart.items[idx];
+      if (source.choices && source.choices.length > 0) {
+        for (const choice of source.choices) {
+          choiceValues.push({
             orderItemId: row.id,
             groupName: choice.groupName,
             groupNameMm: choice.groupNameMm,
             optionName: choice.optionName,
             optionNameMm: choice.optionNameMm,
             extraPrice: toNumericString(choice.extraPrice),
-          }))
-        );
+          });
+        }
       }
+    });
+
+    if (choiceValues.length > 0) {
+      await db.insert(orderItemChoices).values(choiceValues);
     }
 
     await db

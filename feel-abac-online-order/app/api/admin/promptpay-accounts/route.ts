@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { resolveUserId } from "@/lib/api/require-user";
@@ -7,9 +6,8 @@ import {
   createPromptPayAccount,
   listPromptPayAccounts,
 } from "@/lib/payments/queries";
-import { db } from "@/src/db/client";
-import { admins } from "@/src/db/schema";
 import { normalizePromptPayPhone } from "@/lib/payments/promptpay";
+import { requireAdmin } from "@/lib/api/require-admin";
 
 export async function GET(req: NextRequest) {
   const userId = await resolveUserId(req);
@@ -17,13 +15,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const adminRow =
-    (await db
-      .select({ id: admins.id })
-      .from(admins)
-      .where(eq(admins.userId, userId))
-      .limit(1))[0] ?? null;
-
+  const adminRow = await requireAdmin(userId);
   if (!adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -44,13 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const adminRow =
-    (await db
-      .select({ id: admins.id })
-      .from(admins)
-      .where(eq(admins.userId, userId))
-      .limit(1))[0] ?? null;
-
+  const adminRow = await requireAdmin(userId);
   if (!adminRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
