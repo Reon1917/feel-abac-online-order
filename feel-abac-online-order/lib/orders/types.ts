@@ -1,5 +1,3 @@
-import type { Json } from "drizzle-orm";
-
 export type OrderStatus =
   | "order_processing"
   | "awaiting_food_payment"
@@ -100,7 +98,7 @@ export type OrderRecord = {
   payments: OrderPaymentRecord[];
 };
 
-export type OrderEventMetadata = Json;
+export type OrderEventMetadata = Record<string, unknown> | null;
 
 export type OrderAdminSummary = {
   id: string;

@@ -228,7 +228,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       menuItemId: item.menuItemId,
       menuItemName: item.menuItemName,
       menuItemNameMm: item.menuItemNameMm,
-      menuCode: item.menuCode ?? null,
+      menuCode: null,
       basePrice: toNumericString(item.basePrice),
       addonsTotal: toNumericString(item.addonsTotal),
       quantity: item.quantity,
@@ -246,7 +246,14 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       throw new Error("Failed to create order items");
     }
 
-    const choiceValues = [];
+    const choiceValues: Array<{
+      orderItemId: string;
+      groupName: string;
+      groupNameMm: string | null;
+      optionName: string;
+      optionNameMm: string | null;
+      extraPrice: string;
+    }> = [];
     insertedItems.forEach((row, idx) => {
       const source = cart.items[idx];
       if (source.choices && source.choices.length > 0) {

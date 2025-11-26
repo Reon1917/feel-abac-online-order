@@ -80,16 +80,16 @@ export type DbEventType = typeof EVENT_REGISTRY[EventName]["dbEventType"];
  * Event types that are kept permanently for auditing.
  * These are NOT deleted when an order closes.
  */
-export const CRITICAL_DB_EVENT_TYPES = Object.values(EVENT_REGISTRY)
+export const CRITICAL_DB_EVENT_TYPES: DbEventType[] = Object.values(EVENT_REGISTRY)
   .filter((config) => config.critical)
-  .map((config) => config.dbEventType);
+  .map((config) => config.dbEventType) as DbEventType[];
 
 /**
  * Event types that are transient and can be deleted after order closes.
  */
-export const TRANSIENT_DB_EVENT_TYPES = Object.values(EVENT_REGISTRY)
+export const TRANSIENT_DB_EVENT_TYPES: DbEventType[] = Object.values(EVENT_REGISTRY)
   .filter((config) => !config.critical)
-  .map((config) => config.dbEventType);
+  .map((config) => config.dbEventType) as DbEventType[];
 
 /**
  * Get the event configuration for a given event name.
