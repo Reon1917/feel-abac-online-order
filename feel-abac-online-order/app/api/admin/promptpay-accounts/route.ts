@@ -71,6 +71,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ account });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create account";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const knownClientError =
+      message.toLowerCase().includes("invalid") ||
+      message.toLowerCase().includes("required") ||
+      message.toLowerCase().includes("duplicate") ||
+      message.toLowerCase().includes("unique");
+
+    if (knownClientError) {
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    console.error("[promptpay-accounts] failed to create account", {
+      error,
+      userId,
+    });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
