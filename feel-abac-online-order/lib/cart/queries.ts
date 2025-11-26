@@ -2,6 +2,7 @@ import "server-only";
 
 import crypto from "node:crypto";
 import { and, eq, inArray, sum, sql } from "drizzle-orm";
+import { numericToNumber } from "@/lib/db/numeric";
 
 import { db } from "@/src/db/client";
 import { cartItemChoices, cartItems, carts } from "@/src/db/schema";
@@ -18,12 +19,6 @@ import {
   RemoveCartItemInput,
   UpdateCartItemInput,
 } from "./types";
-
-function numericToNumber(value: string | null): number {
-  if (!value) return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function toNumericString(value: number) {
   return value.toFixed(2);

@@ -13,6 +13,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { getActiveCartSummary } from "@/lib/cart/queries";
+import { ResumeOrderBanner } from "@/components/orders/resume-order-banner";
 
 type PageProps = {
   params: Promise<{
@@ -75,6 +76,11 @@ export default async function MenuPage({ params }: PageProps) {
               <p className="text-sm text-slate-600">{dict.header.description}</p>
             </div>
           </header>
+
+          <ResumeOrderBanner
+            locale={locale}
+            dictionary={dict.resumeOrder}
+          />
 
           {hasMenu ? (
             <ResponsiveMenuBrowser

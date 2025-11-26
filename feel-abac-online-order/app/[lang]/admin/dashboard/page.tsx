@@ -12,6 +12,8 @@ import { withLocalePath } from "@/lib/i18n/path";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
 import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
+import { getActivePromptPayAccount } from "@/lib/payments/queries";
+import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,6 +45,8 @@ export default async function AdminDashboard({ params }: PageProps) {
   // Get current admin info
   const currentAdmin = await getAdminByUserId(sessionData.session.user.id);
   const isSuperAdmin = currentAdmin?.role === "super_admin";
+
+  const activePromptPay = await getActivePromptPayAccount();
 
   // Fetch admin list
   const adminList = await db
@@ -86,6 +90,47 @@ export default async function AdminDashboard({ params }: PageProps) {
             </div>
           </header>
 
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  Orders
+                </p>
+                <p className="text-sm text-slate-600">
+                  Jump to order management and live updates.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href={withLocalePath(locale, "/admin/orders")}>
+                  Go to orders
+                </Link>
+              </Button>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  {dict.cards.promptpay.activeLabel}
+                </p>
+                <p className="text-lg font-semibold text-slate-900">
+                  {activePromptPay
+                    ? `${activePromptPay.name} · ${formatPromptPayPhoneForDisplay(activePromptPay.phoneNumber)}`
+                    : dict.cards.promptpay.none}
+                </p>
+                <p className="text-sm text-slate-600">
+                  {dict.cards.promptpay.body}
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href={withLocalePath(locale, "/admin/settings/promptpay")}>
+                  {dict.cards.promptpay.cta}
+                </Link>
+              </Button>
+            </div>
+          </section>
+
           <AdminWorkspace
             adminList={adminList}
             currentUserId={sessionData.session.user.id}
@@ -97,4 +142,3 @@ export default async function AdminDashboard({ params }: PageProps) {
     </>
   );
 }
-

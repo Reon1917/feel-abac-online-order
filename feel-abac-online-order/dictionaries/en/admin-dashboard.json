@@ -14,6 +14,13 @@
     "team": {
       "title": "Team access",
       "body": "Invite teammates, assign roles, and manage admin permissions."
+    },
+    "promptpay": {
+      "title": "PromptPay payments",
+      "body": "Set the active PromptPay account for QR payments and keep receipts organized.",
+      "cta": "Manage PromptPay",
+      "activeLabel": "Active account",
+      "none": "No active account yet"
     }
   }
 }

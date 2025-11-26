@@ -13,6 +13,8 @@ import type {
   DeliveryLocationOption,
   DeliverySelection,
 } from "@/lib/delivery/types";
+import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
 import { DeliveryLocationPicker } from "./delivery-location-picker";
 import { SwipeToRemove } from "@/components/cart/swipe-to-remove";
 
@@ -25,6 +27,7 @@ type CartViewProps = {
   deliveryLocations: DeliveryLocationOption[];
   defaultDeliverySelection: DeliverySelection | null;
   savedCustomSelection: DeliverySelection | null;
+  locale: Locale;
 };
 
 type CartItemRecord = CartRecord["items"][number];
@@ -43,6 +46,7 @@ export function CartView({
   deliveryLocations,
   defaultDeliverySelection,
   savedCustomSelection,
+  locale,
 }: CartViewProps) {
   const { menuLocale } = useMenuLocale();
   const router = useRouter();
@@ -52,6 +56,8 @@ export function CartView({
   const [editingItem, setEditingItem] = useState<CartItemRecord | null>(null);
   const [editingQuantity, setEditingQuantity] = useState(1);
   const [locationValidationError, setLocationValidationError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(
     () => {
       if (!defaultDeliverySelection) {
@@ -198,6 +204,82 @@ export function CartView({
 
   const closeEditModal = () => {
     setEditingItem(null);
+    setEditingQuantity(1);
+  };
+
+  const validateDeliverySelection = (): DeliverySelection | null => {
+    if (!deliverySelection) {
+      const errorMessage =
+        deliveryDictionary.errors?.locationRequired ??
+        "Please select a delivery location.";
+      setLocationValidationError(errorMessage);
+      toast.error(errorMessage);
+      return null;
+    }
+
+    if (deliverySelection.mode === "custom") {
+      if (
+        !deliverySelection.customCondoName ||
+        deliverySelection.customCondoName.trim().length === 0
+      ) {
+        const errorMessage =
+          deliveryDictionary.errors?.customRequired ??
+          "Custom condo name required.";
+        setLocationValidationError(errorMessage);
+        toast.error(errorMessage);
+        return null;
+      }
+    }
+
+    setLocationValidationError(null);
+    return deliverySelection;
+  };
+
+  const handleSendOrder = async () => {
+    if (!cart || cart.items.length === 0) {
+      toast.error(dictionary.summary.empty);
+      return;
+    }
+
+    const selection = validateDeliverySelection();
+    if (!selection) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deliverySelection: selection,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.order?.displayId) {
+        throw new Error(payload?.error ?? "Unable to place order");
+      }
+
+      const displayId: string = payload.order.displayId;
+      toast.success(dictionary.summary.checkoutCta);
+      try {
+        localStorage.setItem("lastOrderDisplayId", displayId);
+      } catch {
+        // ignore storage failures
+      }
+      router.push(withLocalePath(locale, `/orders/${displayId}`));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to place order";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const performQuantityUpdate = async (
@@ -602,16 +684,26 @@ export function CartView({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="flex w-full items-center justify-center rounded-full bg-slate-200 px-5 py-2.5 text-xs font-semibold text-slate-500"
-          disabled
-        >
-          {dictionary.summary.checkoutCta}
-        </button>
-        <p className="text-center text-[11px] text-slate-400">
-          {dictionary.summary.comingSoon}
-        </p>
+        <div className="space-y-2">
+          {submitError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              {submitError}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="flex w-full items-center justify-center rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+            disabled={
+              isSubmitting ||
+              !cart ||
+              cart.items.length === 0 ||
+              Boolean(locationValidationError)
+            }
+            onClick={() => void handleSendOrder()}
+          >
+            {isSubmitting ? dictionary.summary.checkoutCta + "..." : dictionary.summary.checkoutCta}
+          </button>
+        </div>
 
       </aside>
     </div>

@@ -6,9 +6,12 @@ import {
   uuid,
   integer,
   numeric,
+  jsonb,
+  date,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -157,6 +160,26 @@ export const admins = pgTable("admins", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
 });
+
+export const promptpayAccounts = pgTable(
+  "promptpay_accounts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    phoneNumber: text("phone_number").notNull(),
+    isActive: boolean("is_active").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    singleActiveIdx: uniqueIndex("promptpay_accounts_single_active")
+      .on(table.isActive)
+      .where(sql`${table.isActive} = true`),
+  })
+);
 
 export const menuCategories = pgTable("menu_categories", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -331,3 +354,209 @@ export const cartItemChoices = pgTable("cart_item_choices", {
     .notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    displayId: text("display_id").notNull(),
+    displayDay: date("display_day", { mode: "date" })
+      .default(sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`)
+      .notNull(),
+    displayCounter: integer("display_counter").notNull(),
+    cartId: uuid("cart_id"),
+    userId: text("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    sessionToken: text("session_token"),
+    status: text("status").default("order_processing").notNull(),
+    totalItems: integer("total_items").default(0).notNull(),
+    subtotal: numeric("subtotal", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    deliveryFee: numeric("delivery_fee", { precision: 10, scale: 2 }),
+    discountTotal: numeric("discount_total", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    totalAmount: numeric("total_amount", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    customerName: text("customer_name").notNull(),
+    customerPhone: text("customer_phone").notNull(),
+    deliveryMode: text("delivery_mode"),
+    deliveryLocationId: uuid("delivery_location_id").references(
+      () => deliveryLocations.id,
+      { onDelete: "set null" }
+    ),
+    deliveryBuildingId: uuid("delivery_building_id").references(
+      () => deliveryBuildings.id,
+      { onDelete: "set null" }
+    ),
+    customCondoName: text("custom_condo_name"),
+    customBuildingName: text("custom_building_name"),
+    customPlaceId: text("custom_place_id"),
+    customLat: numeric("custom_lat", { precision: 10, scale: 6 }),
+    customLng: numeric("custom_lng", { precision: 10, scale: 6 }),
+    deliveryNotes: text("delivery_notes"),
+    orderNote: text("order_note"),
+    adminNote: text("admin_note"),
+    kitchenStartedAt: timestamp("kitchen_started_at"),
+    outForDeliveryAt: timestamp("out_for_delivery_at"),
+    deliveredAt: timestamp("delivered_at"),
+    closedAt: timestamp("closed_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    cancelReason: text("cancel_reason"),
+    isClosed: boolean("is_closed").default(false).notNull(),
+    resolvedByAdminId: text("resolved_by_admin_id").references(
+      () => admins.id,
+      { onDelete: "set null" }
+    ),
+    courierVendor: text("courier_vendor"),
+    courierTrackingUrl: text("courier_tracking_url"),
+    courierFee: numeric("courier_fee", { precision: 10, scale: 2 }),
+    courierPaymentStatus: text("courier_payment_status"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    displayIdIdx: index("orders_display_id_idx").on(table.displayId),
+    displayDayCounterIdx: uniqueIndex("orders_display_day_counter_unique").on(
+      table.displayDay,
+      table.displayCounter
+    ),
+    userIdx: index("orders_user_id_idx").on(table.userId),
+    statusIdx: index("orders_status_idx").on(table.status),
+    createdIdx: index("orders_created_at_idx").on(table.createdAt),
+  })
+);
+
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    menuItemId: uuid("menu_item_id").references(() => menuItems.id, {
+      onDelete: "set null",
+    }),
+    menuItemName: text("menu_item_name").notNull(),
+    menuItemNameMm: text("menu_item_name_mm"),
+    menuCode: text("menu_code"),
+    basePrice: numeric("base_price", { precision: 10, scale: 2 }).notNull(),
+    addonsTotal: numeric("addons_total", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    quantity: integer("quantity").default(1).notNull(),
+    note: text("note"),
+    totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+    displayOrder: integer("display_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    orderIdx: index("order_items_order_id_idx").on(table.orderId),
+  })
+);
+
+export const orderItemChoices = pgTable(
+  "order_item_choices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    groupName: text("group_name").notNull(),
+    groupNameMm: text("group_name_mm"),
+    optionName: text("option_name").notNull(),
+    optionNameMm: text("option_name_mm"),
+    extraPrice: numeric("extra_price", { precision: 10, scale: 2 })
+      .default("0")
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    orderItemIdx: index("order_item_choices_order_item_id_idx").on(
+      table.orderItemId
+    ),
+  })
+);
+
+export const orderPayments = pgTable(
+  "order_payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    promptpayAccountId: uuid("promptpay_account_id").references(
+      () => promptpayAccounts.id,
+      { onDelete: "set null" }
+    ),
+    type: text("type").notNull(),
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    status: text("status").default("pending").notNull(),
+    qrPayload: text("qr_payload"),
+    qrExpiresAt: timestamp("qr_expires_at"),
+    receiptUrl: text("receipt_url"),
+    receiptUploadedAt: timestamp("receipt_uploaded_at"),
+    verifiedAt: timestamp("verified_at"),
+    verifiedByAdminId: text("verified_by_admin_id").references(
+      () => admins.id,
+      { onDelete: "set null" }
+    ),
+    rejectedReason: text("rejected_reason"),
+    requestedByAdminId: text("requested_by_admin_id").references(
+      () => admins.id,
+      { onDelete: "set null" }
+    ),
+    paymentIntentId: text("payment_intent_id"),
+    promptParseData: text("prompt_parse_data"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    orderIdx: index("order_payments_order_id_idx").on(table.orderId),
+    typeIdx: index("order_payments_type_idx").on(table.type),
+    orderTypeIdx: uniqueIndex("order_payments_order_type_unique").on(
+      table.orderId,
+      table.type
+    ),
+  })
+);
+
+export const orderEvents = pgTable(
+  "order_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    actorType: text("actor_type").notNull(),
+    actorId: text("actor_id"),
+    eventType: text("event_type").notNull(),
+    fromStatus: text("from_status"),
+    toStatus: text("to_status"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    orderIdx: index("order_events_order_id_idx").on(table.orderId),
+    createdIdx: index("order_events_created_at_idx").on(table.createdAt),
+  })
+);
