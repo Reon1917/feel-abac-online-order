@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
 }
 
 const createAccountSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  phoneNumber: z.string().min(8, "Phone number is required"),
+  name: z.string().trim().min(1, "Name is required"),
+  phoneNumber: z.string().trim().min(8, "Phone number is required"),
   activate: z.boolean().optional(),
 });
 
