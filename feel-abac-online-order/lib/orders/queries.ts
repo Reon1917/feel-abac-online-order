@@ -10,6 +10,8 @@ import {
   orders,
   deliveryLocations,
   deliveryBuildings,
+  orderPayments,
+  promptpayAccounts,
 } from "@/src/db/schema";
 import type {
   OrderItemChoice,
@@ -17,6 +19,9 @@ import type {
   OrderRecord,
   OrderAdminSummary,
   OrderStatus,
+  OrderPaymentRecord,
+  OrderPaymentStatus,
+  OrderPaymentType,
 } from "./types";
 import { pgDateToString } from "@/lib/timezone";
 
@@ -66,9 +71,39 @@ function mapOrderItem(
   };
 }
 
+function mapOrderPayment(
+  payment: typeof orderPayments.$inferSelect,
+  payeeName: string | null,
+  payeePhoneNumber: string | null
+): OrderPaymentRecord {
+  return {
+    id: payment.id,
+    orderId: payment.orderId,
+    promptpayAccountId: payment.promptpayAccountId,
+    type: payment.type as OrderPaymentType,
+    amount: numericToNumber(payment.amount),
+    status: payment.status as OrderPaymentStatus,
+    qrPayload: payment.qrPayload,
+    qrExpiresAt: dateToIso(payment.qrExpiresAt),
+    receiptUrl: payment.receiptUrl,
+    receiptUploadedAt: dateToIso(payment.receiptUploadedAt),
+    verifiedAt: dateToIso(payment.verifiedAt),
+    verifiedByAdminId: payment.verifiedByAdminId,
+    rejectedReason: payment.rejectedReason,
+    requestedByAdminId: payment.requestedByAdminId,
+    paymentIntentId: payment.paymentIntentId,
+    promptParseData: payment.promptParseData,
+    createdAt: dateToIso(payment.createdAt) ?? "",
+    updatedAt: dateToIso(payment.updatedAt) ?? "",
+    payeeName,
+    payeePhoneNumber,
+  };
+}
+
 function mapOrder(
   row: typeof orders.$inferSelect,
-  items: OrderItemRecord[]
+  items: OrderItemRecord[],
+  payments: OrderPaymentRecord[]
 ): OrderRecord {
   return {
     id: row.id,
@@ -99,6 +134,7 @@ function mapOrder(
     courierVendor: row.courierVendor,
     courierPaymentStatus: row.courierPaymentStatus,
     items,
+    payments,
   };
 }
 
@@ -129,6 +165,26 @@ async function loadOrderItems(orderId: string): Promise<OrderItemRecord[]> {
 
   return items.map((item) =>
     mapOrderItem(item, choicesByItem.get(item.id) ?? [])
+  );
+}
+
+async function loadOrderPayments(orderId: string): Promise<OrderPaymentRecord[]> {
+  const rows = await db
+    .select({
+      payment: orderPayments,
+      accountName: promptpayAccounts.name,
+      accountPhone: promptpayAccounts.phoneNumber,
+    })
+    .from(orderPayments)
+    .leftJoin(
+      promptpayAccounts,
+      eq(orderPayments.promptpayAccountId, promptpayAccounts.id)
+    )
+    .where(eq(orderPayments.orderId, orderId))
+    .orderBy(orderPayments.createdAt);
+
+  return rows.map((row) =>
+    mapOrderPayment(row.payment, row.accountName ?? null, row.accountPhone ?? null)
   );
 }
 
@@ -171,7 +227,8 @@ export async function getOrderByDisplayId(
   }
 
   const items = await loadOrderItems(row.id);
-  return mapOrder(row, items);
+  const payments = await loadOrderPayments(row.id);
+  return mapOrder(row, items, payments);
 }
 
 export async function appendOrderEvent(input: {
@@ -339,5 +396,6 @@ export async function getOrderDetailForAdmin(
   }
 
   const items = await loadOrderItems(row.id);
-  return mapOrder(row, items);
+  const payments = await loadOrderPayments(row.id);
+  return mapOrder(row, items, payments);
 }

@@ -10,6 +10,37 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+export type OrderPaymentType = "food" | "delivery";
+
+export type OrderPaymentStatus =
+  | "pending"
+  | "receipt_uploaded"
+  | "verified"
+  | "rejected";
+
+export type OrderPaymentRecord = {
+  id: string;
+  orderId: string;
+  promptpayAccountId: string | null;
+  type: OrderPaymentType;
+  amount: number;
+  status: OrderPaymentStatus;
+  qrPayload: string | null;
+  qrExpiresAt: string | null;
+  receiptUrl: string | null;
+  receiptUploadedAt: string | null;
+  verifiedAt: string | null;
+  verifiedByAdminId: string | null;
+  rejectedReason: string | null;
+  requestedByAdminId: string | null;
+  paymentIntentId: string | null;
+  promptParseData: string | null;
+  createdAt: string;
+  updatedAt: string;
+  payeeName?: string | null;
+  payeePhoneNumber?: string | null;
+};
+
 export type OrderItemChoice = {
   id: string;
   orderItemId: string;
@@ -66,6 +97,7 @@ export type OrderRecord = {
   courierVendor: string | null;
   courierPaymentStatus: string | null;
   items: OrderItemRecord[];
+  payments: OrderPaymentRecord[];
 };
 
 export type OrderEventMetadata = Json;

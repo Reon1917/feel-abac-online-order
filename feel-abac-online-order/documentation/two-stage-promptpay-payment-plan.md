@@ -59,6 +59,11 @@ This plan implements a two-stage payment system (food payment + delivery fee) us
 └─────────────────────────┘
 ```
 
+**Transition rules (current scope)**:
+- Food stage only: QR amount comes from confirmed order total; discounts handled later.
+- Customer uploads receipt → status goes to `food_payment_review`; only admin action can move to `order_in_kitchen` (verify) or stay in review (reject/reupload).
+- Delivery fee flow gated by admin entering fee and verifying receipt; customer uploads alone never advances order status.
+
 ---
 
 ## Business Rules
@@ -71,7 +76,7 @@ This plan implements a two-stage payment system (food payment + delivery fee) us
 | `awaiting_food_payment` | YES | Only before uploading receipt |
 | `food_payment_review` | NO | Must contact shop |
 | `order_in_kitchen` | NO | Food being prepared |
-| `awaiting_delivery_fee_payment` | NO | Committed to order |
+| `awaiting_delivery_fee` | NO | Committed to order |
 | `delivery_payment_review` | NO | Must contact shop |
 | `order_out_for_delivery` | NO | Courier en route |
 
@@ -103,6 +108,10 @@ CREATE TABLE promptpay_accounts (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Enforce single active account
+CREATE UNIQUE INDEX promptpay_accounts_single_active
+  ON promptpay_accounts ((is_active)) WHERE is_active = true;
+
 -- Ensure phone format is valid Thai mobile (10 digits starting with 0)
 -- Validation handled in application layer
 ```
@@ -116,7 +125,7 @@ CREATE TABLE order_payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   payment_type VARCHAR(20) NOT NULL,    -- 'food' | 'delivery'
-  amount DECIMAL(10,2) NOT NULL,        -- Payment amount in THB
+  amount DECIMAL(10,2) NOT NULL,        -- Payment amount in THB (food total only for now)
   status VARCHAR(30) NOT NULL DEFAULT 'pending',
     -- 'pending' | 'receipt_uploaded' | 'verified' | 'rejected'
   receipt_url VARCHAR(500),             -- UploadThing URL
@@ -150,6 +159,7 @@ Add new status to existing enum:
 - Lower volume, simpler SDK
 - Built-in file deletion API
 - No bandwidth concerns for this use case
+- File size: limit to ~100 KB using `sharp` compression in the UploadThing file router before upload completion (optimize JPEG/WEBP).
 
 **Cleanup on Order Close**:
 
@@ -190,8 +200,8 @@ Integrated into existing `cleanupTransientEvents()` flow in order close handler.
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/api/payments/promptpay-qr?orderId=X&type=food` | Generate QR payload for payment |
-| POST | `/api/uploadthing` | UploadThing endpoint for receipts |
+| GET | `/api/payments/promptpay-qr?orderId=X&type=food` | Generate QR payload for payment (food total only for now) |
+| POST | `/api/uploadthing` | UploadThing endpoint for receipts (App Router pattern from docs) |
 | PATCH | `/api/orders/[displayId]/payment` | Customer: Mark receipt uploaded |
 
 ### Admin Payment Actions
@@ -330,4 +340,3 @@ Add to existing event system:
 - **Multiple Payment Methods**: TrueMoney QR can use same modal pattern
 - **Payment Timeout**: Auto-cancel if no payment within X hours
 - **Refund Tracking**: Add refund status/amount to `order_payments`
-

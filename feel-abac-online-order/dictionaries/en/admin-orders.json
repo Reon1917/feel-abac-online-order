@@ -24,6 +24,7 @@
   "statusDelivered": "Delivered",
   "statusCancelled": "Cancelled",
   "viewPastOrders": "Past Orders",
+  "promptpaySettings": "PromptPay Settings",
   "archivedPageTitle": "Past Orders",
   "archivedListTitle": "Orders from previous days",
   "backToToday": "Back to Today's Orders",

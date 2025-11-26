@@ -191,7 +191,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         throw new Error(payload?.error ?? "Failed to update order");
       }
       const nextStatus =
-        action === "accept" ? "order_in_kitchen" : "cancelled";
+        action === "accept" ? "awaiting_food_payment" : "cancelled";
       setOrders((prev) =>
         prev.map((item) =>
           item.id === order.id ? { ...item, status: nextStatus } : item
@@ -263,8 +263,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                     type="button"
                     className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={
-                      order.status === "order_in_kitchen" ||
-                      order.status === "cancelled" ||
+                      order.status !== "order_processing" ||
                       actionState[order.id] === "saving"
                     }
                     onClick={() => void updateOrderStatus(order, "accept")}

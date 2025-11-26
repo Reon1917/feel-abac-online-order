@@ -34,5 +34,14 @@
   "statusUpdatedToast": "Order status updated",
   "statusUpdateFailed": "Unable to update order",
   "orderNotFound": "Order not found",
-  "backToMenu": "Back to menu"
+  "backToMenu": "Back to menu",
+  "paymentSectionTitle": "Food payment",
+  "paymentSectionSubtitle": "Scan the PromptPay QR to pay for your food total.",
+  "paymentAmountLabel": "Amount",
+  "paymentAccountLabel": "Receiving account",
+  "paymentCodeLabel": "Payment code",
+  "copyCode": "Copy code",
+  "copied": "Copied",
+  "qrUnavailable": "QR unavailable right now. Please refresh.",
+  "awaitingPaymentCopy": "We'll start cooking after you pay and upload the receipt."
 }

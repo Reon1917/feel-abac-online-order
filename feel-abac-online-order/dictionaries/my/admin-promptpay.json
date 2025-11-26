@@ -1,0 +1,19 @@
+{
+  "pageTitle": "PromptPay settings",
+  "pageSubtitle": "Add PromptPay accounts and choose the active one for QR payments.",
+  "addSectionTitle": "Add PromptPay account",
+  "nameLabel": "Account name",
+  "phoneLabel": "Phone number",
+  "activateLabel": "Set as active",
+  "saveAccount": "Save account",
+  "saving": "Saving...",
+  "accountsTitle": "Accounts",
+  "activeBadge": "Active",
+  "inactiveBadge": "Inactive",
+  "setActive": "Set active",
+  "noAccounts": "No PromptPay accounts yet",
+  "createFirstHint": "Create at least one account before accepting orders.",
+  "toastSaved": "PromptPay account saved",
+  "toastActivated": "Active account updated",
+  "invalidPhone": "Enter a 10-digit Thai mobile number starting with 0"
+}

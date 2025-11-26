@@ -95,7 +95,8 @@ export function OrderDetailModal({
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to update order");
       }
-      const nextStatus: OrderStatus = action === "accept" ? "order_in_kitchen" : "cancelled";
+      const nextStatus: OrderStatus =
+        action === "accept" ? "awaiting_food_payment" : "cancelled";
       onStatusUpdated?.(order.id, nextStatus);
       toast.success(dictionary.statusUpdatedToast);
       onOpenChange(false);
@@ -263,7 +264,7 @@ export function OrderDetailModal({
               type="button"
               className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={
-                order.status === "order_in_kitchen" ||
+                order.status !== "order_processing" ||
                 actionState !== "idle"
               }
               onClick={() => void handleAction("accept")}
@@ -282,4 +283,3 @@ export function OrderDetailModal({
     </Dialog>
   );
 }
-

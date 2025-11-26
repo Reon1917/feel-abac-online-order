@@ -57,7 +57,6 @@ export default async function OrderPage({ params }: PageProps) {
           <OrderStatusClient
             initialOrder={order}
             dictionary={dictionary}
-            isAdmin={false}
           />
         </div>
       </main>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
+import { QRCodeSVG } from "qrcode.react";
 
 import type orderDictionary from "@/dictionaries/en/order.json";
 import { getPusherClient } from "@/lib/pusher/client";
@@ -15,13 +16,13 @@ import {
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
 
 type OrderDictionary = typeof orderDictionary;
 
 type Props = {
   initialOrder: OrderRecord;
   dictionary: OrderDictionary;
-  isAdmin: boolean;
 };
 
 const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }> =
@@ -94,12 +95,11 @@ function formatTimestamp(value: string | null) {
   return dateFormatter.format(date);
 }
 
-export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) {
+export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const [order, setOrder] = useState<OrderRecord>(initialOrder);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [actionState, setActionState] = useState<"idle" | "accepting" | "cancelling">("idle");
-  const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
@@ -108,6 +108,18 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
     () => resolveStep(order.status),
     [order.status]
   );
+
+  const foodPayment = useMemo(
+    () => order.payments?.find((payment) => payment.type === "food") ?? null,
+    [order.payments]
+  );
+
+  const foodPaymentAccountLabel = useMemo(() => {
+    if (!foodPayment) return "";
+    const phone = formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber ?? "");
+    const parts = [foodPayment.payeeName ?? null, phone || null].filter(Boolean);
+    return parts.join(" · ");
+  }, [foodPayment]);
 
   const refreshOrder = useCallback(async () => {
     setIsRefreshing(true);
@@ -122,7 +134,7 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
         return;
       }
       setOrder(payload.order as OrderRecord);
-    } catch (err) {
+    } catch {
       setError(dictionary.orderNotFound);
     } finally {
       setIsRefreshing(false);
@@ -192,44 +204,15 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
     };
   }, [order.displayId, order.id, refreshOrder]);
 
-  const handleAdminAction = useCallback(
-    async (action: "accept" | "cancel") => {
-      setError(null);
-      setActionState(action === "accept" ? "accepting" : "cancelling");
-      try {
-        const response = await fetch(
-          `/api/admin/orders/${order.displayId}/status`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action,
-              reason: action === "cancel" ? cancelReason : undefined,
-            }),
-          }
-        );
-
-        const payload = await response.json().catch(() => null);
-
-        if (!response.ok) {
-          throw new Error(
-            payload?.error ?? dictionary.statusUpdateFailed
-          );
-        }
-
-        await refreshOrder();
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : dictionary.statusUpdateFailed
-        );
-      } finally {
-        setActionState("idle");
-      }
-    },
-    [cancelReason, dictionary.statusUpdateFailed, order.displayId, refreshOrder]
-  );
+  const handleCopyPayload = useCallback(async () => {
+    if (!foodPayment?.qrPayload) return;
+    try {
+      await navigator.clipboard.writeText(foodPayment.qrPayload);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }, [foodPayment?.qrPayload]);
 
   const statusText = statusLabel(order.status, dictionary);
   const cancelled = order.status === "cancelled";
@@ -267,6 +250,12 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
       // ignore storage failures
     }
   }, [order.displayId, isClosed]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -363,6 +352,79 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
           )}
         </div>
       </header>
+
+      {order.status === "awaiting_food_payment" && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {dictionary.paymentSectionTitle}
+              </h2>
+              <p className="text-sm text-slate-700">
+                {dictionary.paymentSectionSubtitle}
+              </p>
+              <p className="mt-1 text-xs text-amber-700">
+                {dictionary.awaitingPaymentCopy}
+              </p>
+            </div>
+            {foodPayment ? (
+              <div className="text-right text-sm font-semibold text-slate-900">
+                {dictionary.paymentAmountLabel}: {formatCurrency(foodPayment.amount)}
+              </div>
+            ) : null}
+          </div>
+
+          {foodPayment?.qrPayload ? (
+            <div className="mt-4 grid gap-4 sm:grid-cols-[220px_1fr]">
+              <div className="flex items-center justify-center rounded-2xl border border-white bg-white/70 p-4 shadow-inner">
+                <QRCodeSVG
+                  value={foodPayment.qrPayload}
+                  size={180}
+                  bgColor="transparent"
+                  fgColor="#064e3b"
+                />
+              </div>
+              <div className="space-y-3 rounded-2xl border border-amber-100 bg-white p-4 shadow-inner">
+                <div className="flex items-center justify-between text-sm text-slate-700">
+                  <span className="font-medium">{dictionary.paymentAmountLabel}</span>
+                  <span className="text-base font-semibold text-slate-900">
+                    {formatCurrency(foodPayment.amount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-slate-700">
+                  <span className="font-medium">{dictionary.paymentAccountLabel}</span>
+                  <span className="text-right font-semibold text-slate-900">
+                    {foodPaymentAccountLabel ||
+                      formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber) ||
+                      "PromptPay account"}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  <p className="font-semibold text-slate-900">
+                    {dictionary.paymentCodeLabel}
+                  </p>
+                  <p className="mt-1 break-all font-mono text-[11px] leading-relaxed text-slate-700">
+                    {foodPayment.qrPayload}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyPayload()}
+                    className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-60"
+                  >
+                    {copied ? dictionary.copied : dictionary.copyCode}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-amber-800">
+              {dictionary.qrUnavailable}
+            </div>
+          )}
+        </section>
+      )}
 
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

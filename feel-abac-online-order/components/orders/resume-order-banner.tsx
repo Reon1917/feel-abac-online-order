@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 import type menuDictionary from "@/dictionaries/en/menu.json";
@@ -15,24 +15,22 @@ type Props = {
 };
 
 export function ResumeOrderBanner({ locale, dictionary }: Props) {
-  const [displayId, setDisplayId] = useState<string | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
+  const [displayId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
     try {
-      const stored = localStorage.getItem("lastOrderDisplayId");
-      if (stored) {
-        setDisplayId(stored);
-      }
-
-      const dismissedFlag = localStorage.getItem("resumeOrderDismissed");
-      if (dismissedFlag === "true") {
-        setDismissed(true);
-      }
+      return localStorage.getItem("lastOrderDisplayId");
     } catch {
-      // ignore
+      return null;
     }
-  }, []);
+  });
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("resumeOrderDismissed") === "true";
+    } catch {
+      return false;
+    }
+  });
 
   const handleDismiss = () => {
     setDismissed(true);

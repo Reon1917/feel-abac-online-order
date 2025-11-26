@@ -161,6 +161,26 @@ export const admins = pgTable("admins", {
     .notNull(),
 });
 
+export const promptpayAccounts = pgTable(
+  "promptpay_accounts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    phoneNumber: text("phone_number").notNull(),
+    isActive: boolean("is_active").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => ({
+    singleActiveIdx: uniqueIndex("promptpay_accounts_single_active")
+      .on(table.isActive)
+      .where(sql`${table.isActive} = true`),
+  })
+);
+
 export const menuCategories = pgTable("menu_categories", {
   id: uuid("id").defaultRandom().primaryKey(),
   nameEn: text("name_en").notNull(),
@@ -477,6 +497,10 @@ export const orderPayments = pgTable(
     orderId: uuid("order_id")
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
+    promptpayAccountId: uuid("promptpay_account_id").references(
+      () => promptpayAccounts.id,
+      { onDelete: "set null" }
+    ),
     type: text("type").notNull(),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     status: text("status").default("pending").notNull(),
@@ -507,6 +531,10 @@ export const orderPayments = pgTable(
   (table) => ({
     orderIdx: index("order_payments_order_id_idx").on(table.orderId),
     typeIdx: index("order_payments_type_idx").on(table.type),
+    orderTypeIdx: uniqueIndex("order_payments_order_type_unique").on(
+      table.orderId,
+      table.type
+    ),
   })
 );
 

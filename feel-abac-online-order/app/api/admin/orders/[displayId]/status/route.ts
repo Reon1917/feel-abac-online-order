@@ -3,11 +3,13 @@ import { desc, eq } from "drizzle-orm";
 
 import { resolveUserId } from "@/lib/api/require-user";
 import { db } from "@/src/db/client";
-import { admins, orderEvents, orders } from "@/src/db/schema";
+import { admins, orderEvents, orderPayments, orders } from "@/src/db/schema";
 import type { OrderStatus } from "@/lib/orders/types";
 import { broadcastOrderStatusChanged, broadcastOrderClosed } from "@/lib/orders/realtime";
 import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 import { eq as eqOp } from "drizzle-orm";
+import { buildPromptPayPayload } from "@/lib/payments/promptpay";
+import { getActivePromptPayAccount } from "@/lib/payments/queries";
 
 type Params = {
   displayId: string;
@@ -72,7 +74,60 @@ export async function PATCH(
   // Determine next status based on action
   let nextStatus: OrderStatus;
   if (action === "accept") {
-    nextStatus = "order_in_kitchen";
+    if (order.status !== "order_processing") {
+      return NextResponse.json(
+        { error: "Order is already accepted" },
+        { status: 400 }
+      );
+    }
+
+    const activeAccount = await getActivePromptPayAccount();
+    if (!activeAccount) {
+      return NextResponse.json(
+        { error: "Activate a PromptPay account before accepting orders" },
+        { status: 400 }
+      );
+    }
+
+    const amountNumber = Number(order.totalAmount ?? 0);
+    const { payload, normalizedPhone, amount } = buildPromptPayPayload({
+      phoneNumber: activeAccount.phoneNumber,
+      amount: Number.isFinite(amountNumber) ? amountNumber : 0,
+    });
+
+    const promptParseData = JSON.stringify({
+      phoneNumber: normalizedPhone,
+      amount,
+      accountId: activeAccount.id,
+    });
+
+    await db
+      .insert(orderPayments)
+      .values({
+        orderId: order.id,
+        promptpayAccountId: activeAccount.id,
+        type: "food",
+        amount: amount.toFixed(2),
+        status: "pending",
+        qrPayload: payload,
+        promptParseData,
+        requestedByAdminId: adminRow.id,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [orderPayments.orderId, orderPayments.type],
+        set: {
+          amount: amount.toFixed(2),
+          status: "pending",
+          qrPayload: payload,
+          promptpayAccountId: activeAccount.id,
+          promptParseData,
+          requestedByAdminId: adminRow.id,
+          updatedAt: now,
+        },
+      });
+
+    nextStatus = "awaiting_food_payment";
   } else if (action === "delivered") {
     nextStatus = "delivered";
   } else {
@@ -85,9 +140,7 @@ export async function PATCH(
   };
 
   // Set timestamps based on action
-  if (action === "accept") {
-    updatePayload.kitchenStartedAt = order.kitchenStartedAt ?? now;
-  } else if (action === "delivered") {
+  if (action === "delivered") {
     updatePayload.deliveredAt = now;
     updatePayload.isClosed = true;
     updatePayload.closedAt = now;

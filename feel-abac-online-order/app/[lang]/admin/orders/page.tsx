@@ -43,13 +43,21 @@ export default async function AdminOrdersPage({ params }: PageProps) {
                 {dictionary.todayListTitle ?? dictionary.listTitle}
               </p>
             </div>
-            <Link
-              href={withLocalePath(locale, "/admin/orders/archived")}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              {dictionary.viewPastOrders ?? "Past Orders"}
-              <span aria-hidden="true">→</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href={withLocalePath(locale, "/admin/settings/promptpay")}
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-100"
+              >
+                {dictionary.promptpaySettings ?? "PromptPay Settings"}
+              </Link>
+              <Link
+                href={withLocalePath(locale, "/admin/orders/archived")}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                {dictionary.viewPastOrders ?? "Past Orders"}
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </div>
           <OrderListClient
             initialOrders={orders}
