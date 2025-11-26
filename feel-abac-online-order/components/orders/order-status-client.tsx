@@ -1,14 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 
 import type orderDictionary from "@/dictionaries/en/order.json";
 import { getPusherClient } from "@/lib/pusher/client";
 import {
   ORDER_STATUS_CHANGED_EVENT,
+  ORDER_CLOSED_EVENT,
   buildOrderChannelName,
   type OrderStatusChangedPayload,
+  type OrderClosedPayload,
 } from "@/lib/orders/events";
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
@@ -98,6 +100,9 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
   const [actionState, setActionState] = useState<"idle" | "accepting" | "cancelling">("idle");
   const [cancelReason, setCancelReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  
+  // Track seen event IDs to prevent duplicate processing on reconnect
+  const seenEventsRef = useRef<Set<string>>(new Set());
 
   const currentStep = useMemo(
     () => resolveStep(order.status),
@@ -131,9 +136,16 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
     }
     const channelName = buildOrderChannelName(order.displayId);
     const channel = pusher.subscribe(channelName);
+    const seenEvents = seenEventsRef.current;
 
     const handleStatusChange = (payload: OrderStatusChangedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
       if (payload.orderId !== order.id) return;
+      
+      // Update order state - let UI show the new status
       setOrder((prev) => ({
         ...prev,
         status: payload.toStatus,
@@ -141,28 +153,41 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
         cancelledAt:
           payload.toStatus === "cancelled" ? payload.at : prev.cancelledAt,
         cancelReason: payload.reason ?? prev.cancelReason,
-        isClosed: payload.toStatus === "cancelled" ? true : prev.isClosed,
+        isClosed: payload.toStatus === "cancelled" || payload.toStatus === "delivered",
       }));
-      if (payload.toStatus === "cancelled") {
-        try {
-          localStorage.removeItem("lastOrderDisplayId");
-        } catch {
-          // ignore
-        }
-        const pusher = getPusherClient();
-        if (pusher) {
-          pusher.unsubscribe(channelName);
-        }
-        window.location.href = withLocalePath(window.location.pathname.split("/")[1] as Locale, "/menu");
-        return;
+      
+      // Only refresh for non-terminal states
+      if (payload.toStatus !== "cancelled" && payload.toStatus !== "delivered") {
+        void refreshOrder();
       }
-      void refreshOrder();
+    };
+
+    const handleClosed = (payload: OrderClosedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
+      if (payload.orderId !== order.id) return;
+      
+      // Update order state with final status - let UI show the closed state
+      setOrder((prev) => ({
+        ...prev,
+        status: payload.finalStatus,
+        updatedAt: payload.at,
+        isClosed: true,
+        closedAt: payload.at,
+        cancelledAt: payload.finalStatus === "cancelled" ? payload.at : prev.cancelledAt,
+        cancelReason: payload.reason ?? prev.cancelReason,
+      }));
+      // Don't redirect - let user see the cancelled/delivered UI and click "Back to Menu"
     };
 
     channel.bind(ORDER_STATUS_CHANGED_EVENT, handleStatusChange);
+    channel.bind(ORDER_CLOSED_EVENT, handleClosed);
 
     return () => {
       channel.unbind(ORDER_STATUS_CHANGED_EVENT, handleStatusChange);
+      channel.unbind(ORDER_CLOSED_EVENT, handleClosed);
       pusher.unsubscribe(channelName);
     };
   }, [order.displayId, order.id, refreshOrder]);
@@ -208,10 +233,32 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
 
   const statusText = statusLabel(order.status, dictionary);
   const cancelled = order.status === "cancelled";
+  const delivered = order.status === "delivered";
+  const isClosed = cancelled || delivered;
+
+  // Handle cleanup and navigation back to menu
+  const handleBackToMenu = useCallback(() => {
+    // Clear localStorage
+    try {
+      localStorage.removeItem("lastOrderDisplayId");
+    } catch {
+      // ignore
+    }
+    
+    // Unsubscribe from Pusher channel
+    const pusher = getPusherClient();
+    if (pusher) {
+      pusher.unsubscribe(buildOrderChannelName(order.displayId));
+    }
+    
+    // Navigate to menu
+    const locale = window.location.pathname.split("/")[1] as Locale;
+    window.location.href = withLocalePath(locale, "/menu");
+  }, [order.displayId]);
 
   useEffect(() => {
     try {
-      if (order.status === "cancelled") {
+      if (isClosed) {
         localStorage.removeItem("lastOrderDisplayId");
       } else {
         localStorage.setItem("lastOrderDisplayId", order.displayId);
@@ -219,7 +266,7 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
     } catch {
       // ignore storage failures
     }
-  }, [order.displayId, order.status]);
+  }, [order.displayId, isClosed]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -293,9 +340,25 @@ export function OrderStatusClient({ initialOrder, dictionary, isAdmin }: Props) 
               {order.cancelReason ? ` - ${order.cancelReason}` : null}
             </div>
           )}
-          {!cancelled && order.status === "order_processing" && (
+          {delivered && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {dictionary.deliveredCopy ?? "Your order has been delivered. Thank you!"}
+            </div>
+          )}
+          {!isClosed && order.status === "order_processing" && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
               {dictionary.orderProcessingSubtitle}
+            </div>
+          )}
+          {isClosed && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleBackToMenu}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                {dictionary.backToMenu ?? "Back to Menu"}
+              </button>
             </div>
           )}
         </div>

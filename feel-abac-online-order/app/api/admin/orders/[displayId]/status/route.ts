@@ -5,7 +5,8 @@ import { resolveUserId } from "@/lib/api/require-user";
 import { db } from "@/src/db/client";
 import { admins, orderEvents, orders } from "@/src/db/schema";
 import type { OrderStatus } from "@/lib/orders/types";
-import { broadcastOrderStatusChanged } from "@/lib/orders/realtime";
+import { broadcastOrderStatusChanged, broadcastOrderClosed } from "@/lib/orders/realtime";
+import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 import { eq as eqOp } from "drizzle-orm";
 
 type Params = {
@@ -38,11 +39,12 @@ export async function PATCH(
     | null;
 
   const action = body?.action;
-  if (action !== "accept" && action !== "cancel") {
+  const validActions = ["accept", "cancel", "delivered"];
+  if (!action || !validActions.includes(action)) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
 
-  const cancelReason =
+  const reason =
     typeof body?.reason === "string" && body.reason.trim().length > 0
       ? body.reason.trim()
       : null;
@@ -58,7 +60,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  if (order.isClosed || order.status === "cancelled") {
+  if (order.isClosed || order.status === "cancelled" || order.status === "delivered") {
     return NextResponse.json(
       { error: "Order is already closed" },
       { status: 400 }
@@ -66,19 +68,33 @@ export async function PATCH(
   }
 
   const now = new Date();
-  const nextStatus: OrderStatus =
-    action === "accept" ? "order_in_kitchen" : "cancelled";
+  
+  // Determine next status based on action
+  let nextStatus: OrderStatus;
+  if (action === "accept") {
+    nextStatus = "order_in_kitchen";
+  } else if (action === "delivered") {
+    nextStatus = "delivered";
+  } else {
+    nextStatus = "cancelled";
+  }
 
   const updatePayload: Partial<typeof orders.$inferInsert> = {
     status: nextStatus,
     updatedAt: now,
   };
 
+  // Set timestamps based on action
   if (action === "accept") {
     updatePayload.kitchenStartedAt = order.kitchenStartedAt ?? now;
+  } else if (action === "delivered") {
+    updatePayload.deliveredAt = now;
+    updatePayload.isClosed = true;
+    updatePayload.closedAt = now;
   } else {
+    // cancel
     updatePayload.cancelledAt = now;
-    updatePayload.cancelReason = cancelReason;
+    updatePayload.cancelReason = reason;
     updatePayload.isClosed = true;
     updatePayload.closedAt = now;
   }
@@ -88,25 +104,57 @@ export async function PATCH(
     .set(updatePayload)
     .where(eq(orders.id, order.id));
 
-  await db.insert(orderEvents).values({
+  const [insertedEvent] = await db.insert(orderEvents).values({
     orderId: order.id,
     actorType: "admin",
     actorId: userId,
     eventType: "status_updated",
     fromStatus: order.status,
     toStatus: nextStatus,
-    metadata: cancelReason ? { reason: cancelReason } : null,
-  });
+    metadata: reason ? { reason } : null,
+  }).returning({ id: orderEvents.id });
 
   await broadcastOrderStatusChanged({
+    eventId: insertedEvent?.id ?? "",
     orderId: order.id,
     displayId: order.displayId,
     fromStatus: order.status as OrderStatus,
     toStatus: nextStatus,
     actorType: "admin",
-    reason: cancelReason,
+    reason,
     at: now.toISOString(),
   });
+
+  // If order is now closed (cancelled or delivered), broadcast close event and cleanup transient events
+  const isTerminalState = action === "cancel" || action === "delivered";
+  if (isTerminalState) {
+    const criticalEventType = action === "cancel" ? "order_cancelled" : "order_delivered";
+    
+    // Insert critical event for the terminal state
+    const [closedEvent] = await db.insert(orderEvents).values({
+      orderId: order.id,
+      actorType: "admin",
+      actorId: userId,
+      eventType: criticalEventType,
+      fromStatus: order.status,
+      toStatus: nextStatus,
+      metadata: reason ? { reason } : null,
+    }).returning({ id: orderEvents.id });
+
+    // Broadcast order.closed for client channel cleanup
+    await broadcastOrderClosed({
+      eventId: closedEvent?.id ?? "",
+      orderId: order.id,
+      displayId: order.displayId,
+      finalStatus: nextStatus,
+      actorType: "admin",
+      reason,
+      at: now.toISOString(),
+    });
+
+    // Cleanup transient events (keep only critical ones)
+    await cleanupTransientEvents(order.id);
+  }
 
   return NextResponse.json({ status: nextStatus });
 }

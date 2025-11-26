@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq, sql, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import {
@@ -281,7 +281,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       await db.delete(cartItems).where(inArray(cartItems.id, cartItemIds));
     }
 
-    await db.insert(orderEvents).values({
+    const [submittedEvent] = await db.insert(orderEvents).values({
       orderId,
       actorType: "user",
       actorId: userId,
@@ -289,7 +289,23 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       fromStatus: null,
       toStatus: status,
       metadata: { displayId },
-    });
+    }).returning({ id: orderEvents.id });
+
+    // Broadcast order submitted event with eventId for client-side deduplication
+    const submittedPayload: OrderSubmittedPayload = {
+      eventId: submittedEvent?.id ?? "",
+      orderId,
+      displayId,
+      displayDay,
+      customerName: userName,
+      customerPhone: profile.phoneNumber,
+      deliveryLabel,
+      totalAmount: Number(totalAmountString),
+      status,
+      at: bangkokNow.toISOString(),
+    };
+
+    await broadcastOrderSubmitted(submittedPayload);
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[createOrderFromCart] post-insert failure, cleaning up", {
@@ -300,19 +316,6 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     await db.delete(orders).where(eq(orders.id, orderId)).catch(() => null);
     throw error;
   }
-
-  const submittedPayload: OrderSubmittedPayload = {
-    orderId,
-    displayId,
-    customerName: userName,
-    customerPhone: profile.phoneNumber,
-    deliveryLabel,
-    totalAmount: Number(totalAmountString),
-    status,
-    submittedAt: bangkokNow.toISOString(),
-  };
-
-  await broadcastOrderSubmitted(submittedPayload);
 
   return { orderId, displayId };
 }

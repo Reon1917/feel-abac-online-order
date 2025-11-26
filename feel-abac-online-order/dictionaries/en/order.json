@@ -24,6 +24,7 @@
   "refresh": "Refresh",
   "orderProcessingSubtitle": "Thanks for your order. We're reviewing it now.",
   "cancelledCopy": "This order was cancelled.",
+  "deliveredCopy": "Your order has been delivered. Thank you!",
   "noChoices": "No choices added",
   "quantityLabel": "Qty",
   "totalLabel": "Total",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -10,8 +10,10 @@ import {
   ADMIN_ORDERS_CHANNEL,
   ORDER_STATUS_CHANGED_EVENT,
   ORDER_SUBMITTED_EVENT,
+  ORDER_CLOSED_EVENT,
   type OrderStatusChangedPayload,
   type OrderSubmittedPayload,
+  type OrderClosedPayload,
 } from "@/lib/orders/events";
 import type { OrderAdminSummary, OrderRecord, OrderStatus } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";
@@ -71,6 +73,9 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
+  
+  // Track seen event IDs to prevent duplicate processing on reconnect
+  const seenEventsRef = useRef<Set<string>>(new Set());
 
   const handleViewOrder = useCallback(async (order: OrderAdminSummary) => {
     setLoadingOrderId(order.id);
@@ -103,45 +108,36 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       return;
     }
     const channel = pusher.subscribe(ADMIN_ORDERS_CHANNEL);
+    const seenEvents = seenEventsRef.current;
 
-    const handleSubmitted = async (payload: OrderSubmittedPayload) => {
+    const handleSubmitted = (payload: OrderSubmittedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
       toast.success(dictionary.newOrderToast);
-      try {
-        const response = await fetch(`/api/orders/${payload.displayId}`, {
-          cache: "no-store",
-        });
-        const json = await response.json().catch(() => null);
-        const order = json?.order as OrderRecord | undefined;
-        if (!response.ok || !order) {
-          throw new Error(dictionary.errorLoading);
-        }
 
-        const deliveryLabel =
-          order.deliveryMode === "custom"
-            ? `${order.customCondoName ?? ""}${
-                order.customBuildingName ? `, ${order.customBuildingName}` : ""
-              }`
-            : payload.deliveryLabel;
+      // Build summary directly from payload (no API fetch needed)
+      const summary: OrderAdminSummary = {
+        id: payload.orderId,
+        displayId: payload.displayId,
+        displayDay: payload.displayDay,
+        status: payload.status,
+        customerName: payload.customerName,
+        customerPhone: payload.customerPhone,
+        totalAmount: payload.totalAmount,
+        deliveryLabel: payload.deliveryLabel,
+        createdAt: payload.at,
+      };
 
-        const summary: OrderAdminSummary = {
-          id: order.id,
-          displayId: order.displayId,
-          displayDay: order.displayDay,
-          status: order.status,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          totalAmount: order.totalAmount,
-          deliveryLabel,
-          createdAt: order.createdAt,
-        };
-
-        setOrders((prev) => [summary, ...prev]);
-      } catch {
-        toast.error(dictionary.errorLoading);
-      }
+      setOrders((prev) => [summary, ...prev]);
     };
 
     const handleStatusChanged = (payload: OrderStatusChangedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
       setOrders((prev) =>
         prev.map((order) =>
           order.id === payload.orderId
@@ -152,15 +148,32 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       toast.message(dictionary.statusUpdatedToast);
     };
 
+    const handleClosed = (payload: OrderClosedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
+      // Update the order status in the list
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === payload.orderId
+            ? { ...order, status: payload.finalStatus }
+            : order
+        )
+      );
+    };
+
     channel.bind(ORDER_SUBMITTED_EVENT, handleSubmitted);
     channel.bind(ORDER_STATUS_CHANGED_EVENT, handleStatusChanged);
+    channel.bind(ORDER_CLOSED_EVENT, handleClosed);
 
     return () => {
       channel.unbind(ORDER_SUBMITTED_EVENT, handleSubmitted);
       channel.unbind(ORDER_STATUS_CHANGED_EVENT, handleStatusChanged);
+      channel.unbind(ORDER_CLOSED_EVENT, handleClosed);
       pusher.unsubscribe(ADMIN_ORDERS_CHANNEL);
     };
-  }, [dictionary.errorLoading, dictionary.newOrderToast, dictionary.statusUpdatedToast]);
+  }, [dictionary.newOrderToast, dictionary.statusUpdatedToast]);
 
   const updateOrderStatus = async (
     order: OrderAdminSummary,
