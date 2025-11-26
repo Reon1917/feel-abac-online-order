@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -15,15 +14,13 @@ import {
   type OrderSubmittedPayload,
 } from "@/lib/orders/events";
 import type { OrderAdminSummary, OrderRecord, OrderStatus } from "@/lib/orders/types";
-import { withLocalePath } from "@/lib/i18n/path";
-import type { Locale } from "@/lib/i18n/config";
+import { OrderDetailModal } from "./order-detail-modal";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
 type Props = {
   initialOrders: OrderAdminSummary[];
   dictionary: AdminOrdersDictionary;
-  locale: Locale;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
@@ -79,9 +76,37 @@ function statusLabel(status: OrderStatus, dictionary: AdminOrdersDictionary) {
   }
 }
 
-export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
+export function OrderListClient({ initialOrders, dictionary }: Props) {
   const [orders, setOrders] = useState<OrderAdminSummary[]>(initialOrders);
   const [actionState, setActionState] = useState<Record<string, "idle" | "saving">>({});
+  const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
+
+  const handleViewOrder = useCallback(async (order: OrderAdminSummary) => {
+    setLoadingOrderId(order.id);
+    try {
+      const response = await fetch(`/api/orders/${order.displayId}`, {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.order) {
+        throw new Error(dictionary.errorLoading);
+      }
+      setSelectedOrder(json.order as OrderRecord);
+      setModalOpen(true);
+    } catch {
+      toast.error(dictionary.errorLoading);
+    } finally {
+      setLoadingOrderId(null);
+    }
+  }, [dictionary.errorLoading]);
+
+  const handleStatusUpdated = useCallback((orderId: string, newStatus: OrderStatus) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+    );
+  }, []);
 
   useEffect(() => {
     const pusher = getPusherClient();
@@ -112,13 +137,14 @@ export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
         const summary: OrderAdminSummary = {
           id: order.id,
           displayId: order.displayId,
+          displayDay: order.displayDay,
           status: order.status,
           customerName: order.customerName,
           customerPhone: order.customerPhone,
           totalAmount: order.totalAmount,
           deliveryLabel,
           createdAt: order.createdAt,
-        } as OrderAdminSummary;
+        };
 
         setOrders((prev) => [summary, ...prev]);
       } catch {
@@ -255,17 +281,27 @@ export function OrderListClient({ initialOrders, dictionary, locale }: Props) {
                     {dictionary.cancel}
                   </button>
                 </div>
-                <Link
-                  href={withLocalePath(locale, `/orders/${order.displayId}`)}
-                  className="inline-flex items-center rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                <button
+                  type="button"
+                  onClick={() => void handleViewOrder(order)}
+                  disabled={loadingOrderId === order.id}
+                  className="inline-flex items-center rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
                 >
-                  {dictionary.viewOrder}
-                </Link>
+                  {loadingOrderId === order.id ? "..." : dictionary.viewOrder}
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <OrderDetailModal
+        order={selectedOrder}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        dictionary={dictionary}
+        onStatusUpdated={handleStatusUpdated}
+      />
     </div>
   );
 }

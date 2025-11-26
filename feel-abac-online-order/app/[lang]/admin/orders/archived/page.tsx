@@ -3,11 +3,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminBar } from "@/components/admin/admin-bar";
-import { OrderListClient } from "@/components/admin/orders/order-list-client";
+import { ArchivedOrdersClient } from "@/components/admin/orders/archived-orders-client";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
-import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
+import { getArchivedOrdersForAdmin } from "@/lib/orders/queries";
 import { getSession } from "@/lib/session";
 
 type PageProps = {
@@ -16,7 +16,7 @@ type PageProps = {
   }>;
 };
 
-export default async function AdminOrdersPage({ params }: PageProps) {
+export default async function ArchivedOrdersPage({ params }: PageProps) {
   noStore();
   const { lang } = await params;
   const locale = lang as Locale;
@@ -27,7 +27,7 @@ export default async function AdminOrdersPage({ params }: PageProps) {
   }
 
   const dictionary = getDictionary(locale, "adminOrders");
-  const orders = await getTodayOrdersForAdmin();
+  const orders = await getArchivedOrdersForAdmin();
 
   return (
     <>
@@ -36,22 +36,22 @@ export default async function AdminOrdersPage({ params }: PageProps) {
         <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8 lg:px-10">
           <div className="mb-6 flex items-center justify-between">
             <div>
+              <Link
+                href={withLocalePath(locale, "/admin/orders")}
+                className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                <span aria-hidden="true">←</span>
+                {dictionary.backToToday ?? "Back to Today's Orders"}
+              </Link>
               <h1 className="text-2xl font-semibold text-slate-900">
-                {dictionary.pageTitle}
+                {dictionary.archivedPageTitle ?? "Past Orders"}
               </h1>
               <p className="text-sm text-slate-600">
-                {dictionary.todayListTitle ?? dictionary.listTitle}
+                {dictionary.archivedListTitle ?? "Orders from previous days"}
               </p>
             </div>
-            <Link
-              href={withLocalePath(locale, "/admin/orders/archived")}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              {dictionary.viewPastOrders ?? "Past Orders"}
-              <span aria-hidden="true">→</span>
-            </Link>
           </div>
-          <OrderListClient
+          <ArchivedOrdersClient
             initialOrders={orders}
             dictionary={dictionary}
           />
@@ -60,3 +60,4 @@ export default async function AdminOrdersPage({ params }: PageProps) {
     </>
   );
 }
+

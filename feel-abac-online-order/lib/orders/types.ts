@@ -73,6 +73,7 @@ export type OrderEventMetadata = Json;
 export type OrderAdminSummary = {
   id: string;
   displayId: string;
+  displayDay: string;
   status: OrderStatus;
   customerName: string;
   customerPhone: string;

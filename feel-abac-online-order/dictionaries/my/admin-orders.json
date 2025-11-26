@@ -1,6 +1,7 @@
 {
   "pageTitle": "Orders",
   "listTitle": "Recent orders",
+  "todayListTitle": "Today's orders",
   "orderIdLabel": "Order",
   "customerLabel": "Customer",
   "locationLabel": "Location",
@@ -21,5 +22,12 @@
   "statusOutForDelivery": "Out for Delivery",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee",
   "statusDelivered": "Delivered",
-  "statusCancelled": "Cancelled"
+  "statusCancelled": "Cancelled",
+  "viewPastOrders": "Past Orders",
+  "archivedPageTitle": "Past Orders",
+  "archivedListTitle": "Orders from previous days",
+  "backToToday": "Back to Today's Orders",
+  "noArchivedOrders": "No past orders found",
+  "itemsTitle": "Items",
+  "subtotalLabel": "Subtotal"
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql, lt } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import {
@@ -204,6 +204,7 @@ export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSum
     .select({
       id: orders.id,
       displayId: orders.displayId,
+      displayDay: orders.displayDay,
       status: orders.status,
       customerName: orders.customerName,
       customerPhone: orders.customerPhone,
@@ -229,25 +230,146 @@ export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSum
     .orderBy(desc(orders.createdAt))
     .limit(limit);
 
-  return rows.map((row) => {
-    const deliveryLabel =
-      row.deliveryMode === "custom"
-        ? `${row.customCondoName ?? "Custom"}${
-            row.customBuildingName ? `, ${row.customBuildingName}` : ""
-          }`
-        : `${row.locationCondoName ?? "Unknown"}${
-            row.buildingLabel ? `, ${row.buildingLabel}` : ""
-          }`;
+  return rows.map((row) => mapOrderAdminSummary(row));
+}
 
-    return {
-      id: row.id,
-      displayId: row.displayId,
-      status: row.status as OrderStatus,
-      customerName: row.customerName,
-      customerPhone: row.customerPhone,
-      totalAmount: numericToNumber(row.totalAmount),
-      deliveryLabel,
-      createdAt: dateToIso(row.createdAt) ?? "",
-    };
-  });
+function mapOrderAdminSummary(row: {
+  id: string;
+  displayId: string;
+  displayDay: Date | null;
+  status: string;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: string | null;
+  createdAt: Date | null;
+  deliveryMode: string | null;
+  customCondoName: string | null;
+  customBuildingName: string | null;
+  locationCondoName: string | null;
+  buildingLabel: string | null;
+}): OrderAdminSummary {
+  const deliveryLabel =
+    row.deliveryMode === "custom"
+      ? `${row.customCondoName ?? "Custom"}${
+          row.customBuildingName ? `, ${row.customBuildingName}` : ""
+        }`
+      : `${row.locationCondoName ?? "Unknown"}${
+          row.buildingLabel ? `, ${row.buildingLabel}` : ""
+        }`;
+
+  return {
+    id: row.id,
+    displayId: row.displayId,
+    displayDay: row.displayDay
+      ? row.displayDay.toISOString().slice(0, 10)
+      : "",
+    status: row.status as OrderStatus,
+    customerName: row.customerName,
+    customerPhone: row.customerPhone,
+    totalAmount: numericToNumber(row.totalAmount),
+    deliveryLabel,
+    createdAt: dateToIso(row.createdAt) ?? "",
+  };
+}
+
+/**
+ * Get today's orders for admin (Bangkok timezone).
+ */
+export async function getTodayOrdersForAdmin(): Promise<OrderAdminSummary[]> {
+  const rows = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      displayDay: orders.displayDay,
+      status: orders.status,
+      customerName: orders.customerName,
+      customerPhone: orders.customerPhone,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+      deliveryMode: orders.deliveryMode,
+      deliveryLocationId: orders.deliveryLocationId,
+      deliveryBuildingId: orders.deliveryBuildingId,
+      customCondoName: orders.customCondoName,
+      customBuildingName: orders.customBuildingName,
+      locationCondoName: deliveryLocations.condoName,
+      buildingLabel: deliveryBuildings.label,
+    })
+    .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
+    .where(
+      eq(orders.displayDay, sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`)
+    )
+    .orderBy(desc(orders.createdAt));
+
+  return rows.map((row) => mapOrderAdminSummary(row));
+}
+
+/**
+ * Get past orders (before today) for admin, grouped by displayDay.
+ */
+export async function getArchivedOrdersForAdmin(
+  limit = 100
+): Promise<OrderAdminSummary[]> {
+  const rows = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      displayDay: orders.displayDay,
+      status: orders.status,
+      customerName: orders.customerName,
+      customerPhone: orders.customerPhone,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+      deliveryMode: orders.deliveryMode,
+      deliveryLocationId: orders.deliveryLocationId,
+      deliveryBuildingId: orders.deliveryBuildingId,
+      customCondoName: orders.customCondoName,
+      customBuildingName: orders.customBuildingName,
+      locationCondoName: deliveryLocations.condoName,
+      buildingLabel: deliveryBuildings.label,
+    })
+    .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
+    .where(
+      lt(orders.displayDay, sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`)
+    )
+    .orderBy(desc(orders.displayDay), desc(orders.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => mapOrderAdminSummary(row));
+}
+
+/**
+ * Get full order details for admin modal view.
+ */
+export async function getOrderDetailForAdmin(
+  displayId: string
+): Promise<OrderRecord | null> {
+  const [row] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.displayId, displayId))
+    .orderBy(desc(orders.createdAt))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  const items = await loadOrderItems(row.id);
+  return mapOrder(row, items);
 }

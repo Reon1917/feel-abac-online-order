@@ -1,0 +1,297 @@
+"use client";
+
+import { useState } from "react";
+import clsx from "clsx";
+import { toast } from "sonner";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
+import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
+
+type AdminOrdersDictionary = typeof adminOrdersDictionary;
+
+type Props = {
+  order: OrderRecord | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  dictionary: AdminOrdersDictionary;
+  onStatusUpdated?: (orderId: string, newStatus: OrderStatus) => void;
+};
+
+const currencyFormatter = new Intl.NumberFormat("en-TH", {
+  style: "currency",
+  currency: "THB",
+  minimumFractionDigits: 0,
+});
+
+const dateFormatter = new Intl.DateTimeFormat("en-TH", {
+  timeZone: "Asia/Bangkok",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatCurrency(amount: number | null | undefined) {
+  const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
+  return currencyFormatter.format(safe);
+}
+
+function formatTimestamp(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return dateFormatter.format(date);
+}
+
+function statusBadgeClass(status: OrderStatus) {
+  if (status === "cancelled") return "bg-red-50 text-red-700 ring-1 ring-red-200";
+  if (
+    status === "order_in_kitchen" ||
+    status === "order_out_for_delivery" ||
+    status === "delivered"
+  ) {
+    return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+  }
+  return "bg-amber-50 text-amber-800 ring-1 ring-amber-200";
+}
+
+function statusLabel(status: OrderStatus, dictionary: AdminOrdersDictionary) {
+  switch (status) {
+    case "order_processing":
+      return dictionary.statusProcessing ?? "Processing";
+    case "awaiting_food_payment":
+      return dictionary.statusAwaitingFoodPayment ?? "Awaiting Food Payment";
+    case "food_payment_review":
+      return dictionary.statusFoodPaymentReview ?? "Food Payment Review";
+    case "order_in_kitchen":
+      return dictionary.statusKitchen ?? "In Kitchen";
+    case "order_out_for_delivery":
+      return dictionary.statusOutForDelivery ?? "Out for Delivery";
+    case "awaiting_delivery_fee_payment":
+      return dictionary.statusAwaitingDeliveryFee ?? "Awaiting Delivery Fee";
+    case "delivered":
+      return dictionary.statusDelivered ?? "Delivered";
+    case "cancelled":
+      return dictionary.statusCancelled ?? "Cancelled";
+    default:
+      return status;
+  }
+}
+
+export function OrderDetailModal({
+  order,
+  open,
+  onOpenChange,
+  dictionary,
+  onStatusUpdated,
+}: Props) {
+  const [actionState, setActionState] = useState<"idle" | "accepting" | "cancelling">("idle");
+
+  if (!order) {
+    return null;
+  }
+
+  const handleAction = async (action: "accept" | "cancel") => {
+    setActionState(action === "accept" ? "accepting" : "cancelling");
+    try {
+      const response = await fetch(`/api/admin/orders/${order.displayId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to update order");
+      }
+      const nextStatus: OrderStatus = action === "accept" ? "order_in_kitchen" : "cancelled";
+      onStatusUpdated?.(order.id, nextStatus);
+      toast.success(dictionary.statusUpdatedToast);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : dictionary.errorLoading);
+    } finally {
+      setActionState("idle");
+    }
+  };
+
+  const deliveryLabel =
+    order.deliveryMode === "custom"
+      ? `${order.customCondoName ?? "Custom Location"}${
+          order.customBuildingName ? `, ${order.customBuildingName}` : ""
+        }`
+      : order.deliveryLocationId
+        ? "Preset Location"
+        : "-";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <div className="flex items-center justify-between gap-4">
+            <DialogTitle className="text-2xl font-bold">
+              {dictionary.orderIdLabel} {order.displayId}
+            </DialogTitle>
+            <span
+              className={clsx(
+                "inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold",
+                statusBadgeClass(order.status)
+              )}
+            >
+              {statusLabel(order.status, dictionary)}
+            </span>
+          </div>
+        </DialogHeader>
+
+        {/* Customer Info - Larger spacing */}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <div className="grid gap-3 text-base">
+            <div className="flex justify-between">
+              <span className="text-slate-500">{dictionary.customerLabel}</span>
+              <span className="font-semibold text-slate-900">{order.customerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Phone</span>
+              <span className="font-semibold text-slate-900">{order.customerPhone}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">{dictionary.locationLabel}</span>
+              <span className="font-semibold text-slate-900">{deliveryLabel}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">{dictionary.createdLabel ?? "Created"}</span>
+              <span className="font-semibold text-slate-900">{formatTimestamp(order.createdAt)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Order Items - Table/Kitchen Receipt Style */}
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold text-slate-700">
+            {dictionary.itemsTitle ?? "Items"}
+          </h3>
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            {/* Table Header */}
+            <div className="grid grid-cols-[3.5rem_4.5rem_1fr] gap-4 border-b-2 border-slate-300 bg-slate-100 px-5 py-3">
+              <span className="text-sm font-bold uppercase tracking-wider text-slate-600">Qty</span>
+              <span className="text-sm font-bold uppercase tracking-wider text-slate-600">Code</span>
+              <span className="text-sm font-bold uppercase tracking-wider text-slate-600">Item</span>
+            </div>
+            
+            {/* Table Body */}
+            <div className="divide-y divide-slate-200">
+              {order.items.map((item) => {
+                const choicesStr = item.choices.length > 0
+                  ? item.choices.map((c) => c.optionName).join(", ")
+                  : null;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="grid grid-cols-[3.5rem_4.5rem_1fr] gap-4 px-5 py-4"
+                  >
+                    {/* Quantity - FIRST, large and bold */}
+                    <span className="text-xl font-bold text-slate-900">
+                      {item.quantity}
+                    </span>
+                    
+                    {/* Menu Code */}
+                    <span className="font-mono text-base font-semibold text-slate-600">
+                      {item.menuCode || "—"}
+                    </span>
+                    
+                    {/* Item Name + Choices/Notes */}
+                    <div className="space-y-1">
+                      <p className="text-lg font-semibold text-slate-900">
+                        {item.menuItemName}
+                      </p>
+                      {choicesStr && (
+                        <p className="text-base text-slate-600">
+                          {choicesStr}
+                        </p>
+                      )}
+                      {item.note && (
+                        <p className="text-base italic text-amber-700">
+                          → {item.note}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Subtotal Footer */}
+            <div className="border-t-2 border-slate-300 bg-slate-100 px-5 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-bold text-slate-700">
+                  {dictionary.subtotalLabel ?? "Subtotal"}
+                </span>
+                <span className="text-2xl font-bold text-slate-900">
+                  {formatCurrency(order.subtotal)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes - Larger */}
+        {(order.orderNote || order.deliveryNotes) && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {order.orderNote && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                  Order Note
+                </p>
+                <p className="mt-2 text-base text-slate-700">{order.orderNote}</p>
+              </div>
+            )}
+            {order.deliveryNotes && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                  Delivery Note
+                </p>
+                <p className="mt-2 text-base text-slate-700">{order.deliveryNotes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Actions - Larger buttons */}
+        {order.status !== "cancelled" && order.status !== "delivered" && (
+          <div className="flex items-center justify-end gap-4 border-t border-slate-200 pt-5">
+            <button
+              type="button"
+              className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-6 py-3 text-base font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={actionState !== "idle"}
+              onClick={() => void handleAction("cancel")}
+            >
+              {actionState === "cancelling" ? "..." : dictionary.cancel}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                order.status === "order_in_kitchen" ||
+                actionState !== "idle"
+              }
+              onClick={() => void handleAction("accept")}
+            >
+              {actionState === "accepting" ? "..." : dictionary.accept}
+            </button>
+          </div>
+        )}
+
+        {order.status === "cancelled" && order.cancelReason && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-base text-red-700">
+            <strong>Cancelled:</strong> {order.cancelReason}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
