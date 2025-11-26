@@ -18,6 +18,7 @@ import type {
   OrderAdminSummary,
   OrderStatus,
 } from "./types";
+import { pgDateToString } from "@/lib/timezone";
 
 function numericToNumber(value: string | null): number {
   if (!value) return 0;
@@ -73,11 +74,7 @@ function mapOrder(
     id: row.id,
     displayId: row.displayId,
     displayCounter: row.displayCounter,
-    displayDay: row.displayDay
-      ? typeof row.displayDay === "string"
-        ? row.displayDay
-        : row.displayDay.toISOString().slice(0, 10)
-      : "",
+    displayDay: pgDateToString(row.displayDay),
     status: row.status as OrderStatus,
     orderNote: row.orderNote,
     adminNote: row.adminNote,
@@ -245,9 +242,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
   return {
     id: row.id,
     displayId: row.displayId,
-    displayDay: row.displayDay
-      ? row.displayDay.toISOString().slice(0, 10)
-      : "",
+    displayDay: pgDateToString(row.displayDay),
     status: row.status as OrderStatus,
     customerName: row.customerName,
     customerPhone: row.customerPhone,

@@ -100,7 +100,9 @@ export async function createOrderFromCart(input: CreateOrderInput) {
 
   const bangkokNow = nowUtc();
   const displayDay = bangkokDateString(bangkokNow);
-  const displayDayDate = new Date(`${displayDay}T00:00:00+07:00`);
+  // Use UTC midnight so PostgreSQL stores the correct date
+  // (PG DATE extracts the UTC date, not local date)
+  const displayDayDate = new Date(`${displayDay}T00:00:00Z`);
 
   const subtotalValue = cart.subtotal;
   const subtotalString = toNumericString(subtotalValue);
@@ -126,6 +128,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
       );
     }
 
+    // Query using the same UTC midnight date for consistency
     const [counterRow] = await db
       .select({ displayCounter: orders.displayCounter })
       .from(orders)

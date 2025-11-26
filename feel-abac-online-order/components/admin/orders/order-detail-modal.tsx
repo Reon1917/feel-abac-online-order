@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
+import { formatBangkokTimestamp } from "@/lib/timezone";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -29,22 +30,9 @@ const currencyFormatter = new Intl.NumberFormat("en-TH", {
   minimumFractionDigits: 0,
 });
 
-const dateFormatter = new Intl.DateTimeFormat("en-TH", {
-  timeZone: "Asia/Bangkok",
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 function formatCurrency(amount: number | null | undefined) {
   const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
   return currencyFormatter.format(safe);
-}
-
-function formatTimestamp(value: string | null) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return dateFormatter.format(date);
 }
 
 function statusBadgeClass(status: OrderStatus) {
@@ -163,7 +151,7 @@ export function OrderDetailModal({
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.createdLabel ?? "Created"}</span>
-              <span className="font-semibold text-slate-900">{formatTimestamp(order.createdAt)}</span>
+              <span className="font-semibold text-slate-900">{formatBangkokTimestamp(order.createdAt)}</span>
             </div>
           </div>
         </div>

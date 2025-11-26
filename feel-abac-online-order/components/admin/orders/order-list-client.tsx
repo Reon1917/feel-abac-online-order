@@ -14,6 +14,7 @@ import {
   type OrderSubmittedPayload,
 } from "@/lib/orders/events";
 import type { OrderAdminSummary, OrderRecord, OrderStatus } from "@/lib/orders/types";
+import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
@@ -26,23 +27,11 @@ type Props = {
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
   style: "currency",
   currency: "THB",
-  minimumFractionDigits: 2,
-});
-
-const dateFormatter = new Intl.DateTimeFormat("en-TH", {
-  timeZone: "Asia/Bangkok",
-  dateStyle: "medium",
-  timeStyle: "short",
+  minimumFractionDigits: 0,
 });
 
 function formatCurrency(amount: number) {
   return currencyFormatter.format(amount);
-}
-
-function formatTimestamp(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return dateFormatter.format(date);
 }
 
 function statusBadgeClass(status: OrderStatus) {
@@ -156,7 +145,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       setOrders((prev) =>
         prev.map((order) =>
           order.id === payload.orderId
-            ? { ...order, status: payload.toStatus, createdAt: payload.at }
+            ? { ...order, status: payload.toStatus }
             : order
         )
       );
@@ -253,7 +242,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                     {formatCurrency(order.totalAmount)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {formatTimestamp(order.createdAt)}
+                    {formatBangkokTimestamp(order.createdAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { OrderAdminSummary, OrderRecord, OrderStatus } from "@/lib/orders/types";
+import { formatDateHeader, formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
@@ -21,34 +22,8 @@ const currencyFormatter = new Intl.NumberFormat("en-TH", {
   minimumFractionDigits: 0,
 });
 
-const dateFormatter = new Intl.DateTimeFormat("en-TH", {
-  timeZone: "Asia/Bangkok",
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
-const dayFormatter = new Intl.DateTimeFormat("en-TH", {
-  timeZone: "Asia/Bangkok",
-  weekday: "long",
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
-
 function formatCurrency(amount: number) {
   return currencyFormatter.format(amount);
-}
-
-function formatTimestamp(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return dateFormatter.format(date);
-}
-
-function formatDayHeader(displayDay: string) {
-  const date = new Date(displayDay + "T00:00:00+07:00");
-  if (Number.isNaN(date.getTime())) return displayDay;
-  return dayFormatter.format(date);
 }
 
 function statusBadgeClass(status: OrderStatus) {
@@ -157,7 +132,7 @@ export function ArchivedOrdersClient({ initialOrders, dictionary }: Props) {
         >
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-3">
             <h3 className="text-sm font-semibold text-slate-700">
-              {formatDayHeader(group.displayDay)}
+              {formatDateHeader(group.displayDay)}
             </h3>
             <p className="text-xs text-slate-500">
               {group.orders.length} {group.orders.length === 1 ? "order" : "orders"}
@@ -196,7 +171,7 @@ export function ArchivedOrdersClient({ initialOrders, dictionary }: Props) {
                       {formatCurrency(order.totalAmount)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {formatTimestamp(order.createdAt)}
+                      {formatBangkokTimestamp(order.createdAt)}
                     </p>
                   </div>
                   <button
