@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";
@@ -44,18 +45,54 @@ export function OrderDetailModal({
   onStatusUpdated,
 }: Props) {
   const [actionState, setActionState] = useState<"idle" | "accepting" | "cancelling">("idle");
+  const [cancelReason, setCancelReason] = useState("");
+  const [selectedQuickReason, setSelectedQuickReason] = useState<string | null>(null);
+  const cancelReasonPresets = useMemo(() => {
+    const options = [
+      dictionary.cancelReasonPresetOutOfStock ?? "We're sold out of this menu item today.",
+      dictionary.cancelReasonPresetKitchenClosed ?? "Our kitchen closed early today.",
+      dictionary.cancelReasonPresetDeliveryIssue ?? "We can't deliver to this location right now.",
+      dictionary.cancelReasonPresetDuplicate ?? "This looks like a duplicate order.",
+    ];
+    return options.filter(Boolean);
+  }, [dictionary.cancelReasonPresetDeliveryIssue, dictionary.cancelReasonPresetDuplicate, dictionary.cancelReasonPresetKitchenClosed, dictionary.cancelReasonPresetOutOfStock]);
+
+  useEffect(() => {
+    if (!open) {
+      setCancelReason("");
+      setActionState("idle");
+      setSelectedQuickReason(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    setCancelReason("");
+    setSelectedQuickReason(null);
+  }, [order?.id]);
 
   if (!order) {
     return null;
   }
 
   const handleAction = async (action: "accept" | "cancel") => {
+    const trimmedReason = cancelReason.trim();
+    const finalReason = trimmedReason || selectedQuickReason?.trim() || "";
+    if (action === "cancel" && !finalReason) {
+      toast.error(
+        dictionary.cancelReasonRequired ??
+          "Please enter a reason to reject this order."
+      );
+      return;
+    }
     setActionState(action === "accept" ? "accepting" : "cancelling");
     try {
       const response = await fetch(`/api/admin/orders/${order.displayId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({
+          action,
+          ...(action === "cancel" ? { reason: finalReason } : null),
+        }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -66,12 +103,17 @@ export function OrderDetailModal({
       onStatusUpdated?.(order.id, nextStatus);
       toast.success(dictionary.statusUpdatedToast);
       onOpenChange(false);
+      if (action === "cancel") {
+        setCancelReason("");
+        setSelectedQuickReason(null);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : dictionary.errorLoading);
     } finally {
       setActionState("idle");
     }
   };
+
 
   const deliveryLabel =
     order.deliveryMode === "custom"
@@ -106,7 +148,7 @@ export function OrderDetailModal({
           <div className="grid gap-2 text-sm">
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.customerLabel}</span>
-              <span className="font-semibold text-slate-900 break-words">{order.customerName}</span>
+              <span className="font-semibold text-slate-900 wrap-break-word">{order.customerName}</span>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">
@@ -116,7 +158,7 @@ export function OrderDetailModal({
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.locationLabel}</span>
-              <span className="font-semibold text-slate-900 break-words leading-snug">{deliveryLabel}</span>
+              <span className="font-semibold text-slate-900 wrap-break-word leading-snug">{deliveryLabel}</span>
             </div>
             <div className="grid grid-cols-[5rem_1fr] gap-2 sm:grid-cols-[6rem_1fr]">
               <span className="text-slate-500">{dictionary.createdLabel ?? "Created"}</span>
@@ -162,16 +204,16 @@ export function OrderDetailModal({
                     
                     {/* Item Name + Choices/Notes */}
                     <div className="space-y-0.5 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 break-words sm:text-base">
+                      <p className="text-sm font-semibold text-slate-900 wrap-break-word sm:text-base">
                         {item.menuItemName}
                       </p>
                       {choicesStr && (
-                        <p className="text-xs text-slate-600 break-words sm:text-sm">
+                        <p className="text-xs text-slate-600 wrap-break-word sm:text-sm">
                           {choicesStr}
                         </p>
                       )}
                       {item.note && (
-                        <p className="text-xs italic text-amber-700 break-words sm:text-sm">
+                        <p className="text-xs italic text-amber-700 wrap-break-word sm:text-sm">
                           → {item.note}
                         </p>
                       )}
@@ -203,7 +245,7 @@ export function OrderDetailModal({
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   {dictionary.orderNoteLabel ?? "Order Note"}
                 </p>
-                <p className="mt-1 text-sm text-slate-700 break-words">{order.orderNote}</p>
+                <p className="mt-1 text-sm text-slate-700 wrap-break-word">{order.orderNote}</p>
               </div>
             )}
             {order.deliveryNotes && (
@@ -211,7 +253,7 @@ export function OrderDetailModal({
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   {dictionary.deliveryNoteLabel ?? "Delivery Note"}
                 </p>
-                <p className="mt-1 text-sm text-slate-700 break-words">{order.deliveryNotes}</p>
+                <p className="mt-1 text-sm text-slate-700 wrap-break-word">{order.deliveryNotes}</p>
               </div>
             )}
           </div>
@@ -219,26 +261,82 @@ export function OrderDetailModal({
 
         {/* Actions */}
         {order.status !== "cancelled" && order.status !== "delivered" && (
-          <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
-            <button
-              type="button"
-              className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={actionState !== "idle"}
-              onClick={() => void handleAction("cancel")}
-            >
-              {actionState === "cancelling" ? "..." : dictionary.cancel}
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={
-                order.status !== "order_processing" ||
-                actionState !== "idle"
-              }
-              onClick={() => void handleAction("accept")}
-            >
-              {actionState === "accepting" ? "..." : dictionary.accept}
-            </button>
+          <div className="space-y-3 border-t border-slate-200 pt-4">
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {dictionary.cancelReasonPresetsLabel ?? "Quick reasons"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {cancelReasonPresets.map((label) => (
+                  <button
+                    type="button"
+                    key={label}
+                    className={clsx(
+                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+                      selectedQuickReason === label
+                        ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
+                    )}
+                    onClick={() =>
+                      setSelectedQuickReason((prev) =>
+                        prev === label ? null : label
+                      )
+                    }
+                    disabled={actionState === "cancelling"}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                {dictionary.cancelReasonPresetHint ??
+                  "Select a quick reason or type your own, then press reject."}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="order-detail-cancel-reason"
+                className="text-xs font-bold uppercase tracking-wide text-slate-600"
+              >
+                {dictionary.cancelReasonLabel ?? "Rejection reason"}
+              </label>
+              <Textarea
+                id="order-detail-cancel-reason"
+                rows={3}
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                placeholder={
+                  dictionary.cancelReasonPlaceholder ??
+                  "Let the diner know why you're rejecting this order"
+                }
+                disabled={actionState === "cancelling"}
+              />
+              <p className="text-xs text-slate-500">
+                {dictionary.cancelReasonHelper ??
+                  "Customers see this as soon as you reject the order."}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={actionState !== "idle"}
+                onClick={() => void handleAction("cancel")}
+              >
+                {actionState === "cancelling" ? "..." : dictionary.cancel}
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={
+                  order.status !== "order_processing" ||
+                  actionState !== "idle"
+                }
+                onClick={() => void handleAction("accept")}
+              >
+                {actionState === "accepting" ? "..." : dictionary.accept}
+              </button>
+            </div>
           </div>
         )}
 

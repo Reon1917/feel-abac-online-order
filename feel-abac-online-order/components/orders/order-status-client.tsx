@@ -39,6 +39,7 @@ function resolveStep(status: OrderStatus) {
   switch (status) {
     case "order_processing":
     case "awaiting_food_payment":
+    case "food_payment_review":
       return 0;
     case "order_in_kitchen":
       return 1;
@@ -84,6 +85,9 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [cancelState, setCancelState] = useState<"idle" | "cancelling">("idle");
+  const [animatedStep, setAnimatedStep] = useState(() =>
+    resolveStep(initialOrder.status)
+  );
   
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
@@ -91,6 +95,38 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const currentStep = useMemo(
     () => resolveStep(order.status),
     [order.status]
+  );
+
+  useEffect(() => {
+    if (animatedStep === currentStep) {
+      return;
+    }
+    if (currentStep < animatedStep) {
+      setAnimatedStep(currentStep);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setAnimatedStep((prev) =>
+        prev < currentStep ? Math.min(prev + 1, currentStep) : currentStep
+      );
+    }, 400);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [animatedStep, currentStep]);
+
+  const animationProgress = useMemo(() => {
+    const lastIndex = STATUS_STEPS.length - 1;
+    if (lastIndex <= 0) return 1;
+    const clamped = Math.min(Math.max(animatedStep, 0), lastIndex);
+    return clamped / lastIndex;
+  }, [animatedStep]);
+
+  const progressPercent = useMemo(
+    () => Math.min(Math.max(animationProgress * 100, 0), 100),
+    [animationProgress]
   );
 
   const foodPayment = useMemo(
@@ -242,6 +278,13 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const cancelled = order.status === "cancelled";
   const delivered = order.status === "delivered";
   const isClosed = cancelled || delivered;
+  const reviewNotice = !isClosed
+    ? order.status === "food_payment_review"
+      ? dictionary.paymentReviewNotice ?? dictionary.orderProcessingSubtitle
+      : order.status === "order_processing"
+        ? dictionary.orderReviewNotice ?? dictionary.orderProcessingSubtitle
+        : null
+    : null;
 
   // Handle cleanup and navigation back to menu
   const handleBackToMenu = useCallback(() => {
@@ -317,40 +360,132 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
           <p className="text-sm font-semibold text-slate-700">
             {dictionary.trackerLabel}
           </p>
-          <div className="grid gap-3 sm:grid-cols-4">
-            {STATUS_STEPS.map((step, index) => {
-              const reached = currentStep >= index;
-              return (
-                <div
-                  key={step.key}
-                  className={clsx(
-                    "flex items-center gap-3 rounded-xl border px-3 py-3",
-                    reached
-                      ? "border-emerald-200 bg-emerald-50"
-                      : "border-slate-200 bg-slate-50"
-                  )}
-                >
+          <div className="space-y-4">
+            <div className="sm:hidden">
+              <div className="relative pb-4 pt-4">
+                <div className="relative mx-4">
                   <div
-                    className={clsx(
-                      "flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-semibold",
-                      reached
-                        ? "border-emerald-500 bg-white text-emerald-700"
-                        : "border-slate-300 bg-white text-slate-400"
-                    )}
-                  >
-                    {index + 1}
-                  </div>
-                  <div className="text-sm font-medium text-slate-800">
-                    {dictionary[step.labelKey] as string}
-                  </div>
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 h-1.5 rounded-full bg-slate-200"
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none flowing-line absolute inset-0 h-1.5 origin-left rounded-full bg-emerald-500 transition-transform duration-500 ease-out"
+                    style={{ transform: `scaleX(${animationProgress})` }}
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-lg ring-4 ring-white transition-all duration-500 ease-out"
+                    style={{ left: `${progressPercent}%` }}
+                  />
                 </div>
-              );
-            })}
+                <div className="relative mt-4 flex items-start justify-between px-4">
+                  {STATUS_STEPS.map((step, index) => {
+                    const reached = animatedStep >= index;
+                    const isActive = animatedStep === index && !isClosed;
+                    return (
+                      <div
+                        key={step.key}
+                        className="flex flex-col items-center gap-1 text-center"
+                      >
+                        <div
+                          className={clsx(
+                            "relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 text-xs font-semibold transition-all duration-300 ease-out",
+                            reached
+                              ? "border-emerald-500 bg-white text-emerald-700 shadow-sm"
+                              : "border-slate-300 bg-white text-slate-400"
+                          )}
+                        >
+                          {isActive && (
+                            <span className="pointer-events-none absolute inset-0 rounded-full bg-emerald-100/70 animate-ping" />
+                          )}
+                          <span className="relative">{index + 1}</span>
+                        </div>
+                        <span
+                          className={clsx(
+                            "text-[11px] font-medium",
+                            reached ? "text-emerald-700" : "text-slate-500"
+                          )}
+                        >
+                          {dictionary[step.labelKey] as string}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="hidden sm:block">
+              <div className="relative pt-6">
+                <div className="relative mx-8">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 h-1.5 rounded-full bg-slate-200"
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none flowing-line absolute inset-0 h-1.5 origin-left rounded-full bg-emerald-500 transition-transform duration-500 ease-out"
+                    style={{ transform: `scaleX(${animationProgress})` }}
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 shadow-xl ring-4 ring-white transition-all duration-500 ease-out"
+                    style={{ left: `${progressPercent}%` }}
+                  />
+                </div>
+                <div className="relative mt-6 grid gap-3 px-4 sm:grid-cols-4 sm:px-8">
+                  {STATUS_STEPS.map((step, index) => {
+                    const reached = animatedStep >= index;
+                    const isActive = animatedStep === index && !isClosed;
+                    return (
+                      <div
+                        key={step.key}
+                        className={clsx(
+                          "flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-300 ease-out",
+                          reached
+                            ? "border-emerald-200 bg-white shadow"
+                            : "border-slate-200 bg-slate-50"
+                        )}
+                      >
+                        <div
+                          className={clsx(
+                            "relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 text-sm font-semibold transition-all duration-300 ease-out",
+                            reached
+                              ? "border-emerald-500 bg-white text-emerald-700 shadow-sm"
+                              : "border-slate-300 bg-white text-slate-400"
+                          )}
+                        >
+                          {isActive && (
+                            <span className="pointer-events-none absolute inset-0 rounded-full bg-emerald-100/80 animate-ping" />
+                          )}
+                          <span className="relative">{index + 1}</span>
+                        </div>
+                        <div
+                          className={clsx(
+                            "text-sm font-semibold",
+                            reached ? "text-emerald-800" : "text-slate-600"
+                          )}
+                        >
+                          {dictionary[step.labelKey] as string}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
           {cancelled && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {dictionary.cancelledCopy}
-              {order.cancelReason ? ` - ${order.cancelReason}` : null}
+              <p>{dictionary.cancelledCopy}</p>
+              {order.cancelReason && (
+                <p className="mt-2 text-sm text-red-900">
+                  <span className="font-semibold">
+                    {dictionary.cancelledReasonLabel ?? "Reason"}:
+                  </span>{" "}
+                  {order.cancelReason}
+                </p>
+              )}
             </div>
           )}
           {delivered && (
@@ -358,9 +493,9 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               {dictionary.deliveredCopy ?? "Your order has been delivered. Thank you!"}
             </div>
           )}
-          {!isClosed && order.status === "order_processing" && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              {dictionary.orderProcessingSubtitle}
+          {reviewNotice && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {reviewNotice}
             </div>
           )}
           {isClosed && (

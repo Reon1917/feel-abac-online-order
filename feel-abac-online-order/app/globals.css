@@ -153,3 +153,28 @@ body {
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
 }
+
+.flowing-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.flowing-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: -50%;
+  width: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: order-flow 1.3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes order-flow {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
