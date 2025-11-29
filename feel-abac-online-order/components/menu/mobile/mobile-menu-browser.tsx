@@ -179,25 +179,25 @@ export function MobileMenuBrowser({
 
   return (
     <div className={styles.mobileRoot}>
-      <header>
-        <p className={styles.headerSubtitle}>{browser.mobileSubtitle}</p>
-      </header>
-
       <div className={styles.controlRow}>
-        <label className={styles.searchField}>
-          <Search className={styles.searchIcon} aria-hidden="true" />
-          <input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder={browser.searchPlaceholder}
-            className={styles.searchInput}
-          />
-        </label>
+        <div className={styles.searchRow}>
+          <label className={styles.searchField}>
+            <Search className={styles.searchIcon} aria-hidden="true" />
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder={browser.searchPlaceholder}
+              className={styles.searchInput}
+            />
+          </label>
 
-        <MenuLanguageToggle
-          labels={common.menuLanguageToggle}
-          className="w-full"
-        />
+          <MenuLanguageToggle
+            labels={common.menuLanguageToggle}
+            className={styles.languageToggle}
+            hideLabel
+            dropdownAlign="end"
+          />
+        </div>
 
         <div className={styles.categoryList}>
           {categoryTabs.map((tab) => (
