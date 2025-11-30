@@ -59,7 +59,8 @@ export function OrderDetailModal({
         <DialogHeader>
           <div className="flex items-center justify-between gap-4">
             <DialogTitle className="text-xl font-bold sm:text-2xl">
-              {dictionary.orderIdLabel} {order.displayId}
+              <span className="text-slate-500">{dictionary.orderIdLabel}</span>{" "}
+              <span className="text-emerald-600">{order.displayId}</span>
             </DialogTitle>
             <span
               className={clsx(
@@ -101,7 +102,7 @@ export function OrderDetailModal({
           <h3 className="text-sm font-semibold text-slate-700">
             {dictionary.itemsTitle ?? "Items"}
           </h3>
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 bg-white">
             {/* Table Header */}
             <div className="grid grid-cols-[2.5rem_3.5rem_1fr] gap-3 border-b-2 border-slate-300 bg-slate-100 px-4 py-2 sm:grid-cols-[3rem_4rem_1fr] sm:gap-4 sm:px-5 sm:py-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Qty</span>
@@ -110,7 +111,7 @@ export function OrderDetailModal({
             </div>
             
             {/* Table Body */}
-            <div className="divide-y divide-slate-200">
+            <div className="max-h-80 overflow-y-auto divide-y divide-slate-200 scrollbar-thin scrollbar-thumb-slate-200">
               {order.items.map((item) => {
                 const choicesStr = item.choices.length > 0
                   ? item.choices.map((c) => c.optionName).join(", ")
