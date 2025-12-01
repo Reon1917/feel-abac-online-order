@@ -133,6 +133,12 @@ body {
   }
 }
 
+@layer utilities {
+  .wrap-break-word {
+    @apply break-words;
+  }
+}
+
 .admin-light-surface {
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
