@@ -75,10 +75,6 @@ export function ArchivedOrdersClient({ initialOrders, dictionary }: Props) {
     [dictionary.errorLoading]
   );
 
-  const handleStatusUpdated = useCallback(() => {
-    // Archived orders are read-only, so we just close the modal
-  }, []);
-
   if (orders.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
@@ -160,7 +156,6 @@ export function ArchivedOrdersClient({ initialOrders, dictionary }: Props) {
         open={modalOpen}
         onOpenChange={setModalOpen}
         dictionary={dictionary}
-        onStatusUpdated={handleStatusUpdated}
       />
     </div>
   );

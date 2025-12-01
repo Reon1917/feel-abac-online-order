@@ -35,6 +35,10 @@ const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }>
     { key: "delivered", labelKey: "statusDelivered" },
   ];
 
+const PAYMENT_REVIEW_STATUSES = new Set<OrderStatus>([
+  "food_payment_review",
+]);
+
 function resolveStep(status: OrderStatus) {
   switch (status) {
     case "order_processing":
@@ -242,6 +246,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const cancelled = order.status === "cancelled";
   const delivered = order.status === "delivered";
   const isClosed = cancelled || delivered;
+  const showPaymentReviewWarning = PAYMENT_REVIEW_STATUSES.has(order.status);
 
   // Handle cleanup and navigation back to menu
   const handleBackToMenu = useCallback(() => {
@@ -317,50 +322,89 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
           <p className="text-sm font-semibold text-slate-700">
             {dictionary.trackerLabel}
           </p>
-          <div className="grid gap-3 sm:grid-cols-4">
-            {STATUS_STEPS.map((step, index) => {
-              const reached = currentStep >= index;
-              return (
-                <div
-                  key={step.key}
-                  className={clsx(
-                    "flex items-center gap-3 rounded-xl border px-3 py-3",
-                    reached
-                      ? "border-emerald-200 bg-emerald-50"
-                      : "border-slate-200 bg-slate-50"
-                  )}
-                >
-                  <div
-                    className={clsx(
-                      "flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-semibold",
-                      reached
-                        ? "border-emerald-500 bg-white text-emerald-700"
-                        : "border-slate-300 bg-white text-slate-400"
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-2 sm:flex sm:items-center">
+              {STATUS_STEPS.map((step, index) => {
+                const reached = currentStep >= index;
+                const passed = currentStep > index;
+                const isLast = index === STATUS_STEPS.length - 1;
+                return (
+                  <div key={step.key} className="relative flex flex-1 items-center justify-center">
+                    {index > 0 && (
+                      <span
+                        className={clsx(
+                          "absolute left-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 rounded-full",
+                          currentStep >= index
+                            ? cancelled
+                              ? "bg-red-400"
+                              : "bg-emerald-400"
+                            : "bg-slate-200"
+                        )}
+                      />
                     )}
-                  >
-                    {index + 1}
+                    {!isLast && (
+                      <span
+                        className={clsx(
+                          "absolute right-0 top-1/2 h-0.5 w-1/2 -translate-y-1/2 rounded-full",
+                          passed
+                            ? cancelled
+                              ? "bg-red-400"
+                              : "bg-emerald-400"
+                            : "bg-slate-200"
+                        )}
+                      />
+                    )}
+                    <div
+                      className={clsx(
+                        "relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-colors sm:h-7 sm:w-7",
+                        reached
+                          ? cancelled
+                            ? "border-red-500 bg-red-500 text-white"
+                            : "border-emerald-500 bg-emerald-500 text-white"
+                          : "border-slate-300 bg-white text-slate-400"
+                      )}
+                    >
+                      {index + 1}
+                    </div>
                   </div>
-                  <div className="text-sm font-medium text-slate-800">
-                    {dictionary[step.labelKey] as string}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center text-xs font-medium text-slate-600 sm:text-sm">
+              {STATUS_STEPS.map((step) => {
+                const label = dictionary[step.labelKey] as string;
+                return (
+                  <span key={step.key} className="block">
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
           </div>
+          {showPaymentReviewWarning && !isClosed && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="font-semibold">{dictionary.paymentReviewWarningTitle}</p>
+              <p className="mt-1 text-sm text-amber-700">
+                {dictionary.paymentReviewWarningBody}
+              </p>
+            </div>
+          )}
           {cancelled && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {dictionary.cancelledCopy}
-              {order.cancelReason ? ` - ${order.cancelReason}` : null}
+              <p>{dictionary.cancelledCopy}</p>
+              {order.cancelReason ? (
+                <p className="mt-1 text-sm text-red-800">
+                  <span className="font-semibold">
+                    {dictionary.cancelReasonDisplayLabel ?? "Reason"}:
+                  </span>{" "}
+                  {order.cancelReason}
+                </p>
+              ) : null}
             </div>
           )}
           {delivered && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {dictionary.deliveredCopy ?? "Your order has been delivered. Thank you!"}
-            </div>
-          )}
-          {!isClosed && order.status === "order_processing" && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              {dictionary.orderProcessingSubtitle}
             </div>
           )}
           {isClosed && (

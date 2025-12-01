@@ -306,14 +306,14 @@ export function MenuBrowser({
           />
         </label>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="mt-5 -mx-2 flex items-center gap-2 overflow-x-auto pb-1 pl-2 pr-2 scrollbar-custom">
           {categoryTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleCategoryChange(tab.id)}
               aria-pressed={activeCategory === tab.id}
               className={clsx(
-                "rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
+                "rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 shrink-0",
                 activeCategory === tab.id
                   ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700"

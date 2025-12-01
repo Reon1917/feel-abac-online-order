@@ -16,6 +16,7 @@ type DeliveryLocationMapProps = {
   location?: DeliveryLocationOption | null;
   coordinates?: LatLngPoint | null;
   className?: string;
+  onMapClick?: () => void;
 };
 
 const PLACEHOLDER_LABELS = {
@@ -50,8 +51,10 @@ export function DeliveryLocationMap({
   location = null,
   coordinates = null,
   className,
+  onMapClick,
 }: DeliveryLocationMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
+  
   const resolvedCoordinates = useMemo(() => {
     if (coordinates) {
       return coordinates;
@@ -65,6 +68,7 @@ export function DeliveryLocationMap({
     () => resolvedCoordinates ?? DEFAULT_LOCATION_COORDINATE,
     [resolvedCoordinates]
   );
+  
   const shouldShowMarker = Boolean(resolvedCoordinates);
   const hasSelection = Boolean(location) || Boolean(coordinates);
 
@@ -110,23 +114,38 @@ export function DeliveryLocationMap({
 
   return (
     <div className={containerClassName}>
-      <div className="relative h-full w-full">
+      <div 
+        className="relative h-full w-full cursor-pointer"
+        onClick={onMapClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onMapClick?.();
+          }
+        }}
+      >
         <GoogleMap
           center={center}
           zoom={shouldShowMarker ? 16 : 13}
           options={{
             disableDefaultUI: true,
             clickableIcons: false,
-            draggable: true,
-            gestureHandling: "greedy",
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-        }}
-        mapContainerStyle={{ height: "100%", width: "100%" }}
-      >
-          {shouldShowMarker ? <MarkerF position={center} /> : null}
+            draggable: false,
+            zoomControl: false,
+            scrollwheel: false,
+            gestureHandling: "none",
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          }}
+          mapContainerStyle={{ height: "100%", width: "100%" }}
+        >
+          {shouldShowMarker && resolvedCoordinates ? (
+            <MarkerF position={resolvedCoordinates} />
+          ) : null}
         </GoogleMap>
+
 
         {!shouldShowMarker ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

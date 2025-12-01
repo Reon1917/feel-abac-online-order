@@ -43,5 +43,8 @@
   "copyCode": "Copy code",
   "copied": "Copied",
   "qrUnavailable": "QR unavailable right now. Please refresh.",
-  "awaitingPaymentCopy": "We'll start cooking after you pay and upload the receipt."
+  "awaitingPaymentCopy": "We'll start cooking after you pay and upload the receipt.",
+  "paymentReviewWarningTitle": "Hang tight while we review your payment",
+  "paymentReviewWarningBody": "Please keep this page open so we can confirm your slip and update the status instantly.",
+  "cancelReasonDisplayLabel": "Reason provided"
 }

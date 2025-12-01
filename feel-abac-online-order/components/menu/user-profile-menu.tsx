@@ -70,6 +70,7 @@ export function UserProfileMenu({
             "inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-2.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-400 sm:px-4",
             className
           )}
+          suppressHydrationWarning
         >
           <MenuIcon className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline" aria-hidden="true">
