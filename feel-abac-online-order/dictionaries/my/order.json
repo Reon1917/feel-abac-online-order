@@ -43,8 +43,8 @@
   "copyCode": "Copy code",
   "copied": "Copied",
   "qrUnavailable": "QR unavailable right now. Please refresh.",
-  "awaitingPaymentCopy": "We'll start cooking after you pay and upload the receipt.",
-  "paymentReviewWarningTitle": "Hang tight while we review your payment",
-  "paymentReviewWarningBody": "Please keep this page open so we can confirm your slip and update the status instantly.",
-  "cancelReasonDisplayLabel": "Reason provided"
+  "awaitingPaymentCopy": "ငွေပေးချေမှုပြီးဆုံးပါက အချက်အလက်တင်သွင်းပြီးရင် စားဖိုမှူးများကို စတင်ချက်ပြမည်။",
+  "paymentReviewWarningTitle": "ငွေပေးချေမှုကို ကျနော်တို့ စစ်ဆေးနေပါသည်",
+  "paymentReviewWarningBody": "ကျေးဇူးပြု၍ ဤစာမျက်နှာကို ဖွင့်ထားပါ၊ ကျနော်တို့ သင့်စလစ်ကို အတည်ပြု၍ အဆင့်ကို ခဏတွင် အပ်ဒိတ်လုပ်ပါမည်။",
+  "cancelReasonDisplayLabel": "ပေးပို့ထားသောအကြောင်းပြချက်"
 }

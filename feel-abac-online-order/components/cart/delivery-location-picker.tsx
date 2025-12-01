@@ -71,6 +71,8 @@ export function DeliveryLocationPicker({
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [customCoordinates, setCustomCoordinates] = useState<LatLngPoint | null>(null);
   const [showCustomMap, setShowCustomMap] = useState(false);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
+  const [mapDraftCoordinates, setMapDraftCoordinates] = useState<LatLngPoint | null>(null);
   const [showFullCustomSummary, setShowFullCustomSummary] = useState(false);
   const [isEditingCustom, setIsEditingCustom] = useState(false);
   const [lastAutocompleteValue, setLastAutocompleteValue] = useState<string | null>(null);
@@ -128,7 +130,6 @@ export function DeliveryLocationPicker({
   const fetchPlaceGeometry = useCallback(async (placeId: string) => {
     if (placeDetailsCacheRef.current.has(placeId)) {
       setCustomCoordinates(placeDetailsCacheRef.current.get(placeId) ?? null);
-      setShowCustomMap(true);
       return;
     }
 
@@ -143,7 +144,6 @@ export function DeliveryLocationPicker({
         };
         setCustomCoordinates(coords);
         placeDetailsCacheRef.current.set(placeId, coords);
-        setShowCustomMap(true);
         resetSessionToken();
         if (process.env.NODE_ENV !== "production") {
           console.info("[places] details:ids-only", { cached: false });
@@ -158,7 +158,6 @@ export function DeliveryLocationPicker({
           };
           setCustomCoordinates(coords);
           placeDetailsCacheRef.current.set(placeId, coords);
-          setShowCustomMap(true);
           resetSessionToken();
           if (process.env.NODE_ENV !== "production") {
             console.info("[places] details:standard", { cached: false });
@@ -617,308 +616,396 @@ export function DeliveryLocationPicker({
     }
   };
 
+  const handleOpenMapPicker = () => {
+    setMapDraftCoordinates(customCoordinates);
+    setIsMapPickerOpen(true);
+    setShouldLoadMaps(true);
+  };
+
+  const handleCloseMapPicker = () => {
+    setIsMapPickerOpen(false);
+  };
+
+  const handleConfirmMapPicker = () => {
+    setCustomCoordinates(mapDraftCoordinates ?? null);
+    setShowCustomMap(Boolean(mapDraftCoordinates));
+    setIsMapPickerOpen(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={clsx(
-            "rounded-full border-slate-200 text-xs font-semibold text-slate-700",
-            triggerClassName
-          )}
-        >
-          {triggerLabel}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{dictionary.modal.title}</DialogTitle>
-          <DialogDescription>{dictionary.modal.subtitle}</DialogDescription>
-        </DialogHeader>
-
-        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
-          <button
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button
             type="button"
-            onClick={() => setMode("preset")}
+            variant="outline"
+            size="sm"
             className={clsx(
-              "flex-1 rounded-full py-2 transition",
-              mode === "preset"
-                ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
-                : "text-slate-500"
-            )}
-            aria-live="polite"
-          >
-            {dictionary.modal.savedTab}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("custom")}
-            className={clsx(
-              "flex-1 rounded-full py-2 transition",
-              mode === "custom"
-                ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
-                : "text-slate-500"
+              "rounded-full border-slate-200 text-xs font-semibold text-slate-700",
+              triggerClassName
             )}
           >
-            {dictionary.modal.customTab}
-          </button>
-        </div>
+            {triggerLabel}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{dictionary.modal.title}</DialogTitle>
+            <DialogDescription>{dictionary.modal.subtitle}</DialogDescription>
+          </DialogHeader>
 
-        {mode === "preset" ? (
-          <div className="space-y-5">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-slate-800">
-                {dictionary.modal.condoLabel}
-              </label>
-              <Select
-                value={locationId}
-                onValueChange={setLocationId}
-              >
-                <SelectTrigger
-                  className={clsx(
-                    "w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14",
-                    error ? "border-red-500" : "border-slate-200"
-                  )}
-                >
-                  <SelectValue placeholder={dictionary.modal.condoPlaceholder} />
-                </SelectTrigger>
-                <SelectContent 
-                  className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
-                  position="popper"
-                  sideOffset={4}
-                >
-                  {locations.map((location) => (
-                    <SelectItem
-                      key={location.id}
-                      value={location.id}
-                      textValue={`${location.condoName} (฿${location.minFee}–${location.maxFee})`}
-                      className="py-3.5 px-3 text-sm min-h-16 cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
-                    >
-                      <div className="flex flex-col gap-1 w-full pr-6">
-                        <span className="font-medium text-slate-900 leading-tight">
-                          {location.condoName}
-                        </span>
-                        <span className="text-xs text-slate-500">
-                          ฿{location.minFee}–{location.maxFee}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-600">
+            <button
+              type="button"
+              onClick={() => setMode("preset")}
+              className={clsx(
+                "flex-1 rounded-full py-2 transition",
+                mode === "preset"
+                  ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
+                  : "text-slate-500"
+              )}
+              aria-live="polite"
+            >
+              {dictionary.modal.savedTab}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("custom")}
+              className={clsx(
+                "flex-1 rounded-full py-2 transition",
+                mode === "custom"
+                  ? "bg-white text-slate-900 shadow-sm shadow-emerald-100"
+                  : "text-slate-500"
+              )}
+            >
+              {dictionary.modal.customTab}
+            </button>
+          </div>
 
-            {hasBuildings ? (
+          {mode === "preset" ? (
+            <div className="space-y-5">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-semibold text-slate-800">
-                  {dictionary.modal.buildingLabel}
+                  {dictionary.modal.condoLabel}
                 </label>
                 <Select
-                  value={buildingId}
-                  onValueChange={setBuildingId}
-                  disabled={!locationId}
+                  value={locationId}
+                  onValueChange={setLocationId}
                 >
-                  <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <SelectValue placeholder={dictionary.modal.buildingPlaceholder} />
+                  <SelectTrigger
+                    className={clsx(
+                      "w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14",
+                      error ? "border-red-500" : "border-slate-200"
+                    )}
+                  >
+                    <SelectValue placeholder={dictionary.modal.condoPlaceholder} />
                   </SelectTrigger>
-                  <SelectContent 
+                  <SelectContent
                     className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
                     position="popper"
                     sideOffset={4}
                   >
-                    {activeLocation?.buildings.map((building) => (
+                    {locations.map((location) => (
                       <SelectItem
-                        key={building.id}
-                        value={building.id}
-                        className="py-3.5 px-3 text-sm min-h-12 cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
+                        key={location.id}
+                        value={location.id}
+                        textValue={`${location.condoName} (฿${location.minFee}–${location.maxFee})`}
+                        className="py-3.5 px-3 text-sm min-h-16 cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
                       >
-                        <span className="font-medium text-slate-900 leading-tight">
-                          {building.label}
-                        </span>
+                        <div className="flex flex-col gap-1 w-full pr-6">
+                          <span className="font-medium text-slate-900 leading-tight">
+                            {location.condoName}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            ฿{location.minFee}–{location.maxFee}
+                          </span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            ) : null}
 
-            {activeLocation?.notes ? (
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-xs text-emerald-900">
-                {activeLocation.notes}
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {hasDisplayCustom && !isEditingCustom ? (
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
-                  <div className="min-w-0 space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                      {dictionary.modal.customSavedLabel ?? "Saved custom address"}
-                    </p>
-                    <p
-                      className={clsx(
-                        "text-sm font-semibold text-slate-900",
-                        showFullCustomSummary
-                          ? "whitespace-normal break-words"
-                          : "line-clamp-2 break-words"
-                      )}
-                      title={customCondo || displayedCustomSelection?.customCondoName}
+              {hasBuildings ? (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-slate-800">
+                    {dictionary.modal.buildingLabel}
+                  </label>
+                  <Select
+                    value={buildingId}
+                    onValueChange={setBuildingId}
+                    disabled={!locationId}
+                  >
+                    <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <SelectValue placeholder={dictionary.modal.buildingPlaceholder} />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
+                      position="popper"
+                      sideOffset={4}
                     >
-                      {customCondo || displayedCustomSelection?.customCondoName}
-                    </p>
-                    {(customBuilding || displayedCustomSelection?.customBuildingName) && (
+                      {activeLocation?.buildings.map((building) => (
+                        <SelectItem
+                          key={building.id}
+                          value={building.id}
+                          className="py-3.5 px-3 text-sm min-h-12 cursor-pointer hover:bg-emerald-50 focus:bg-emerald-50"
+                        >
+                          <span className="font-medium text-slate-900 leading-tight">
+                            {building.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
+              {activeLocation?.notes ? (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-xs text-emerald-900">
+                  {activeLocation.notes}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {hasDisplayCustom && !isEditingCustom ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between md:gap-4">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                        {dictionary.modal.customSavedLabel ?? "Saved custom address"}
+                      </p>
                       <p
                         className={clsx(
-                          "text-[12px] text-slate-600",
+                          "text-sm font-semibold text-slate-900",
                           showFullCustomSummary
                             ? "whitespace-normal break-words"
                             : "line-clamp-2 break-words"
                         )}
-                        title={customBuilding || displayedCustomSelection?.customBuildingName}
+                        title={customCondo || displayedCustomSelection?.customCondoName}
                       >
-                        {customBuilding || displayedCustomSelection?.customBuildingName}
+                        {customCondo || displayedCustomSelection?.customCondoName}
                       </p>
-                    )}
-                  {showCustomMap && (
-                    <div className="mt-2 rounded-xl border border-slate-200 bg-white/60 p-2">
-                      <DeliveryLocationMap
-                        location={null}
-                        coordinates={customCoordinates}
-                      />
+                      {(customBuilding || displayedCustomSelection?.customBuildingName) && (
+                        <p
+                          className={clsx(
+                            "text-[12px] text-slate-600",
+                            showFullCustomSummary
+                              ? "whitespace-normal break-words"
+                              : "line-clamp-2 break-words"
+                          )}
+                          title={customBuilding || displayedCustomSelection?.customBuildingName}
+                        >
+                          {customBuilding || displayedCustomSelection?.customBuildingName}
+                        </p>
+                      )}
+                      {customCoordinates ? (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {dictionary.modal.mapPreviewSavedHelper ??
+                            "Pin set on map for this address."}
+                        </p>
+                      ) : null}
                     </div>
-                  )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-[12px] font-semibold">
-                    <button
-                      type="button"
-                      className="text-emerald-700 hover:text-emerald-800"
-                      onClick={() => setShowFullCustomSummary((prev) => !prev)}
-                    >
-                      {showFullCustomSummary
-                        ? dictionary.modal.customCollapse ?? "Show less"
-                        : dictionary.modal.customExpand ?? "Show full"}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-slate-700 hover:text-slate-900"
-                      onClick={() => setIsEditingCustom(true)}
-                    >
-                      {dictionary.modal.customEdit ?? "Edit address"}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-3 text-[12px] font-semibold">
+                      <button
+                        type="button"
+                        className="text-emerald-700 hover:text-emerald-800"
+                        onClick={() => setShowFullCustomSummary((prev) => !prev)}
+                      >
+                        {showFullCustomSummary
+                          ? dictionary.modal.customCollapse ?? "Show less"
+                          : dictionary.modal.customExpand ?? "Show full"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-slate-700 hover:text-slate-900"
+                        onClick={() => setIsEditingCustom(true)}
+                      >
+                        {dictionary.modal.customEdit ?? "Edit address"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
-            {(!hasDisplayCustom || isEditingCustom) && (
-              <>
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-semibold text-slate-800">
-                    {dictionary.modal.customCondoLabel}
-                  </span>
-                  <Input
-                    value={customCondo}
-                    onChange={handleCustomCondoChange}
-                    placeholder={dictionary.modal.customCondoPlaceholder}
-                    className={clsx(error ? "border-red-500" : undefined)}
-                    autoComplete="off"
-                    onFocus={() => setShouldLoadMaps(true)}
-                  />
-                  <p className="text-[11px] text-slate-500">
-                    Smart location suggestions appear as you type; map preview stays optional.
-                  </p>
-                  {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
-                    <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <ul className="max-h-60 overflow-y-auto py-1">
-                        {placePredictions.map((prediction) => (
-                          <li key={prediction.place_id ?? prediction.description}>
-                            <button
-                              type="button"
-                              onClick={() => handlePredictionSelect(prediction)}
-                              className="w-full px-4 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50"
-                            >
-                              <p className="text-sm font-medium text-slate-900">
-                                {prediction.structured_formatting?.main_text ?? prediction.description}
-                              </p>
-                              {prediction.structured_formatting?.secondary_text ? (
-                                <p className="text-xs text-slate-500">
-                                  {prediction.structured_formatting.secondary_text}
-                                </p>
-                              ) : null}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
-                        Smart location search
-                      </p>
-                    </div>
-                  ) : null}
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-semibold text-slate-800">
-                    {dictionary.modal.customBuildingLabel}
-              </span>
-              <Input
-                value={customBuilding}
-                onChange={(event) => setCustomBuilding(event.target.value)}
-                placeholder={
-                  dictionary.modal.customBuildingPlaceholder ??
-                  "Add building (optional)"
-                }
-              />
-            </label>
-                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-                  {dictionary.modal.customHelper}
-                </p>
-                <div className="rounded-2xl border border-slate-200 bg-white/60 p-2">
-                  {showCustomMap ? (
-                    <DeliveryLocationMap
-                      location={null}
-                      coordinates={customCoordinates}
+              ) : null}
+              {(!hasDisplayCustom || isEditingCustom) && (
+                <>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="font-semibold text-slate-800">
+                      {dictionary.modal.customCondoLabel}
+                    </span>
+                    <Input
+                      value={customCondo}
+                      onChange={handleCustomCondoChange}
+                      placeholder={dictionary.modal.customCondoPlaceholder}
+                      className={clsx(error ? "border-red-500" : undefined)}
+                      autoComplete="off"
+                      onFocus={() => setShouldLoadMaps(true)}
                     />
-                  ) : (
-                    <div className="flex h-48 w-full items-center justify-between rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-800">
-                          {dictionary.modal.mapPreviewTitle ?? "Map preview"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {dictionary.modal.mapPreviewHelper ?? "Map loads after you pick a location."}
+                    <p className="text-[11px] text-slate-500">
+                      Smart location suggestions appear as you type; map preview stays optional.
+                    </p>
+                    {canUsePlacesAutocomplete && placePredictions.length > 0 ? (
+                      <div className="mt-2 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <ul className="max-h-60 overflow-y-auto py-1">
+                          {placePredictions.map((prediction) => (
+                            <li key={prediction.place_id ?? prediction.description}>
+                              <button
+                                type="button"
+                                onClick={() => handlePredictionSelect(prediction)}
+                                className="w-full px-4 py-2 text-left hover:bg-emerald-50 focus:bg-emerald-50"
+                              >
+                                <p className="text-sm font-medium text-slate-900">
+                                  {prediction.structured_formatting?.main_text ??
+                                    prediction.description}
+                                </p>
+                                {prediction.structured_formatting?.secondary_text ? (
+                                  <p className="text-xs text-slate-500">
+                                    {prediction.structured_formatting.secondary_text}
+                                  </p>
+                                ) : null}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="px-4 pb-2 text-right text-[10px] uppercase tracking-wide text-slate-400">
+                          Smart location search
                         </p>
                       </div>
+                    ) : null}
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    <span className="font-semibold text-slate-800">
+                      {dictionary.modal.customBuildingLabel}
+                    </span>
+                    <Input
+                      value={customBuilding}
+                      onChange={(event) => setCustomBuilding(event.target.value)}
+                      placeholder={
+                        dictionary.modal.customBuildingPlaceholder ??
+                        "Add building (optional)"
+                      }
+                    />
+                  </label>
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                    {dictionary.modal.customHelper}
+                  </p>
+                  <div className="rounded-2xl border border-slate-200 bg-white/60 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {dictionary.modal.mapPreviewTitle ?? "Set location on map"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {dictionary.modal.mapPreviewHelper ??
+                            "Optional but helps riders find you faster."}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500"
+                        onClick={handleOpenMapPicker}
+                      >
+                        {dictionary.modal.mapPreviewTitle ?? "Set location on map"}
+                      </Button>
                     </div>
-                  )}
-                </div>
-              </>
-            )}
+                    {showCustomMap && customCoordinates ? (
+                      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white/80">
+                        <DeliveryLocationMap
+                          location={null}
+                          coordinates={customCoordinates}
+                          className="pointer-events-none h-40"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              {dictionary.modal.cancel}
+            </Button>
+            <Button
+              type="button"
+              className="bg-emerald-600 text-white hover:bg-emerald-500"
+              onClick={handleSave}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? dictionary.modal.saving : actionLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {mode === "custom" && isMapPickerOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-slate-900/50"
+            aria-hidden="true"
+            onClick={handleCloseMapPicker}
+          />
+          <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-6 sm:items-center">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={dictionary.modal.mapPreviewTitle ?? "Set location on map"}
+              className="flex w-full max-w-lg flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                  {dictionary.modal.mapPreviewTitle ?? "Set location on map"}
+                </p>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {customCondo || displayedCustomSelection?.customCondoName || triggerLabel}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {dictionary.modal.mapPreviewHelper ??
+                    "Tap once to drop the pin, then confirm."}
+                </p>
+              </div>
+
+              <div className="mt-3 h-[50vh] sm:h-[60vh]">
+                <DeliveryLocationMap
+                  location={null}
+                  coordinates={mapDraftCoordinates ?? customCoordinates}
+                  selectable
+                  onSelectCoordinates={setMapDraftCoordinates}
+                  className="h-full"
+                />
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleCloseMapPicker}
+                >
+                  {dictionary.modal.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1 bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-60"
+                  onClick={handleConfirmMapPicker}
+                  disabled={!mapDraftCoordinates}
+                >
+                  {dictionary.modal.save}
+                </Button>
+              </div>
+            </div>
           </div>
-        )}
-
-        {error ? <p className="text-xs text-red-600">{error}</p> : null}
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={isSubmitting}
-          >
-            {dictionary.modal.cancel}
-          </Button>
-          <Button
-            type="button"
-            className="bg-emerald-600 text-white hover:bg-emerald-500"
-            onClick={handleSave}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? dictionary.modal.saving : actionLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      ) : null}
+    </>
   );
 }

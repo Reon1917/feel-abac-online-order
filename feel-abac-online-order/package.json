@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build 2>&1 | grep -v 'baseline-browser-mapping'",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "check:i18n": "node scripts/check-i18n.mjs"

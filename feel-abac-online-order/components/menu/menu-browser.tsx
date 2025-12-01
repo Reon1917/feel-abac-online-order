@@ -306,7 +306,7 @@ export function MenuBrowser({
           />
         </label>
 
-        <div className="mt-5 -mx-2 flex items-center gap-2 overflow-x-auto pb-1 pl-2 pr-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-200">
+        <div className="mt-5 -mx-2 flex items-center gap-2 overflow-x-auto pb-1 pl-2 pr-2 scrollbar-custom">
           {categoryTabs.map((tab) => (
             <button
               key={tab.id}

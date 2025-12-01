@@ -16,6 +16,8 @@ type DeliveryLocationMapProps = {
   location?: DeliveryLocationOption | null;
   coordinates?: LatLngPoint | null;
   className?: string;
+  selectable?: boolean;
+  onSelectCoordinates?: (coords: LatLngPoint) => void;
 };
 
 const PLACEHOLDER_LABELS = {
@@ -50,6 +52,8 @@ export function DeliveryLocationMap({
   location = null,
   coordinates = null,
   className,
+  selectable = false,
+  onSelectCoordinates,
 }: DeliveryLocationMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
   const resolvedCoordinates = useMemo(() => {
@@ -66,7 +70,7 @@ export function DeliveryLocationMap({
     [resolvedCoordinates]
   );
   const shouldShowMarker = Boolean(resolvedCoordinates);
-  const hasSelection = Boolean(location) || Boolean(coordinates);
+  const hasSelection = selectable || Boolean(location) || Boolean(coordinates);
 
   const containerClassName = cn(
     "h-48 w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100",
@@ -122,13 +126,25 @@ export function DeliveryLocationMap({
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
-        }}
-        mapContainerStyle={{ height: "100%", width: "100%" }}
-      >
+          }}
+          mapContainerStyle={{ height: "100%", width: "100%" }}
+          onClick={
+            selectable && onSelectCoordinates
+              ? (event) => {
+                  const latLng = event.latLng;
+                  if (!latLng) return;
+                  onSelectCoordinates({
+                    lat: latLng.lat(),
+                    lng: latLng.lng(),
+                  });
+                }
+              : undefined
+          }
+        >
           {shouldShowMarker ? <MarkerF position={center} /> : null}
         </GoogleMap>
 
-        {!shouldShowMarker ? (
+        {!shouldShowMarker && !selectable ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="h-3 w-3 rounded-full border border-white/80 bg-emerald-500/80 shadow-[0_0_18px_rgba(16,185,129,0.45)]" />
           </div>
