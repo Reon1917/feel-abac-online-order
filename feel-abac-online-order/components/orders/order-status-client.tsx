@@ -36,8 +36,6 @@ const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }>
   ];
 
 const PAYMENT_REVIEW_STATUSES = new Set<OrderStatus>([
-  "order_processing",
-  "awaiting_food_payment",
   "food_payment_review",
 ]);
 
