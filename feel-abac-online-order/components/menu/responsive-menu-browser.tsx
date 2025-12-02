@@ -35,6 +35,7 @@ type ResponsiveMenuBrowserProps = {
   appLocale: Locale;
   cartSummary: CartSummary | null;
   cartHref: string;
+  isAdmin?: boolean;
 };
 
 const MOBILE_QUERY = "(max-width: 640px)";
@@ -71,6 +72,7 @@ export function ResponsiveMenuBrowser({
   appLocale,
   cartSummary,
   cartHref,
+  isAdmin = false,
 }: ResponsiveMenuBrowserProps) {
   const router = useRouter();
   const isMobile = useMediaQuery(MOBILE_QUERY);
@@ -158,6 +160,7 @@ export function ResponsiveMenuBrowser({
           common={common}
           appLocale={appLocale}
           onQuickAdd={handleQuickAdd}
+          isAdmin={isAdmin}
         />
       ) : (
         <MenuBrowser
@@ -170,13 +173,16 @@ export function ResponsiveMenuBrowser({
           onQuickAdd={handleQuickAdd}
         />
       )}
-      <CartPeekButton
-        summary={cartSummary}
-        dictionary={dictionary.cartPeek}
-        cartHref={cartHref}
-        optimisticQuantity={optimisticTotals.quantity}
-        optimisticSubtotal={optimisticTotals.subtotal}
-      />
+      {/* Desktop-only floating cart button (hidden on mobile since bottom nav has cart) */}
+      <div className="hidden sm:block">
+        <CartPeekButton
+          summary={cartSummary}
+          dictionary={dictionary.cartPeek}
+          cartHref={cartHref}
+          optimisticQuantity={optimisticTotals.quantity}
+          optimisticSubtotal={optimisticTotals.subtotal}
+        />
+      </div>
       <CartAddAnimationOverlay />
     </MenuImageCacheProvider>
   );

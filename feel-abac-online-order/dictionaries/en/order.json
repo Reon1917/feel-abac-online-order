@@ -46,5 +46,12 @@
   "awaitingPaymentCopy": "We'll start cooking after you pay and upload the receipt.",
   "paymentReviewWarningTitle": "Hang tight while we review your payment",
   "paymentReviewWarningBody": "Please keep this page open so we can confirm your slip and update the status instantly.",
-  "cancelReasonDisplayLabel": "Reason provided"
+  "cancelReasonDisplayLabel": "Reason provided",
+  "tabOngoing": "Ongoing",
+  "tabCompleted": "Completed",
+  "tabCancelled": "Cancelled",
+  "browseMenu": "Browse Menu",
+  "listPageTitle": "Your Orders",
+  "noOrdersYet": "No orders yet",
+  "startOrdering": "Start ordering to see your order history here."
 }

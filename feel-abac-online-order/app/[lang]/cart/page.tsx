@@ -15,6 +15,7 @@ import {
 import { getActiveCartForUser } from "@/lib/cart/queries";
 import { getActiveDeliveryLocations } from "@/lib/delivery/queries";
 import type { DeliverySelection } from "@/lib/delivery/types";
+import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
 
 type PageProps = {
   params: Promise<{
@@ -28,6 +29,7 @@ export default async function CartPage({ params }: PageProps) {
   const { lang } = await params;
   const locale = lang as Locale;
   const cartDictionary = getDictionary(locale, "cart");
+  const common = getDictionary(locale, "common");
 
   const sessionData = await getSession();
   if (!sessionData?.session?.user) {
@@ -50,7 +52,7 @@ export default async function CartPage({ params }: PageProps) {
   return (
     <>
       {sessionData.isAdmin && <AdminBar />}
-      <main className="min-h-screen w-full bg-white">
+      <main className="min-h-screen w-full bg-white pb-20 sm:pb-0">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-10 sm:px-8 lg:px-10">
           <CartView
             cart={cart}
@@ -63,6 +65,7 @@ export default async function CartPage({ params }: PageProps) {
           />
         </div>
       </main>
+      <MobileBottomNav locale={locale} labels={common.mobileNav} />
     </>
   );
 }

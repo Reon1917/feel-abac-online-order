@@ -31,6 +31,7 @@ type MobileMenuBrowserProps = {
   common: CommonDictionary;
   appLocale: Locale;
   onQuickAdd?: QuickAddHandler;
+  isAdmin?: boolean;
 };
 
 const INITIAL_CATEGORY_BATCH = 4;
@@ -50,6 +51,7 @@ export function MobileMenuBrowser({
   common,
   appLocale,
   onQuickAdd,
+  isAdmin = false,
 }: MobileMenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -179,7 +181,7 @@ export function MobileMenuBrowser({
 
   return (
     <div className={styles.mobileRoot}>
-      <div className={styles.controlRow}>
+      <div className={clsx(styles.controlRow, { [styles.controlRowNoAdmin]: !isAdmin })}>
         <div className={styles.searchRow}>
           <label className={styles.searchField}>
             <Search className={styles.searchIcon} aria-hidden="true" />

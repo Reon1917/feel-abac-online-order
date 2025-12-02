@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 export function SignOutButton({
   variant = "ghost",
 }: {
-  variant?: "ghost" | "solid";
+  variant?: "ghost" | "solid" | "outline";
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -32,16 +32,22 @@ export function SignOutButton({
     });
   };
 
+  const buttonVariant =
+    variant === "solid" ? "default" : variant === "outline" ? "outline" : "ghost";
+
+  const buttonClass =
+    variant === "solid"
+      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+      : variant === "outline"
+        ? "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+        : "text-emerald-900 hover:bg-emerald-50";
+
   return (
     <Button
       onClick={handleSignOut}
       disabled={isPending}
-      variant={variant === "solid" ? "default" : "ghost"}
-      className={
-        variant === "solid"
-          ? "bg-emerald-600 text-white hover:bg-emerald-700"
-          : "text-emerald-900 hover:bg-emerald-50"
-      }
+      variant={buttonVariant}
+      className={buttonClass}
     >
       {isPending ? "Signing out..." : "Sign out"}
     </Button>

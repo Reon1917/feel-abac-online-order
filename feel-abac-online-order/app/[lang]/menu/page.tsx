@@ -1,9 +1,7 @@
-import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { AdminBar } from "@/components/admin/admin-bar";
 import { ResponsiveMenuBrowser } from "@/components/menu/responsive-menu-browser";
-import { UserProfileMenu } from "@/components/menu/user-profile-menu";
 import { getPublicMenuHierarchy } from "@/lib/menu/queries";
 import { getPublicRecommendedMenuItems } from "@/lib/menu/recommendations";
 import { getSession } from "@/lib/session";
@@ -11,9 +9,9 @@ import { getUserProfile } from "@/lib/user-profile";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
-import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { getActiveCartSummary } from "@/lib/cart/queries";
 import { ResumeOrderBanner } from "@/components/orders/resume-order-banner";
+import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
 
 type PageProps = {
   params: Promise<{
@@ -54,22 +52,8 @@ export default async function MenuPage({ params }: PageProps) {
   return (
     <>
       {sessionData.isAdmin && <AdminBar />}
-      <nav className="flex items-center justify-between bg-white px-6 py-4 sm:px-10 lg:px-12">
-        <UserProfileMenu
-          name={sessionData.session.user.name}
-          email={sessionData.session.user.email}
-          phoneNumber={profile.phoneNumber}
-          labels={common.profileMenu}
-        />
-        <Suspense fallback={<div className="w-40" />}>
-          <UiLanguageSwitcher
-            locale={locale}
-            labels={common.languageSwitcher}
-          />
-        </Suspense>
-      </nav>
-      <main className="min-h-screen w-full bg-white">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-12">
+      <main className="min-h-screen w-full bg-white pb-20 sm:pb-0">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:px-12">
           <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{dict.header.title}</h1>
@@ -91,6 +75,7 @@ export default async function MenuPage({ params }: PageProps) {
               appLocale={locale}
               cartSummary={cartSummary}
               cartHref={cartHref}
+              isAdmin={sessionData.isAdmin}
             />
           ) : (
             <section className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">
@@ -102,6 +87,7 @@ export default async function MenuPage({ params }: PageProps) {
           )}
         </div>
       </main>
+      <MobileBottomNav locale={locale} labels={common.mobileNav} />
     </>
   );
 }

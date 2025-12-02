@@ -5,7 +5,9 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { getCurrentSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
 import { withLocalePath } from "@/lib/i18n/path";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
+import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
 
 type PageProps = {
   params: Promise<{
@@ -18,6 +20,7 @@ export default async function OnboardingPage({ params }: PageProps) {
 
   const { lang } = await params;
   const locale = lang as Locale;
+  const common = getDictionary(locale, "common");
 
   const session = await getCurrentSession();
 
@@ -32,7 +35,8 @@ export default async function OnboardingPage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-10 px-6 py-16 sm:px-10 lg:px-16">
+    <>
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-10 px-6 py-16 pb-24 sm:px-10 sm:pb-16 lg:px-16">
       <header className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -61,5 +65,7 @@ export default async function OnboardingPage({ params }: PageProps) {
         </ul>
       </section>
     </main>
+    <MobileBottomNav locale={locale} labels={common.mobileNav} />
+    </>
   );
 }

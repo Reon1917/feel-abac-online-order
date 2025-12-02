@@ -10,6 +10,7 @@ import { getUserProfile } from "@/lib/user-profile";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { Locale } from "@/lib/i18n/config";
+import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
 
 type PageParams = {
   params: Promise<{
@@ -40,6 +41,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
   }
 
   const dictionary = getDictionary(locale, "menu");
+  const common = getDictionary(locale, "common");
 
   const result = await getPublicMenuItemById(normalizedItemId);
   if (!result) {
@@ -52,7 +54,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
     <>
       {sessionData.isAdmin && <AdminBar />}
 
-      <main className="min-h-screen w-full bg-white">
+      <main className="min-h-screen w-full bg-white pb-20 sm:pb-0">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-12">
           <header className="flex flex-col items-start gap-4">
             <BackToMenuLink
@@ -72,6 +74,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
           />
         </div>
       </main>
+      <MobileBottomNav locale={locale} labels={common.mobileNav} />
     </>
   );
 }
