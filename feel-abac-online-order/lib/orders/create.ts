@@ -105,14 +105,12 @@ async function broadcastWithRetry(
     }
   }
   
-  // All retries exhausted - log final failure
-  if (process.env.NODE_ENV !== "production") {
-    console.error("[createOrderFromCart] broadcast failed after all retries", {
-      orderId: context.orderId,
-      displayId: context.displayId,
-      error: lastError,
-    });
-  }
+  // All retries exhausted - always log final failure for observability
+  console.error("[createOrderFromCart] broadcast failed after all retries", {
+    orderId: context.orderId,
+    displayId: context.displayId,
+    error: lastError instanceof Error ? lastError.message : String(lastError),
+  });
   
   // TODO: Implement outbox pattern for reliable event delivery
   // Option 1: Insert into an outbox table for async retry processing
