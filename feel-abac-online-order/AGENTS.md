@@ -8,10 +8,12 @@
 
 ## Key App Routes
 - `app/[lang]/layout.tsx` and `app/[lang]/page.tsx` – bootstrap locale-aware landing plus shared shells (admin bar, language controls).
-- `app/[lang]/menu/page.tsx` – Authenticated diner browser that renders `ResponsiveMenuBrowser`, language toggle, and phone-edit modal once a user finishes onboarding.
+- `app/[lang]/menu/page.tsx` – Authenticated diner browser that renders `ResponsiveMenuBrowser` with cart peek (desktop) and shared diner navigation (bottom bar on mobile, side rail on desktop) once a user finishes onboarding.
 - `app/[lang]/menu/items/[itemId]/page.tsx` – **New detail page**. Fetches a single item via `getPublicMenuItemById`, keeps locale-aware copy via `getDictionary`, and renders `MenuItemDetail` with category context and sticky totals.
 - `app/[lang]/admin/menu/page.tsx` & `app/[lang]/admin/dashboard/page.tsx` – Primary admin workspace for managing menu hierarchy and analytics.
 - `app/[lang]/onboarding/page.tsx` – Phone verification and restaurant setup flow guarding menu access.
+- `app/[lang]/orders/page.tsx` – Diner order history list. Tabs ongoing/completed/cancelled orders using `OrdersClient` with `getOrdersForUser` summaries.
+- `app/[lang]/profile/page.tsx` – Diner profile surface. Shows account info, inline phone edit, app/menu language preferences, order history shortcut, and sign-out.
 
 ## Important API Routes
 - Diner menu feed: `app/api/menu/route.ts`.
@@ -23,6 +25,8 @@
 - Public menu cards and list rows now deep-link into the detail page (`components/menu/menu-browser.tsx`, `components/menu/mobile/mobile-menu-browser.tsx`), letting diners tap/click to review descriptions, choices, and pricing.
 - `MenuItemDetail` (`components/menu/menu-item-detail.tsx`) handles localized copy, optional notes, choice group validation (single vs multi-select), and live total computation across desktop/mobile layouts.
 - `ResponsiveMenuBrowser` switches between desktop (`MenuBrowser`) and the touch-optimized `MobileMenuBrowser`, both honoring the `MenuLanguageToggle` and search/filter UX.
+- Shared diner navigation lives in `components/menu/mobile-bottom-nav.tsx`: a fixed bottom bar on mobile and a compact left-side rail on desktop for Home/Menu, Cart, Orders, and Profile across menu, cart, order status, onboarding, and profile routes.
+- Profile & history: `ProfileClient` (`components/profile/profile-client.tsx`) centralizes phone edits, app/menu language toggles, and sign-out; `OrdersClient` (`components/orders/orders-client.tsx`) renders the diner’s order history with localized status chips and tabbed filtering.
 - Admin builder, onboarding, and menu experiences share locale + session providers via `components/i18n/menu-locale-provider` and `lib/session`.
 
 ## Build, Test, and Development Commands
@@ -51,10 +55,13 @@
 - Provide fallbacks for any new image surfaces to keep `next/image` happy when assets are missing or hosts unapproved.
 - Respect the active `[lang]` segment—route via `withLocalePath` and hydrate UI copy through `getDictionary` so English/Burmese stay aligned.
 - Always expose the menu-language toggle around menu data; persist updates through the `menuLocale` cookie/provider.
-- Neon HTTP client does **not** support transactions; prefer single-statement operations or retry-on-conflict patterns. Avoid multi-statement `db.transaction` or use idempotent retries with `onConflictDoNothing`.
+- Database clients:
+  - `src/db/client.ts` uses the Neon HTTP driver (`drizzle-orm/neon-http`) for regular queries; keep these single-statement or idempotent with retry/on-conflict patterns when you need atomicity.
+  - `src/db/tx-client.ts` uses the Neon serverless WebSocket driver (`drizzle-orm/neon-serverless` + `@neondatabase/serverless` `Pool`) and is safe for interactive `dbTx.transaction(...)` usage.
+  - The cart → order path (`lib/orders/create.ts:createOrderFromCart`) is the canonical example of an ACID-style transaction: order header, items, choices, cart status, cart cleanup, and `orderEvents` are all written inside a single `dbTx.transaction` with retry-on-conflict for daily order counters. Prefer following that pattern for any future multi-table writes that must succeed or fail together.
 - Dynamic API routes receive `params` as a Promise; always `await params` before accessing properties in route handlers to avoid Next.js “params is a Promise” errors.
 - Order system (in progress):
   - DB tables: `orders`, `order_items`, `order_item_choices`, `order_payments`, `order_events`. Orders use Bangkok day-based OR counters (`display_day`, `display_counter`, `display_id`) and THB-only amounts.
-  - Public order tracking page: `app/[lang]/orders/[displayId]/page.tsx` (customer view only). Last order ID is stored in localStorage to surface a “Return to your order” banner on the menu page.
+  - Public order tracking page: `app/[lang]/orders/[displayId]/page.tsx` (customer view only). Last order ID is stored in localStorage to surface a “Return to your order” banner on the menu page and the history list at `app/[lang]/orders/page.tsx` shows recent orders grouped by status.
   - Admin order list: `app/[lang]/admin/orders/page.tsx` with realtime Pusher updates and inline accept/cancel actions hitting `/api/admin/orders/[displayId]/status`.
   - Pusher auth uses BetterAuth + `admins` table lookup (`resolveUserId`); server envs must include `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER` and client envs `NEXT_PUBLIC_PUSHER_KEY`, `NEXT_PUBLIC_PUSHER_CLUSTER`.
