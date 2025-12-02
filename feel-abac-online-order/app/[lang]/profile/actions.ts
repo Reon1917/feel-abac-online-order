@@ -41,7 +41,9 @@ export async function updatePhoneAction(
     };
     userId = decoded.session?.user?.id ?? null;
   } catch (error) {
-    console.error("Failed to parse session header", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to parse session header", error);
+    }
     userId = null;
   }
 
@@ -56,7 +58,9 @@ export async function updatePhoneAction(
     await updateUserPhone(userId, parsed.data.phoneNumber);
     return { success: true };
   } catch (error) {
-    console.error("Failed to update phone", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to update phone", error);
+    }
     return {
       success: false,
       error: "Failed to update phone number. Please try again.",

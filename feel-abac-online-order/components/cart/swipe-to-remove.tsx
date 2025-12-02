@@ -44,7 +44,9 @@ export function SwipeToRemove({
       const result = await onRemove();
       return result !== false;
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       return false;
     } finally {
       setIsRemoving(false);

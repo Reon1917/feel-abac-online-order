@@ -36,7 +36,9 @@ async function resolveSession(request: NextRequest) {
     });
     return session;
   } catch (error) {
-    console.error("proxy session error", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("proxy session error", error);
+    }
     return null;
   }
 }

@@ -38,7 +38,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ location });
   } catch (error) {
-    console.error("Failed to create delivery location", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to create delivery location", error);
+    }
     return NextResponse.json(
       { error: "Failed to create delivery location" },
       { status: 500 }

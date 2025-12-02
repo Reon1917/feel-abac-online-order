@@ -43,7 +43,9 @@ export async function completeOnboarding(prevState: { error?: string } | null, f
     };
     userId = decoded.session?.user?.id ?? null;
   } catch (error) {
-    console.error("Failed to parse session header", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to parse session header", error);
+    }
     userId = null;
   }
 

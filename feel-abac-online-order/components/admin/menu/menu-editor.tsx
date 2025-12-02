@@ -206,7 +206,9 @@ function loadDraftFromStorage(itemId: string): Partial<MenuEditorFormValues> | n
       return parsed.values;
     }
   } catch (error) {
-    console.warn("Failed to load menu draft", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to load menu draft", error);
+    }
   }
   return null;
 }
@@ -220,7 +222,9 @@ function saveDraftToStorage(itemId: string, values: Partial<MenuEditorFormValues
     };
     window.localStorage.setItem(getDraftStorageKey(itemId), JSON.stringify(payload));
   } catch (error) {
-    console.warn("Failed to persist menu draft", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist menu draft", error);
+    }
   }
 }
 
@@ -229,7 +233,9 @@ function clearDraftFromStorage(itemId: string) {
   try {
     window.localStorage.removeItem(getDraftStorageKey(itemId));
   } catch (error) {
-    console.warn("Failed to clear menu draft", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to clear menu draft", error);
+    }
   }
 }
 
@@ -610,7 +616,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
 
         toast.success("Section added");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't add that section"
         );
@@ -647,7 +655,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Section updated");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't update that section"
         );
@@ -685,7 +695,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         });
         toast.success("Section removed");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't remove that section"
         );
@@ -717,7 +729,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Sections reordered");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't reorder those sections"
         );
@@ -753,7 +767,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         toast.success("Choice added");
         return option;
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't add that choice"
         );
@@ -791,7 +807,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Choice updated");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't update that choice"
         );
@@ -817,7 +835,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       toast.success("Choice removed");
       return true;
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Couldn't remove that choice"
       );
@@ -847,7 +867,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Choices reordered");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't reorder those choices"
         );
@@ -906,7 +928,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
           itemId: menuItemId,
         });
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Image upload failed"
         );
@@ -936,7 +960,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         itemId: menuItemId,
       });
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to delete image"
       );
@@ -996,7 +1022,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
             : "Draft saved"
         );
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         const message =
           error instanceof Error ? error.message : "Failed to update item";
         setAutosaveError(message);
@@ -1031,7 +1059,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         itemId: null,
       });
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to delete item"
       );

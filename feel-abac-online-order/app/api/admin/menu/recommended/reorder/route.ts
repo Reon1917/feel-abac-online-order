@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
     revalidateTag("public-menu", "default");
     return response;
   } catch (error) {
-    console.error("[recommended/reorder] failed", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[recommended/reorder] failed", error);
+    }
     return Response.json(
       { error: "Failed to update recommendation order" },
       { status: 500 }

@@ -119,7 +119,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to update delivery preference", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to update delivery preference", error);
+    }
     return NextResponse.json(
       { error: "Failed to update delivery preference" },
       { status: 500 }

@@ -119,7 +119,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     } catch (rollbackError) {
       // Log rollback failure but still return original error
-      console.error("Failed to rollback delivery location changes:", rollbackError);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to rollback delivery location changes:", rollbackError);
+      }
     }
 
     // Return error response

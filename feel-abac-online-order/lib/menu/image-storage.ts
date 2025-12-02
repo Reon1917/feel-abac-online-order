@@ -43,7 +43,9 @@ async function processImage(buffer: Buffer): Promise<ProcessResult> {
     };
   } catch (error) {
     // Fallback: if Sharp fails for any reason, store the original bytes.
-    console.error("[menu/image-storage] sharp processing failed, using original buffer", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[menu/image-storage] sharp processing failed, using original buffer", error);
+    }
     return {
       buffer,
       contentType: "application/octet-stream",

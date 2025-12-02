@@ -30,7 +30,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to update phone number", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to update phone number", error);
+    }
     return NextResponse.json(
       { error: "Failed to update phone number" },
       { status: 500 }

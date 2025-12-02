@@ -193,7 +193,9 @@ export function MenuLayoutEditor({ initialMenu, labels }: MenuLayoutEditorProps)
       );
       hydrateState(data.menu ?? []);
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(labels.feedback.apiError);
     } finally {
       setIsRefreshing(false);
@@ -338,7 +340,9 @@ export function MenuLayoutEditor({ initialMenu, labels }: MenuLayoutEditorProps)
         toast.success(labels.feedback.success);
         await refreshMenu();
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(labels.feedback.apiError);
       } finally {
         setIsSubmitting(false);
@@ -369,7 +373,9 @@ export function MenuLayoutEditor({ initialMenu, labels }: MenuLayoutEditorProps)
       toast.success(labels.feedback.success);
       await refreshMenu();
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(labels.feedback.apiError);
     } finally {
       setIsSubmitting(false);

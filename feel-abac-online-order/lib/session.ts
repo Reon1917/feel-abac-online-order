@@ -25,7 +25,9 @@ export const getSession = cache(async (): Promise<FeelSession | null> => {
 
     return decoded;
   } catch (error) {
-    console.error("failed to resolve session", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("failed to resolve session", error);
+    }
     return null;
   }
 });
@@ -56,7 +58,9 @@ export const getCurrentSession = cache(async () => {
 
     return null;
   } catch (error) {
-    console.error("failed to resolve session", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("failed to resolve session", error);
+    }
     return null;
   }
 });

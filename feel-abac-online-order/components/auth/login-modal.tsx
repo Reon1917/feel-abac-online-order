@@ -80,7 +80,9 @@ export function LoginModal({ locale }: LoginModalProps) {
       router.push(`/${locale}/menu`);
       router.refresh();
     } catch (err) {
-      console.error("auth failed", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("auth failed", err);
+      }
       toast.error("Unable to reach the server. Please try again.");
       setIsLoading(false);
     }
@@ -98,7 +100,9 @@ export function LoginModal({ locale }: LoginModalProps) {
       // OAuth redirects, so success toast will not show
       // The page will reload after OAuth callback
     } catch (err) {
-      console.error("Google sign-in failed", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Google sign-in failed", err);
+      }
       
       // Handle specific OAuth errors
       const errorMessage = err instanceof Error ? err.message : "Google sign-in failed";

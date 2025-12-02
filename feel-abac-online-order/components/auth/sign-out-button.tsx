@@ -26,7 +26,9 @@ export function SignOutButton({
         router.push("/");
         router.refresh();
       } catch (error) {
-        console.error("Sign out failed", error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Sign out failed", error);
+        }
         toast.error("Failed to sign out. Please try again.");
       }
     });
