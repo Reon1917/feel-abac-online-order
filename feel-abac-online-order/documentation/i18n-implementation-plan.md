@@ -134,3 +134,7 @@ This approach keeps bilingual English ⇄ Burmese support lightweight by relying
 5. Wire up the validation script and populate Burmese translations.
 
 With this plan we retain clear separation of content, keep runtime logic minimal, and maintain flexibility for future pages while focusing on the English/Burmese experience today.
+
+## Open TODOs
+- Provide proper Myanmar translations for `dictionaries/my/order.json` (some strings still mirror English). Until done, ensure runtime falls back cleanly to `en` for any missing keys.
+- Localize `dictionaries/my/admin-promptpay.json` to align with the PromptPay admin UI before enabling Burmese copy on those screens.

@@ -22,6 +22,12 @@ import { getUserProfile } from "@/lib/user-profile";
 import type { OrderStatus } from "./types";
 import { broadcastOrderSubmitted } from "./realtime";
 import type { OrderSubmittedPayload } from "./events";
+import { getPusherServer } from "@/lib/pusher/server";
+import {
+  ADMIN_ORDERS_CHANNEL,
+  ORDER_SUBMITTED_EVENT,
+  buildOrderChannelName,
+} from "./events";
 
 type CreateOrderInput = {
   userId: string;
@@ -45,6 +51,74 @@ function bangkokDateString(reference: Date) {
   });
   const parts = formatter.format(reference);
   return parts;
+}
+
+/**
+ * Broadcast order submitted event with retry logic.
+ * Calls Pusher directly to detect failures (unlike broadcastOrderSubmitted which swallows errors).
+ * If all retries fail, logs the error but doesn't throw to avoid failing order creation.
+ * In production, consider implementing an outbox pattern for guaranteed delivery.
+ */
+async function broadcastWithRetry(
+  payload: OrderSubmittedPayload,
+  context: { orderId: string; displayId: string },
+  maxRetries = 3
+): Promise<void> {
+  let lastError: unknown = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const pusher = getPusherServer();
+      const channels = [
+        ADMIN_ORDERS_CHANNEL,
+        buildOrderChannelName(payload.displayId),
+      ];
+      
+      const batch = channels.map((channel) => ({
+        channel,
+        name: ORDER_SUBMITTED_EVENT,
+        data: payload,
+      }));
+      
+      await pusher.triggerBatch(batch);
+      // Success - exit early
+      return;
+    } catch (error) {
+      lastError = error;
+      
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[createOrderFromCart] broadcast attempt failed", {
+          attempt: attempt + 1,
+          maxRetries,
+          orderId: context.orderId,
+          displayId: context.displayId,
+          error,
+        });
+      }
+      
+      // Don't retry on last attempt
+      if (attempt < maxRetries - 1) {
+        // Exponential backoff: 100ms, 200ms, 400ms
+        const delayMs = 100 * Math.pow(2, attempt);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  // All retries exhausted - log final failure
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[createOrderFromCart] broadcast failed after all retries", {
+      orderId: context.orderId,
+      displayId: context.displayId,
+      error: lastError,
+    });
+  }
+  
+  // TODO: Implement outbox pattern for reliable event delivery
+  // Option 1: Insert into an outbox table for async retry processing
+  // Option 2: Enqueue to a job queue (BullMQ, Bull, etc.)
+  // Option 3: Use a transactional outbox pattern with DB polling
+  // This ensures events are eventually delivered even if Pusher is temporarily unavailable
 }
 
 async function formatDeliveryLabel(selection: DeliverySelection) {
@@ -113,7 +187,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   const deliveryLabel = await formatDeliveryLabel(deliverySelection);
   const isCustom = deliverySelection.mode === "custom";
   const result = await dbTx.transaction(
-    async (tx): Promise<{ orderId: string; displayId: string }> => {
+    async (tx): Promise<{ orderId: string; displayId: string; submittedPayload: OrderSubmittedPayload }> => {
       let orderId: string | null = null;
       let displayId: string | null = null;
       let displayCounter: number | null = null;
@@ -319,12 +393,17 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         at: bangkokNow.toISOString(),
       };
 
-      // Broadcast inside the transaction scope; failure will roll back all writes.
-      await broadcastOrderSubmitted(submittedPayload);
-
-      return { orderId, displayId };
+      // Return payload to broadcast after transaction commits
+      return { orderId, displayId, submittedPayload };
     }
   );
 
-  return result;
+  // Broadcast only after transaction has successfully committed
+  // This ensures DB writes are persisted even if broadcast fails
+  await broadcastWithRetry(result.submittedPayload, {
+    orderId: result.orderId,
+    displayId: result.displayId,
+  });
+
+  return { orderId: result.orderId, displayId: result.displayId };
 }

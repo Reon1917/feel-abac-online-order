@@ -340,3 +340,36 @@ Add to existing event system:
 - **Multiple Payment Methods**: TrueMoney QR can use same modal pattern
 - **Payment Timeout**: Auto-cancel if no payment within X hours
 - **Refund Tracking**: Add refund status/amount to `order_payments`
+
+## Implementation Checklist
+
+- **Schema**
+  - [ ] Add `promptpay_accounts` table with a partial unique index enforcing a single active account at a time.
+  - [ ] Add `order_payments` table to track `food` / `delivery` payment types and statuses.
+  - [ ] Add a `delivery_fee` column to `orders` and extend the status enum with `awaiting_delivery_fee` and `delivery_payment_review`.
+  - [ ] Generate and apply the migration.
+
+- **QR + Accounts**
+  - [ ] Implement a PromptPay QR helper (using `promptparse`) for the food total.
+  - [ ] Admin API for PromptPay accounts (list/create/delete/activate).
+  - [ ] Admin settings page to manage accounts and enforce a single active account.
+
+- **Receipts (UploadThing)**
+  - [ ] Set up UploadThing file router under the App Router, with ~100 KB targets via `sharp` compression.
+  - [ ] Receipt upload endpoint + client component for customers with preview and progress.
+  - [ ] Persist receipt metadata to `order_payments` and gate customer cancel after upload.
+
+- **Payment Flow**
+  - [ ] Payment status banner + QR modal for customers (food stage).
+  - [ ] Admin review UI to view receipt, verify, or reject with reason.
+  - [ ] Wire status transitions: upload → `food_payment_review`; admin verify → `order_in_kitchen`; admin reject → re-upload loop.
+
+- **Delivery Fee Stage**
+  - [ ] Admin modal to input delivery fee and create delivery `order_payments`.
+  - [ ] QR generation for the delivery fee.
+  - [ ] Customer upload + admin verify to move to `order_out_for_delivery`.
+
+- **Cleanup & Events**
+  - [ ] Delete UploadThing receipts on `delivered` / `cancelled`.
+  - [ ] Add Pusher events (`payment.requested`, `payment.verified`, `payment.rejected`, `delivery_fee.set`).
+  - [ ] Manual verification steps: lint and smoke-test flows.
