@@ -1,24 +1,21 @@
 "use server";
 
-import { Buffer } from "node:buffer";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
-import { db } from "@/src/db/client";
-import { userProfiles } from "@/src/db/schema";
+import { Buffer } from "node:buffer";
+import { updateUserPhone } from "@/lib/user-profile";
 import { onboardingSchema } from "@/lib/validations";
-import { encryptPhone } from "@/lib/crypto";
-import { withLocalePath } from "@/lib/i18n/path";
-import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
-import { mapToSupportedLocale } from "@/lib/i18n/utils";
 
-export async function completeOnboarding(prevState: { error?: string } | null, formData: FormData) {
+export async function updatePhoneAction(
+  _prevState: { success?: boolean; error?: string } | null,
+  formData: FormData
+) {
   const parsed = onboardingSchema.safeParse({
     phoneNumber: formData.get("phoneNumber"),
   });
 
   if (!parsed.success) {
     return {
+      success: false,
       error: parsed.error.issues[0]?.message ?? "Invalid phone number",
     };
   }
@@ -27,6 +24,7 @@ export async function completeOnboarding(prevState: { error?: string } | null, f
   const encoded = headerList.get("x-feel-session");
   if (!encoded) {
     return {
+      success: false,
       error: "You need to be signed in to continue.",
     };
   }
@@ -51,26 +49,21 @@ export async function completeOnboarding(prevState: { error?: string } | null, f
 
   if (!userId) {
     return {
+      success: false,
       error: "You need to be signed in to continue.",
     };
   }
 
-  const encryptedPhone = encryptPhone(parsed.data.phoneNumber);
-
-  await db
-    .insert(userProfiles)
-    .values({
-      id: userId,
-      phoneNumber: encryptedPhone,
-    })
-    .onConflictDoUpdate({
-      target: userProfiles.id,
-      set: {
-        phoneNumber: encryptedPhone,
-      },
-    });
-
-  const localeHeader = headerList.get("x-feel-locale");
-  const locale = mapToSupportedLocale(localeHeader) ?? DEFAULT_LOCALE;
-  redirect(withLocalePath(locale as Locale, "/menu"));
+  try {
+    await updateUserPhone(userId, parsed.data.phoneNumber);
+    return { success: true };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to update phone", error);
+    }
+    return {
+      success: false,
+      error: "Failed to update phone number. Please try again.",
+    };
+  }
 }

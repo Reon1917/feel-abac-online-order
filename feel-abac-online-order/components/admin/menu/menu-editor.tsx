@@ -206,7 +206,9 @@ function loadDraftFromStorage(itemId: string): Partial<MenuEditorFormValues> | n
       return parsed.values;
     }
   } catch (error) {
-    console.warn("Failed to load menu draft", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to load menu draft", error);
+    }
   }
   return null;
 }
@@ -220,7 +222,9 @@ function saveDraftToStorage(itemId: string, values: Partial<MenuEditorFormValues
     };
     window.localStorage.setItem(getDraftStorageKey(itemId), JSON.stringify(payload));
   } catch (error) {
-    console.warn("Failed to persist menu draft", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist menu draft", error);
+    }
   }
 }
 
@@ -229,7 +233,9 @@ function clearDraftFromStorage(itemId: string) {
   try {
     window.localStorage.removeItem(getDraftStorageKey(itemId));
   } catch (error) {
-    console.warn("Failed to clear menu draft", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to clear menu draft", error);
+    }
   }
 }
 
@@ -422,6 +428,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
   const [autosaveError, setAutosaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isChoiceMutating, setIsChoiceMutating] = useState(false);
+  const [isImageMutating, setIsImageMutating] = useState(false);
+  const [imageDialogMode, setImageDialogMode] = useState<"none" | "replace" | "remove">("none");
+
+  const isImageDialogOpen = imageDialogMode !== "none";
+  const closeImageDialog = () => setImageDialogMode("none");
 
   useEffect(() => {
     const baseValues = itemToFormValues(selectedItem, selectedCategory?.id ?? null);
@@ -605,7 +616,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
 
         toast.success("Section added");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't add that section"
         );
@@ -642,7 +655,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Section updated");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't update that section"
         );
@@ -680,7 +695,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         });
         toast.success("Section removed");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't remove that section"
         );
@@ -712,7 +729,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Sections reordered");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't reorder those sections"
         );
@@ -748,7 +767,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         toast.success("Choice added");
         return option;
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't add that choice"
         );
@@ -786,7 +807,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Choice updated");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't update that choice"
         );
@@ -812,7 +835,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       toast.success("Choice removed");
       return true;
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Couldn't remove that choice"
       );
@@ -842,7 +867,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         );
         toast.success("Choices reordered");
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Couldn't reorder those choices"
         );
@@ -856,6 +883,18 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
 
   const handleImageUpload = useCallback(
     async (file: File) => {
+      if (isImageMutating) {
+        toast.error("Please wait for the current image action to finish.");
+        return;
+      }
+
+      const maxBytes = 2 * 1024 * 1024; // ~2 MB
+      if (file.size > maxBytes) {
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        toast.error(`Image is too large (${sizeMb} MB). Please upload a file under 2 MB.`);
+        return;
+      }
+
       if (!selectedItem) {
         toast.error("Save the item before uploading an image.");
         return;
@@ -870,6 +909,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       formData.append("file", file);
 
       try {
+        setIsImageMutating(true);
         const response = await fetch("/api/admin/menu/images", {
           method: "POST",
           body: formData,
@@ -888,13 +928,17 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
           itemId: menuItemId,
         });
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Image upload failed"
         );
+      } finally {
+        setIsImageMutating(false);
       }
     },
-    [refreshMenu, selectedCategory?.id, selectedItem]
+    [isImageMutating, refreshMenu, selectedCategory?.id, selectedItem]
   );
 
   const handleImageDelete = useCallback(async () => {
@@ -905,6 +949,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       return;
     }
     try {
+      setIsImageMutating(true);
       await fetchJSON<{ success: boolean }>(
         `/api/admin/menu/images?menuItemId=${menuItemId}`,
         { method: "DELETE" }
@@ -915,10 +960,14 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         itemId: menuItemId,
       });
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to delete image"
       );
+    } finally {
+      setIsImageMutating(false);
     }
   }, [refreshMenu, selectedCategory?.id, selectedItem]);
 
@@ -973,7 +1022,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
             : "Draft saved"
         );
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         const message =
           error instanceof Error ? error.message : "Failed to update item";
         setAutosaveError(message);
@@ -1008,7 +1059,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
         itemId: null,
       });
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to delete item"
       );
@@ -1422,9 +1475,16 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
               variant="outline"
               className={cn("w-full", SUBTLE_BUTTON_CLASS)}
               type="button"
-              onClick={() => imageInputRef.current?.click()}
+              disabled={isImageMutating}
+              onClick={() => {
+                if (selectedItem?.imageUrl) {
+                  setImageDialogMode("replace");
+                } else {
+                  imageInputRef.current?.click();
+                }
+              }}
             >
-              Upload image
+              {isImageMutating ? "Working on image…" : "Upload image"}
             </Button>
             <input
               ref={imageInputRef}
@@ -1444,7 +1504,8 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
                 variant="ghost"
                 className="w-full text-rose-600 hover:text-rose-700"
                 type="button"
-                onClick={() => void handleImageDelete()}
+                disabled={isImageMutating}
+                onClick={() => setImageDialogMode("remove")}
               >
                 Remove current image
               </Button>
@@ -1452,6 +1513,53 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isImageDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          closeImageDialog();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {imageDialogMode === "remove"
+                ? "Remove current image?"
+                : "Replace existing image?"}
+            </DialogTitle>
+            <DialogDescription>
+              {imageDialogMode === "remove"
+                ? "This will remove the image from this menu item. You can upload a new one later."
+                : "Uploading a new image will replace the existing one for this menu item."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isImageMutating}
+              onClick={closeImageDialog}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className={imageDialogMode === "remove" ? DANGER_BUTTON_CLASS : PRIMARY_BUTTON_CLASS}
+              disabled={isImageMutating}
+              onClick={async () => {
+                if (imageDialogMode === "remove") {
+                  await handleImageDelete();
+                  closeImageDialog();
+                } else if (imageDialogMode === "replace") {
+                  closeImageDialog();
+                  imageInputRef.current?.click();
+                }
+              }}
+            >
+              {imageDialogMode === "remove" ? "Remove image" : "Continue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

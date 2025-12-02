@@ -8,6 +8,7 @@ import adminOrdersEn from "@/dictionaries/en/admin-orders.json";
 import adminPromptpayEn from "@/dictionaries/en/admin-promptpay.json";
 import commonEn from "@/dictionaries/en/common.json";
 import orderEn from "@/dictionaries/en/order.json";
+import profileEn from "@/dictionaries/en/profile.json";
 
 import landingMy from "@/dictionaries/my/landing.json";
 import menuMy from "@/dictionaries/my/menu.json";
@@ -19,6 +20,7 @@ import adminOrdersMy from "@/dictionaries/my/admin-orders.json";
 import adminPromptpayMy from "@/dictionaries/my/admin-promptpay.json";
 import commonMy from "@/dictionaries/my/common.json";
 import orderMy from "@/dictionaries/my/order.json";
+import profileMy from "@/dictionaries/my/profile.json";
 
 import type { Locale } from "./config";
 
@@ -34,6 +36,7 @@ export const DICTIONARIES = {
     adminPromptpay: adminPromptpayEn,
     common: commonEn,
     order: orderEn,
+    profile: profileEn,
   },
   my: {
     landing: landingMy,
@@ -46,6 +49,7 @@ export const DICTIONARIES = {
     adminPromptpay: adminPromptpayMy,
     common: commonMy,
     order: orderMy,
+    profile: profileMy,
   },
 } as const;
 

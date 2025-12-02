@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
     const accounts = await listPromptPayAccounts();
     return NextResponse.json({ accounts });
   } catch (error) {
-    console.error("Failed to list PromptPay accounts:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to list PromptPay accounts:", error);
+    }
     return NextResponse.json(
       { error: "Failed to retrieve accounts" },
       { status: 500 }
@@ -81,10 +83,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    console.error("[promptpay-accounts] failed to create account", {
-      error,
-      userId,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[promptpay-accounts] failed to create account", {
+        error,
+        userId,
+      });
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

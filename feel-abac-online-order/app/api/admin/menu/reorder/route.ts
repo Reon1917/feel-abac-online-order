@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
     revalidateTag("public-menu", "default");
     return response;
   } catch (error) {
-    console.error("[menu/reorder] failed to update display order", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[menu/reorder] failed to update display order", error);
+    }
     return Response.json(
       { error: "Failed to apply display order updates" },
       { status: 500 }

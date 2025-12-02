@@ -18,7 +18,7 @@ export function getPusherClient() {
   const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
   if (!key || !cluster) {
-    if (!warnedMissingEnv) {
+    if (!warnedMissingEnv && process.env.NODE_ENV !== "production") {
       console.warn(
         "[pusher-client] Missing NEXT_PUBLIC_PUSHER_KEY or NEXT_PUBLIC_PUSHER_CLUSTER; realtime disabled."
       );

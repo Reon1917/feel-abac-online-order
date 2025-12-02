@@ -33,7 +33,9 @@ async function broadcastToChannels(
     await pusher.triggerBatch(batch);
   } catch (error) {
     // Log but don't throw - realtime is best-effort
-    console.error("[realtime] triggerBatch failed:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[realtime] triggerBatch failed:", error);
+    }
   }
 }
 

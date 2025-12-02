@@ -39,3 +39,6 @@ Persist one preset location choice and one custom Google Maps address per user s
 ## Rollout
 - Run `npx drizzle-kit push` to apply schema.
 - Deploy backend + frontend together; no feature flag needed (columns are nullable).
+
+## Implementation Notes / Gotchas
+- When wiring the delivery picker, ensure custom selections preserve their `placeId` across dialog reopen. Avoid resetting the stored `placeId` to `null` on every open; only clear it when the user actually edits the address text or switches modes. Dropping the id breaks the cached Place Details flow and regresses map previews for already-saved custom locations.

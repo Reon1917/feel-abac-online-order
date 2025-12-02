@@ -394,3 +394,62 @@ export async function getOrderDetailForAdmin(
   const payments = await loadOrderPayments(row.id);
   return mapOrder(row, items, payments);
 }
+
+/**
+ * User order summary - minimal data for order history list.
+ */
+export type UserOrderSummary = {
+  id: string;
+  displayId: string;
+  status: OrderStatus;
+  totalAmount: number;
+  itemCount: number;
+  createdAt: string;
+};
+
+/**
+ * Get user's order history.
+ */
+export async function getOrdersForUser(
+  userId: string,
+  limit = 20
+): Promise<UserOrderSummary[]> {
+  const rows = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(eq(orders.userId, userId))
+    .orderBy(desc(orders.createdAt))
+    .limit(limit);
+
+  // Get item counts for each order
+  const orderIds = rows.map((r) => r.id);
+  if (orderIds.length === 0) {
+    return [];
+  }
+
+  const itemCounts = await db
+    .select({
+      orderId: orderItems.orderId,
+      count: sql<number>`sum(${orderItems.quantity})`.as("count"),
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds))
+    .groupBy(orderItems.orderId);
+
+  const countMap = new Map(itemCounts.map((ic) => [ic.orderId, Number(ic.count) || 0]));
+
+  return rows.map((row) => ({
+    id: row.id,
+    displayId: row.displayId,
+    status: row.status as OrderStatus,
+    totalAmount: numericToNumber(row.totalAmount),
+    itemCount: countMap.get(row.id) ?? 0,
+    createdAt: dateToIso(row.createdAt) ?? "",
+  }));
+}

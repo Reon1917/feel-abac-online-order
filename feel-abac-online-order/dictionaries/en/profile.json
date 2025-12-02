@@ -1,0 +1,36 @@
+{
+  "title": "Profile",
+  "subtitle": "Manage your account details and preferences",
+  "sections": {
+    "account": {
+      "title": "Account Information",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone Number",
+      "phonePlaceholder": "Add a phone number",
+      "editPhone": "Edit",
+      "savePhone": "Save",
+      "cancelEdit": "Cancel"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "language": "App Language",
+      "menuLanguage": "Menu Language"
+    },
+    "orderHistory": {
+      "title": "Recent Orders",
+      "viewAll": "View all orders",
+      "noOrders": "No orders yet",
+      "noOrdersDescription": "Your order history will appear here once you place your first order."
+    },
+    "actions": {
+      "title": "Account Actions",
+      "signOut": "Sign Out",
+      "signOutDescription": "Sign out of your account on this device"
+    }
+  },
+  "toast": {
+    "phoneUpdated": "Phone number updated",
+    "phoneError": "Failed to update phone number"
+  }
+}

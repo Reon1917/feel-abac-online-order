@@ -124,7 +124,9 @@ export function RecommendedItemsCard({
       setRecommendations(mapToDrafts(data.recommendations ?? []));
       setOrderDirty(false);
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(dictionary.toasts.loadError);
     } finally {
       setIsLoading(false);
@@ -151,7 +153,9 @@ export function RecommendedItemsCard({
       setDialogOpen(false);
       await refreshRecommendations();
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : dictionary.toasts.addError
       );
@@ -172,7 +176,9 @@ export function RecommendedItemsCard({
       toast.success(dictionary.toasts.removed);
       await refreshRecommendations();
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(dictionary.toasts.removeError);
     }
   };
@@ -189,7 +195,9 @@ export function RecommendedItemsCard({
       toast.success(dictionary.toasts.badgeSaved);
       await refreshRecommendations();
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(dictionary.toasts.badgeError);
     }
   };
@@ -227,7 +235,9 @@ export function RecommendedItemsCard({
       toast.success(dictionary.toasts.orderSaved);
       await refreshRecommendations();
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(dictionary.toasts.orderError);
     } finally {
       setIsSavingOrder(false);

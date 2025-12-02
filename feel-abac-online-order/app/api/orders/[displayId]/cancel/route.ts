@@ -104,11 +104,13 @@ export async function PATCH(
 
   const eventId = statusEvent?.id;
   if (!eventId) {
-    console.error("[orders/cancel] missing event id", {
-      orderId: order.id,
-      displayId: order.displayId,
-      reason,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[orders/cancel] missing event id", {
+        orderId: order.id,
+        displayId: order.displayId,
+        reason,
+      });
+    }
     throw new Error("Failed to record cancellation event");
   }
 

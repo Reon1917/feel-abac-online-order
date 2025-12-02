@@ -126,7 +126,9 @@ export function AdminMenuManager({
           setSelectedItem(opts.itemId);
         }
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Failed to refresh menu"
         );
@@ -167,7 +169,9 @@ export function AdminMenuManager({
       });
       setActiveTab("details");
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to create menu item"
       );
@@ -192,7 +196,9 @@ export function AdminMenuManager({
         toast.success("Category created");
         await refreshMenu();
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Failed to create category"
         );
@@ -218,7 +224,9 @@ export function AdminMenuManager({
         toast.success("Category updated");
         await refreshMenu({ categoryId });
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Failed to update category"
         );
@@ -244,7 +252,9 @@ export function AdminMenuManager({
         toast.success("Category deleted");
         await refreshMenu();
       } catch (error) {
-        console.error(error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
         toast.error(
           error instanceof Error ? error.message : "Failed to delete category"
         );
@@ -310,7 +320,9 @@ export function AdminMenuManager({
       setExitDialogOpen(false);
       router.push("/admin/dashboard");
     } catch (error) {
-      console.error(error);
+      if (process.env.NODE_ENV !== "production") {
+        console.error(error);
+      }
       toast.error(
         error instanceof Error ? error.message : "Unable to save draft"
       );

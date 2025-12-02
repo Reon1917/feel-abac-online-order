@@ -434,7 +434,7 @@ export function CartView({
         </Link>
       </div>
       <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
-      <section className="space-y-3.5 pb-32 lg:pb-0">
+      <section className="space-y-3.5 pb-72 sm:pb-64 lg:pb-0">
         {cart.items.map((item) => {
           const displayName =
             menuLocale === "my"
@@ -614,7 +614,7 @@ export function CartView({
         </div>
       </section>
 
-      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm max-lg:sticky max-lg:bottom-0 max-lg:-mx-4 max-lg:border-x-0 max-lg:border-b-0 max-lg:border-t max-lg:bg-white max-lg:px-4 max-lg:py-4 max-lg:shadow-[0_-8px_20px_rgba(15,23,42,0.12)] max-lg:backdrop-blur lg:sticky lg:top-6 lg:self-start">
+      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[4.5rem] max-lg:z-30 max-lg:mx-4 max-lg:rounded-2xl max-lg:border max-lg:bg-white max-lg:shadow-[0_-8px_20px_rgba(15,23,42,0.12)] sm:max-lg:bottom-4 lg:sticky lg:top-6 lg:self-start">
         <div className="space-y-2.5 text-sm max-lg:text-[13px]">
           <h2 className="text-base font-semibold text-slate-900">
             {dictionary.summary.heading}

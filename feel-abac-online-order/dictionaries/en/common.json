@@ -16,5 +16,11 @@
     "signedInAs": "Signed in as",
     "phone": "Phone",
     "email": "Email"
+  },
+  "mobileNav": {
+    "home": "Home",
+    "cart": "Cart",
+    "orders": "Orders",
+    "profile": "Profile"
   }
 }

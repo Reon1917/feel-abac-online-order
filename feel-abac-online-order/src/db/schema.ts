@@ -201,7 +201,7 @@ export const menuItems = pgTable("menu_items", {
     .references(() => menuCategories.id, { onDelete: "cascade" }),
   nameEn: text("name_en").notNull(),
   nameMm: text("name_mm"),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  price: numeric("price", { precision: 10, scale: 0 }).notNull(),
   imageUrl: text("image_url"),
   hasImage: boolean("has_image").default(false).notNull(),
   placeholderIcon: text("placeholder_icon"),
@@ -270,7 +270,7 @@ export const menuChoiceOptions = pgTable("menu_choice_options", {
     .references(() => menuChoiceGroups.id, { onDelete: "cascade" }),
   nameEn: text("name_en").notNull(),
   nameMm: text("name_mm"),
-  extraPrice: numeric("extra_price", { precision: 10, scale: 2 })
+  extraPrice: numeric("extra_price", { precision: 10, scale: 0 })
     .default("0")
     .notNull(),
   isAvailable: boolean("is_available").default(true).notNull(),
@@ -290,7 +290,7 @@ export const carts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     sessionToken: text("session_token"),
     status: text("status").default("active").notNull(),
-    subtotal: numeric("subtotal", { precision: 10, scale: 2 })
+    subtotal: numeric("subtotal", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
     lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
@@ -318,14 +318,14 @@ export const cartItems = pgTable(
       .references(() => menuItems.id, { onDelete: "cascade" }),
     menuItemName: text("menu_item_name").notNull(),
     menuItemNameMm: text("menu_item_name_mm"),
-    basePrice: numeric("base_price", { precision: 10, scale: 2 }).notNull(),
-    addonsTotal: numeric("addons_total", { precision: 10, scale: 2 })
+    basePrice: numeric("base_price", { precision: 10, scale: 0 }).notNull(),
+    addonsTotal: numeric("addons_total", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
     quantity: integer("quantity").default(1).notNull(),
     note: text("note"),
     hashKey: text("hash_key").notNull(),
-    totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+    totalPrice: numeric("total_price", { precision: 10, scale: 0 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -349,7 +349,7 @@ export const cartItemChoices = pgTable("cart_item_choices", {
   groupNameMm: text("group_name_mm"),
   optionName: text("option_name").notNull(),
   optionNameMm: text("option_name_mm"),
-  extraPrice: numeric("extra_price", { precision: 10, scale: 2 })
+  extraPrice: numeric("extra_price", { precision: 10, scale: 0 })
     .default("0")
     .notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -371,14 +371,14 @@ export const orders = pgTable(
     sessionToken: text("session_token"),
     status: text("status").default("order_processing").notNull(),
     totalItems: integer("total_items").default(0).notNull(),
-    subtotal: numeric("subtotal", { precision: 10, scale: 2 })
+    subtotal: numeric("subtotal", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
-    deliveryFee: numeric("delivery_fee", { precision: 10, scale: 2 }),
-    discountTotal: numeric("discount_total", { precision: 10, scale: 2 })
+    deliveryFee: numeric("delivery_fee", { precision: 10, scale: 0 }),
+    discountTotal: numeric("discount_total", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
-    totalAmount: numeric("total_amount", { precision: 10, scale: 2 })
+    totalAmount: numeric("total_amount", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
     customerName: text("customer_name").notNull(),
@@ -413,7 +413,7 @@ export const orders = pgTable(
     ),
     courierVendor: text("courier_vendor"),
     courierTrackingUrl: text("courier_tracking_url"),
-    courierFee: numeric("courier_fee", { precision: 10, scale: 2 }),
+    courierFee: numeric("courier_fee", { precision: 10, scale: 0 }),
     courierPaymentStatus: text("courier_payment_status"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -448,13 +448,13 @@ export const orderItems = pgTable(
     menuItemName: text("menu_item_name").notNull(),
     menuItemNameMm: text("menu_item_name_mm"),
     menuCode: text("menu_code"),
-    basePrice: numeric("base_price", { precision: 10, scale: 2 }).notNull(),
-    addonsTotal: numeric("addons_total", { precision: 10, scale: 2 })
+    basePrice: numeric("base_price", { precision: 10, scale: 0 }).notNull(),
+    addonsTotal: numeric("addons_total", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
     quantity: integer("quantity").default(1).notNull(),
     note: text("note"),
-    totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+    totalPrice: numeric("total_price", { precision: 10, scale: 0 }).notNull(),
     displayOrder: integer("display_order").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -476,7 +476,7 @@ export const orderItemChoices = pgTable(
     groupNameMm: text("group_name_mm"),
     optionName: text("option_name").notNull(),
     optionNameMm: text("option_name_mm"),
-    extraPrice: numeric("extra_price", { precision: 10, scale: 2 })
+    extraPrice: numeric("extra_price", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -502,7 +502,7 @@ export const orderPayments = pgTable(
       { onDelete: "set null" }
     ),
     type: text("type").notNull(),
-    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    amount: numeric("amount", { precision: 10, scale: 0 }).notNull(),
     status: text("status").default("pending").notNull(),
     qrPayload: text("qr_payload"),
     qrExpiresAt: timestamp("qr_expires_at"),
