@@ -23,15 +23,32 @@ function normalizePublicUrl(key: string) {
 }
 
 async function processImage(buffer: Buffer): Promise<ProcessResult> {
-  const image = sharp(buffer, { failOnError: false }).rotate();
+  try {
+    const image = sharp(buffer, { failOnError: false }).rotate();
 
-  // Light optimization: convert to WebP with moderate quality.
-  const processedBuffer = await image.webp({ quality: 90 }).toBuffer();
+    // Resize to a reasonable max dimension for menu usage, then convert to WebP.
+    const processedBuffer = await image
+      .resize({
+        width: 1200,
+        height: 1200,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 80 })
+      .toBuffer();
 
-  return {
-    buffer: processedBuffer,
-    contentType: "image/webp",
-  };
+    return {
+      buffer: processedBuffer,
+      contentType: "image/webp",
+    };
+  } catch (error) {
+    // Fallback: if Sharp fails for any reason, store the original bytes.
+    console.error("[menu/image-storage] sharp processing failed, using original buffer", error);
+    return {
+      buffer,
+      contentType: "application/octet-stream",
+    };
+  }
 }
 
 export async function uploadMenuImage(
