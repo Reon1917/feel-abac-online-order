@@ -37,7 +37,7 @@ export default async function ProfilePage({ params }: PageProps) {
 
   return (
     <>
-      <main className="min-h-screen w-full bg-slate-50 pb-24 sm:pb-10">
+      <main className="min-h-screen w-full bg-slate-50 pb-24 sm:pb-10 sm:pl-20 lg:pl-24">
         <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
           <ProfileClient
             user={{

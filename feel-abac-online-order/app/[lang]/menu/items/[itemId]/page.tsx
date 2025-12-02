@@ -54,7 +54,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
     <>
       {sessionData.isAdmin && <AdminBar />}
 
-      <main className="min-h-screen w-full bg-white pb-20 sm:pb-0">
+      <main className="min-h-screen w-full bg-white pb-20 sm:pb-0 sm:pl-20 lg:pl-24">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-14 sm:px-10 lg:px-12">
           <header className="flex flex-col items-start gap-4">
             <BackToMenuLink
