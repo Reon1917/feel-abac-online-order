@@ -7,6 +7,16 @@ import type { OrderRecord, OrderPaymentRecord } from "@/lib/orders/types";
 import { ReceiptUploadButton } from "./receipt-upload-button";
 import { RejectionBanner } from "./rejection-banner";
 
+function WavingDots() {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="h-2 w-2 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
+      <span className="h-2 w-2 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
+      <span className="h-2 w-2 rounded-full bg-amber-500 animate-bounce" />
+    </div>
+  );
+}
+
 type PaymentDictionary = {
   howToPay: string;
   step1: string;
@@ -104,8 +114,11 @@ export function PaymentQrSection({
   ) {
     return (
       <div className="flex flex-col items-center justify-center p-6 bg-amber-50 rounded-xl border border-amber-200">
-        <Loader2 className="h-6 w-6 animate-spin text-amber-600 mb-2" />
+        <div className="mb-3">
+          <WavingDots />
+        </div>
         <p className="font-medium text-amber-800">{dictionary.underReview}</p>
+        <p className="text-xs text-amber-600 mt-1">We&apos;re verifying your payment slip</p>
       </div>
     );
   }

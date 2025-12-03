@@ -107,9 +107,9 @@ export function ReceiptReviewSection({
       <button
         type="button"
         onClick={() => setShowModal(true)}
-        className="relative group"
+        className="relative group focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-2xl"
       >
-        <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-slate-200">
+        <div className="relative w-36 h-36 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm group-hover:border-emerald-400 group-hover:shadow-md transition-all">
           <Image
             src={payment.receiptUrl}
             alt="Payment receipt"
@@ -117,10 +117,13 @@ export function ReceiptReviewSection({
             className="object-cover"
             unoptimized
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+            <div className="bg-white/90 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+              <ZoomIn className="h-5 w-5 text-slate-700" />
+            </div>
           </div>
         </div>
+        <p className="text-xs text-slate-500 mt-2 text-center">Click to view</p>
       </button>
 
       {/* Rejection count indicator */}
@@ -159,28 +162,39 @@ export function ReceiptReviewSection({
       {/* Full-size image modal */}
       {showModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
           onClick={() => setShowModal(false)}
         >
+          {/* Close button */}
           <button
             type="button"
             onClick={() => setShowModal(false)}
-            className="absolute top-4 right-4 text-white hover:text-slate-300"
+            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
           >
-            <X className="h-8 w-8" />
+            <X className="h-6 w-6" />
           </button>
+
+          {/* Image container with nice frame */}
           <div
-            className="relative max-w-3xl max-h-[90vh] w-full"
+            className="relative max-w-2xl max-h-[85vh] w-full bg-white rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
-              src={payment.receiptUrl}
-              alt="Payment receipt full size"
-              width={800}
-              height={1200}
-              className="object-contain w-full h-auto max-h-[90vh] rounded-lg"
-              unoptimized
-            />
+            {/* Header */}
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+              <p className="text-sm font-medium text-slate-700">Payment Receipt</p>
+            </div>
+            
+            {/* Image with scroll for pan */}
+            <div className="overflow-auto max-h-[calc(85vh-48px)] p-4 bg-slate-100">
+              <Image
+                src={payment.receiptUrl}
+                alt="Payment receipt full size"
+                width={800}
+                height={1200}
+                className="object-contain w-full h-auto rounded-lg shadow-sm"
+                unoptimized
+              />
+            </div>
           </div>
         </div>
       )}

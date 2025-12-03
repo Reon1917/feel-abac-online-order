@@ -230,7 +230,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       seenEvents.add(payload.eventId);
       if (payload.orderId !== order.id) return;
 
-      toast.success("Payment confirmed!");
+      toast.success("Food payment confirmed!");
       void refreshOrder();
     };
 
@@ -524,8 +524,8 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               step4: dictionary.step4 ?? "Upload your receipt below",
               uploadReceipt: dictionary.uploadReceipt ?? "I've Paid – Upload Receipt",
               uploading: dictionary.uploading ?? "Uploading...",
-              underReview: dictionary.underReview ?? "Payment Under Review",
-              confirmed: dictionary.confirmed ?? "Payment Confirmed",
+              underReview: dictionary.underReview ?? "Food Payment Under Review",
+              confirmed: dictionary.confirmed ?? "Food Payment Confirmed",
             }}
             onReceiptUploaded={refreshOrder}
           />
