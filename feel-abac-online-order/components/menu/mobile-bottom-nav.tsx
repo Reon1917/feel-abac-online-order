@@ -37,12 +37,16 @@ export function MobileBottomNav({ locale, labels }: MobileBottomNavProps) {
 
   // Fetch cart count on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCartCount();
   }, [fetchCartCount]);
 
   // Listen for cart changes
   useEffect(() => {
-    return onCartChange(fetchCartCount);
+    return onCartChange(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchCartCount();
+    });
   }, [fetchCartCount]);
 
   const navItems = [
