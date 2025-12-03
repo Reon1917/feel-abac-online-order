@@ -21,7 +21,6 @@ import {
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
-import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
 import { toast } from "sonner";
 import { statusLabel } from "@/lib/orders/format";
 
@@ -76,8 +75,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-TH", {
   timeStyle: "short",
 });
 
-const IS_DEV = process.env.NODE_ENV !== "production";
-
 function formatCurrency(amount: number | null | undefined) {
   const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
   return currencyFormatter.format(safe);
@@ -120,13 +117,6 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     order.status === "delivery_payment_review";
 
   const activePayment = isDeliveryPaymentStage ? deliveryPayment : foodPayment;
-
-  const foodPaymentAccountLabel = useMemo(() => {
-    if (!foodPayment) return "";
-    const phone = formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber ?? "");
-    const parts = [foodPayment.payeeName ?? null, phone || null].filter(Boolean);
-    return parts.join(" · ");
-  }, [foodPayment]);
 
   const canCancel = useMemo(() => {
     // Never allow cancel for closed/terminal states

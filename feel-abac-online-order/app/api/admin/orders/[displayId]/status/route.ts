@@ -234,7 +234,7 @@ export async function PATCH(
       status: nextStatus,
       courierVendor,
       courierTrackingUrl,
-      deliveryFee: deliveryFeeValue,
+      deliveryFee: String(deliveryFeeValue),
       // Keep totalAmount as originally charged for food;
       // delivery fee is surfaced separately in UI.
       updatedAt: now,

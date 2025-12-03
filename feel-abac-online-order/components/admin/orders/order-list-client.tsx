@@ -17,6 +17,7 @@ import {
   type OrderClosedPayload,
   type PaymentReceiptUploadedPayload,
 } from "@/lib/orders/events";
+import type { OrderStatus } from "@/lib/orders/types";
 import type { OrderAdminSummary, OrderRecord } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
@@ -196,14 +197,37 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       );
     };
 
+    const handlePaymentReceiptUploaded = (payload: PaymentReceiptUploadedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
+      // Notify admin
+      toast.message("Payment slip received!");
+
+      // Update order status to reflect receipt uploaded
+      const newStatus: OrderStatus =
+        payload.paymentType === "food" ? "food_payment_review" : "delivery_payment_review";
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === payload.orderId
+            ? { ...order, status: newStatus }
+            : order
+        )
+      );
+    };
+
     channel.bind(ORDER_SUBMITTED_EVENT, handleSubmitted);
     channel.bind(ORDER_STATUS_CHANGED_EVENT, handleStatusChanged);
     channel.bind(ORDER_CLOSED_EVENT, handleClosed);
+    channel.bind(PAYMENT_RECEIPT_UPLOADED_EVENT, handlePaymentReceiptUploaded);
 
     return () => {
       channel.unbind(ORDER_SUBMITTED_EVENT, handleSubmitted);
       channel.unbind(ORDER_STATUS_CHANGED_EVENT, handleStatusChanged);
       channel.unbind(ORDER_CLOSED_EVENT, handleClosed);
+      channel.unbind(PAYMENT_RECEIPT_UPLOADED_EVENT, handlePaymentReceiptUploaded);
       pusher.unsubscribe(ADMIN_ORDERS_CHANNEL);
     };
   }, [dictionary.newOrderToast, dictionary.statusUpdatedToast]);

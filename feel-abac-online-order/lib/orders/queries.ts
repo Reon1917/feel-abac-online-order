@@ -85,6 +85,7 @@ function mapOrderPayment(
     verifiedAt: dateToIso(payment.verifiedAt),
     verifiedByAdminId: payment.verifiedByAdminId,
     rejectedReason: payment.rejectedReason,
+    rejectionCount: payment.rejectionCount ?? 0,
     requestedByAdminId: payment.requestedByAdminId,
     paymentIntentId: payment.paymentIntentId,
     promptParseData: payment.promptParseData,
