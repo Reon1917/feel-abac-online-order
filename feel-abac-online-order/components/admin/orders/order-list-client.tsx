@@ -11,9 +11,11 @@ import {
   ORDER_STATUS_CHANGED_EVENT,
   ORDER_SUBMITTED_EVENT,
   ORDER_CLOSED_EVENT,
+  PAYMENT_RECEIPT_UPLOADED_EVENT,
   type OrderStatusChangedPayload,
   type OrderSubmittedPayload,
   type OrderClosedPayload,
+  type PaymentReceiptUploadedPayload,
 } from "@/lib/orders/events";
 import type { OrderAdminSummary, OrderRecord } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";

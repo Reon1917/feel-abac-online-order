@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import clsx from "clsx";
 
 import {
@@ -12,6 +13,8 @@ import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { OrderRecord } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
+import { ReceiptReviewSection } from "@/components/payments/admin/receipt-review";
+import { PaymentBadge } from "@/components/payments/admin/payment-badge";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -20,6 +23,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dictionary: AdminOrdersDictionary;
+  onOrderUpdated?: () => void;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
@@ -38,7 +42,13 @@ export function OrderDetailModal({
   open,
   onOpenChange,
   dictionary,
+  onOrderUpdated,
 }: Props) {
+  const foodPayment = useMemo(
+    () => order?.payments?.find((p) => p.type === "food") ?? null,
+    [order?.payments]
+  );
+
   if (!order) {
     return null;
   }
@@ -96,6 +106,30 @@ export function OrderDetailModal({
             </div>
           </div>
         </div>
+
+        {/* Payment Status */}
+        {foodPayment && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-600">Payment:</span>
+            <PaymentBadge payment={foodPayment} />
+          </div>
+        )}
+
+        {/* Receipt Review Section - shows when awaiting verification */}
+        {foodPayment && (
+          <ReceiptReviewSection
+            order={order}
+            payment={foodPayment}
+            onVerified={() => {
+              onOrderUpdated?.();
+              onOpenChange(false);
+            }}
+            onRejected={() => {
+              onOrderUpdated?.();
+              onOpenChange(false);
+            }}
+          />
+        )}
 
         {/* Order Items - Table/Kitchen Receipt Style */}
         <div className="space-y-2">

@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { QRCodeSVG } from "qrcode.react";
 
 import type orderDictionary from "@/dictionaries/en/order.json";
+import { PaymentQrSection } from "@/components/payments/payment-qr-section";
+import { RefundNoticeBanner } from "@/components/payments/refund-notice-banner";
 import { getPusherClient } from "@/lib/pusher/client";
 import {
   ORDER_STATUS_CHANGED_EVENT,
@@ -117,18 +118,37 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   }, [foodPayment]);
 
   const canCancel = useMemo(() => {
+    // Never allow cancel for closed/terminal states
     if (order.isClosed || order.status === "cancelled" || order.status === "delivered") {
       return false;
     }
-    if (IS_DEV) return true;
 
+    // Never allow cancel once payment is verified (order_in_kitchen or later)
+    if (
+      order.status === "order_in_kitchen" ||
+      order.status === "awaiting_delivery_fee_payment" ||
+      order.status === "delivery_payment_review" ||
+      order.status === "order_out_for_delivery"
+    ) {
+      return false;
+    }
+
+    // Never allow cancel during payment review (receipt uploaded)
+    if (order.status === "food_payment_review") {
+      return false;
+    }
+
+    // Allow cancel for order_processing
     if (order.status === "order_processing") return true;
+
+    // Allow cancel for awaiting_food_payment only if receipt NOT uploaded
     if (order.status === "awaiting_food_payment") {
       const receiptUploaded =
         Boolean(foodPayment?.receiptUploadedAt) ||
-        (foodPayment?.status && foodPayment.status !== "pending");
+        (foodPayment?.status && foodPayment.status !== "pending" && foodPayment.status !== "rejected");
       return !receiptUploaded;
     }
+
     return false;
   }, [foodPayment?.receiptUploadedAt, foodPayment?.status, order.isClosed, order.status]);
 
@@ -469,9 +489,15 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
         </div>
       </header>
 
-      {order.status === "awaiting_food_payment" && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      {/* Refund notice for cancelled orders with verified payment */}
+      <RefundNoticeBanner order={order} />
+
+      {/* Payment section - shows for awaiting payment and review statuses */}
+      {(order.status === "awaiting_food_payment" ||
+        order.status === "food_payment_review" ||
+        order.status === "order_in_kitchen") && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 {dictionary.paymentSectionTitle}
@@ -487,32 +513,22 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
             ) : null}
           </div>
 
-          {foodPayment?.qrPayload ? (
-            <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center justify-center rounded-2xl border border-white bg-white/70 p-4 shadow-inner">
-                <QRCodeSVG
-                  value={foodPayment.qrPayload}
-                  size={180}
-                  bgColor="transparent"
-                  fgColor="#064e3b"
-                />
-              </div>
-              <div className="space-y-2 text-sm text-slate-700">
-                <div className="font-semibold text-slate-900">
-                  {dictionary.paymentAccountLabel}
-                </div>
-                <div className="text-base font-bold text-slate-900">
-                  {foodPaymentAccountLabel ||
-                    formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber) ||
-                    "PromptPay account"}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-amber-800">
-              {dictionary.qrUnavailable}
-            </div>
-          )}
+          <PaymentQrSection
+            order={order}
+            payment={foodPayment}
+            dictionary={{
+              howToPay: dictionary.howToPay ?? "How to pay:",
+              step1: dictionary.step1 ?? "Screenshot this QR code",
+              step2: dictionary.step2 ?? "Open your mobile banking app",
+              step3: dictionary.step3 ?? "Scan QR & pay via PromptPay",
+              step4: dictionary.step4 ?? "Upload your receipt below",
+              uploadReceipt: dictionary.uploadReceipt ?? "I've Paid – Upload Receipt",
+              uploading: dictionary.uploading ?? "Uploading...",
+              underReview: dictionary.underReview ?? "Payment Under Review",
+              confirmed: dictionary.confirmed ?? "Payment Confirmed",
+            }}
+            onReceiptUploaded={refreshOrder}
+          />
         </section>
       )}
 

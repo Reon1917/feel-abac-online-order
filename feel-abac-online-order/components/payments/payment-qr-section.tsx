@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { CheckCircle, Loader2, Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle, Loader2 } from "lucide-react";
 
 import type { OrderRecord, OrderPaymentRecord } from "@/lib/orders/types";
 import { ReceiptUploadButton } from "./receipt-upload-button";
@@ -15,8 +13,6 @@ type PaymentDictionary = {
   step2: string;
   step3: string;
   step4: string;
-  copyCode: string;
-  copied: string;
   uploadReceipt: string;
   uploading: string;
   underReview: string;
@@ -36,20 +32,6 @@ export function PaymentQrSection({
   dictionary,
   onReceiptUploaded,
 }: Props) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyCode = async () => {
-    if (!payment?.qrPayload) return;
-
-    try {
-      await navigator.clipboard.writeText(payment.qrPayload);
-      setCopied(true);
-      toast.success(dictionary.copied);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
 
   // Show QR when awaiting payment
   if (
@@ -98,25 +80,6 @@ export function PaymentQrSection({
           <p>3. {dictionary.step3}</p>
           <p>4. {dictionary.step4}</p>
         </div>
-
-        {/* Copy button */}
-        <button
-          type="button"
-          onClick={handleCopyCode}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4 text-emerald-600" />
-              {dictionary.copied}
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4" />
-              {dictionary.copyCode}
-            </>
-          )}
-        </button>
 
         {/* Upload button */}
         <ReceiptUploadButton
