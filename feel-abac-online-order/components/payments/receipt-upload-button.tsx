@@ -7,8 +7,7 @@ import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing";
 import { compressImage } from "@/lib/image-compress";
 import type { OrderPaymentType } from "@/lib/orders/types";
-
-const MAX_REJECTION_COUNT = 10;
+import { MAX_REJECTION_COUNT } from "@/config/payments";
 
 type Props = {
   orderId: string;

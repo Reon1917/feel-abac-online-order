@@ -239,7 +239,11 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       seenEvents.add(payload.eventId);
       if (payload.orderId !== order.id) return;
 
-      toast.success("Food payment confirmed!");
+      const message =
+        payload.paymentType === "delivery"
+          ? "Delivery fee payment confirmed!"
+          : "Food payment confirmed!";
+      toast.success(message);
       void refreshOrder();
     };
 

@@ -17,6 +17,11 @@ export async function compressImage(file: File): Promise<File> {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
+    if (!ctx) {
+      reject(new Error("Failed to get canvas 2D context"));
+      return;
+    }
+
     img.onload = () => {
       // Calculate new dimensions while maintaining aspect ratio
       let { width, height } = img;
@@ -32,7 +37,7 @@ export async function compressImage(file: File): Promise<File> {
 
       canvas.width = width;
       canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
 
       // Progressive quality reduction until we hit target size
       let quality = 0.8;

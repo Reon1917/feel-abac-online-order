@@ -5,7 +5,7 @@
   "statusProcessing": "Order Processing",
   "statusAwaitingFoodPayment": "Awaiting Food Payment",
   "statusKitchen": "Order in Kitchen",
-  "statusOutForDelivery": "Handed off to delivery",
+  "statusOutForDelivery": "ပို့ဆောင်မှုသို့ လွှဲပြောင်းပြီး",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee Payment",
   "statusDelivered": "Delivered",
   "statusCancelled": "Cancelled",
@@ -58,8 +58,8 @@
   "awaitingPaymentCopy": "ငွေပေးချေမှုပြီးဆုံးပါက အချက်အလက်တင်သွင်းပြီးရင် စားဖိုမှူးများကို စတင်ချက်ပြမည်။",
   "paymentReviewWarningTitle": "ငွေပေးချေမှုကို ကျနော်တို့ စစ်ဆေးနေပါသည်",
   "paymentReviewWarningBody": "ကျေးဇူးပြု၍ ဤစာမျက်နှာကို ဖွင့်ထားပါ၊ ကျနော်တို့ သင့်စလစ်ကို အတည်ပြု၍ အဆင့်ကို ခဏတွင် အပ်ဒိတ်လုပ်ပါမည်။",
-  "deliveryUnderReview": "Delivery fee under review",
-  "deliveryConfirmed": "Delivery fee confirmed",
+  "deliveryUnderReview": "ပို့ဆောင်ခ စစ်ဆေးနေသည်",
+  "deliveryConfirmed": "ပို့ဆောင်ခ အတည်ပြုပြီး",
   "cancelReasonDisplayLabel": "ပေးပို့ထားသောအကြောင်းပြချက်",
   "tabOngoing": "လက်ရှိ",
   "tabCompleted": "ပြီးဆုံးပြီး",
@@ -68,5 +68,5 @@
   "listPageTitle": "သင့်အော်ဒါများ",
   "noOrdersYet": "အော်ဒါမရှိသေးပါ",
   "startOrdering": "အော်ဒါမှတ်တမ်းကို ဒီမှာကြည့်ရန် မှာယူခြင်းစတင်ပါ။",
-  "trackDelivery": "Track delivery"
+  "trackDelivery": "ပို့ဆောင်မှု ခြေရာခံပါ"
 }

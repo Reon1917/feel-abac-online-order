@@ -3,8 +3,7 @@
 import { AlertCircle, XCircle } from "lucide-react";
 
 import type { OrderPaymentRecord } from "@/lib/orders/types";
-
-const MAX_RETRIES = 10;
+import { MAX_REJECTION_COUNT } from "@/config/payments";
 
 type Props = {
   payment: OrderPaymentRecord;
@@ -14,7 +13,7 @@ export function RejectionBanner({ payment }: Props) {
   // Only show for rejected payments
   if (payment.status !== "rejected") return null;
 
-  const retriesLeft = MAX_RETRIES - (payment.rejectionCount ?? 0);
+  const retriesLeft = MAX_REJECTION_COUNT - (payment.rejectionCount ?? 0);
   const isBlocked = retriesLeft <= 0;
 
   if (isBlocked) {

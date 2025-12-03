@@ -3,8 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import { orderPayments, orders } from "@/src/db/schema";
 import type { OrderPaymentStatus, OrderPaymentType } from "@/lib/orders/types";
-
-const MAX_REJECTION_COUNT = 10;
+import { MAX_REJECTION_COUNT } from "@/config/payments";
 
 export async function getPaymentForOrder(
   orderId: string,

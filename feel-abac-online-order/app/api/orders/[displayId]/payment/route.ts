@@ -27,6 +27,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Trim and validate displayId per AGENTS.md
+  const displayId = (resolvedParams.displayId ?? "").trim();
+  if (!displayId) {
+    return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+  }
+
   const body = (await req.json().catch(() => null)) as {
     type?: OrderPaymentType;
     receiptUrl?: string;
@@ -54,7 +60,7 @@ export async function PATCH(
   const [order] = await db
     .select()
     .from(orders)
-    .where(eq(orders.displayId, resolvedParams.displayId))
+    .where(eq(orders.displayId, displayId))
     .orderBy(desc(orders.createdAt))
     .limit(1);
 
@@ -68,12 +74,12 @@ export async function PATCH(
   }
 
   // Check if order is in correct status for receipt upload
-  const validStatuses: OrderStatus[] = ["awaiting_food_payment"];
-  if (paymentType === "delivery") {
-    validStatuses.push("awaiting_delivery_fee_payment");
-  }
+  // Food receipts only allowed in awaiting_food_payment
+  // Delivery receipts only allowed in awaiting_delivery_fee_payment
+  const expectedStatus: OrderStatus =
+    paymentType === "food" ? "awaiting_food_payment" : "awaiting_delivery_fee_payment";
 
-  if (!validStatuses.includes(order.status as OrderStatus)) {
+  if (order.status !== expectedStatus) {
     return NextResponse.json(
       { error: "Order is not awaiting payment" },
       { status: 400 }

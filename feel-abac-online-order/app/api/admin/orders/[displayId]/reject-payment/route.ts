@@ -36,6 +36,12 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Trim and validate displayId per AGENTS.md
+  const displayId = (resolvedParams.displayId ?? "").trim();
+  if (!displayId) {
+    return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+  }
+
   const body = (await req.json().catch(() => null)) as {
     type?: OrderPaymentType;
     reason?: string;
@@ -58,7 +64,7 @@ export async function POST(
   const [order] = await db
     .select()
     .from(orders)
-    .where(eq(orders.displayId, resolvedParams.displayId))
+    .where(eq(orders.displayId, displayId))
     .orderBy(desc(orders.createdAt))
     .limit(1);
 
@@ -128,9 +134,11 @@ export async function POST(
     })
     .returning({ id: orderEvents.id });
 
+  const baseEventId = insertedEvent?.id ?? crypto.randomUUID();
+
   // Broadcast to customer channel
   await broadcastPaymentRejected({
-    eventId: insertedEvent?.id ?? "",
+    eventId: `${baseEventId}-rejection`,
     orderId: order.id,
     displayId: order.displayId,
     paymentType,
@@ -141,7 +149,7 @@ export async function POST(
 
   // Also broadcast status change so admin + diner views update
   await broadcastOrderStatusChanged({
-    eventId: insertedEvent?.id ?? "",
+    eventId: `${baseEventId}-status`,
     orderId: order.id,
     displayId: order.displayId,
     fromStatus: order.status as OrderStatus,
