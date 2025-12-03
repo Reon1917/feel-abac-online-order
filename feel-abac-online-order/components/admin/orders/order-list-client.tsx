@@ -209,8 +209,9 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   }, [dictionary.newOrderToast, dictionary.statusUpdatedToast]);
 
   const renderOrderCard = (order: OrderAdminSummary) => {
-    // Derive food payment badge from status
-    const showSlipReceived = order.status === "food_payment_review";
+    // Derive payment badges from status
+    const showFoodSlipReceived = order.status === "food_payment_review";
+    const showDeliverySlipReceived = order.status === "delivery_payment_review";
     const showFoodPaymentConfirmed =
       order.status === "order_in_kitchen" ||
       order.status === "awaiting_delivery_fee_payment" ||
@@ -238,9 +239,15 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
               {statusLabel(order.status, dictionary)}
             </span>
             {/* Food Payment Badge */}
-            {showSlipReceived && (
+            {showFoodSlipReceived && (
               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 animate-pulse">
                 Food Payment Slip Received
+              </span>
+            )}
+            {/* Delivery Fee Payment Badge */}
+            {showDeliverySlipReceived && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 animate-pulse">
+                Delivery Fee Slip Received
               </span>
             )}
             {showFoodPaymentConfirmed && (

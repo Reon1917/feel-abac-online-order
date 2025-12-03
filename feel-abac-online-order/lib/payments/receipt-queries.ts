@@ -149,11 +149,5 @@ export async function updateOrderStatusForPayment(
     updatePayload.outForDeliveryAt = now;
   }
 
-  if (newStatus === "delivered") {
-    updatePayload.deliveredAt = now;
-    updatePayload.isClosed = true;
-    updatePayload.closedAt = now;
-  }
-
   await db.update(orders).set(updatePayload).where(eq(orders.id, orderId));
 }

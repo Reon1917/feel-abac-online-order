@@ -11,7 +11,10 @@ import {
   rejectPayment,
   updateOrderStatusForPayment,
 } from "@/lib/payments/receipt-queries";
-import { broadcastPaymentRejected } from "@/lib/orders/realtime";
+import {
+  broadcastPaymentRejected,
+  broadcastOrderStatusChanged,
+} from "@/lib/orders/realtime";
 
 type Params = {
   displayId: string;
@@ -136,9 +139,19 @@ export async function POST(
     at: now.toISOString(),
   });
 
+  // Also broadcast status change so admin + diner views update
+  await broadcastOrderStatusChanged({
+    eventId: insertedEvent?.id ?? "",
+    orderId: order.id,
+    displayId: order.displayId,
+    fromStatus: order.status as OrderStatus,
+    toStatus: newStatus,
+    actorType: "admin",
+    at: now.toISOString(),
+  });
+
   return NextResponse.json({
     status: newStatus,
     rejectionCount: updatedPayment.rejectionCount,
   });
 }
-
