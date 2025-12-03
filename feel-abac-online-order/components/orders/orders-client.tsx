@@ -32,8 +32,9 @@ const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   awaiting_food_payment: { bg: "bg-yellow-100", text: "text-yellow-800" },
   food_payment_review: { bg: "bg-blue-100", text: "text-blue-800" },
   order_in_kitchen: { bg: "bg-indigo-100", text: "text-indigo-800" },
-  order_out_for_delivery: { bg: "bg-purple-100", text: "text-purple-800" },
   awaiting_delivery_fee_payment: { bg: "bg-orange-100", text: "text-orange-800" },
+  delivery_payment_review: { bg: "bg-blue-100", text: "text-blue-800" },
+  order_out_for_delivery: { bg: "bg-purple-100", text: "text-purple-800" },
   delivered: { bg: "bg-emerald-100", text: "text-emerald-800" },
   cancelled: { bg: "bg-red-100", text: "text-red-800" },
 };
@@ -43,8 +44,9 @@ const ONGOING_STATUSES: OrderStatus[] = [
   "awaiting_food_payment",
   "food_payment_review",
   "order_in_kitchen",
-  "order_out_for_delivery",
   "awaiting_delivery_fee_payment",
+  "delivery_payment_review",
+  "order_out_for_delivery",
 ];
 
 function formatPrice(value: number) {

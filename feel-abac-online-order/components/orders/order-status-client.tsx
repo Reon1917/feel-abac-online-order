@@ -9,9 +9,13 @@ import { getPusherClient } from "@/lib/pusher/client";
 import {
   ORDER_STATUS_CHANGED_EVENT,
   ORDER_CLOSED_EVENT,
+  PAYMENT_VERIFIED_EVENT,
+  PAYMENT_REJECTED_EVENT,
   buildOrderChannelName,
   type OrderStatusChangedPayload,
   type OrderClosedPayload,
+  type PaymentVerifiedPayload,
+  type PaymentRejectedPayload,
 } from "@/lib/orders/events";
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
@@ -37,17 +41,20 @@ const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }>
 
 const PAYMENT_REVIEW_STATUSES = new Set<OrderStatus>([
   "food_payment_review",
+  "delivery_payment_review",
 ]);
 
 function resolveStep(status: OrderStatus) {
   switch (status) {
     case "order_processing":
     case "awaiting_food_payment":
+    case "food_payment_review":
       return 0;
     case "order_in_kitchen":
       return 1;
-    case "order_out_for_delivery":
     case "awaiting_delivery_fee_payment":
+    case "delivery_payment_review":
+    case "order_out_for_delivery":
       return 2;
     case "delivered":
       return 3;
@@ -198,12 +205,36 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       // Don't redirect - let user see the cancelled/delivered UI and click "Back to Menu"
     };
 
+    const handlePaymentVerified = (payload: PaymentVerifiedPayload) => {
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+      if (payload.orderId !== order.id) return;
+
+      toast.success("Payment confirmed!");
+      void refreshOrder();
+    };
+
+    const handlePaymentRejected = (payload: PaymentRejectedPayload) => {
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+      if (payload.orderId !== order.id) return;
+
+      toast.error(
+        payload.reason || "Receipt rejected. Please upload a valid receipt."
+      );
+      void refreshOrder();
+    };
+
     channel.bind(ORDER_STATUS_CHANGED_EVENT, handleStatusChange);
     channel.bind(ORDER_CLOSED_EVENT, handleClosed);
+    channel.bind(PAYMENT_VERIFIED_EVENT, handlePaymentVerified);
+    channel.bind(PAYMENT_REJECTED_EVENT, handlePaymentRejected);
 
     return () => {
       channel.unbind(ORDER_STATUS_CHANGED_EVENT, handleStatusChange);
       channel.unbind(ORDER_CLOSED_EVENT, handleClosed);
+      channel.unbind(PAYMENT_VERIFIED_EVENT, handlePaymentVerified);
+      channel.unbind(PAYMENT_REJECTED_EVENT, handlePaymentRejected);
       pusher.unsubscribe(channelName);
     };
   }, [order.displayId, order.id, refreshOrder]);

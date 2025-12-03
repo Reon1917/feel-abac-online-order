@@ -514,6 +514,7 @@ export const orderPayments = pgTable(
       { onDelete: "set null" }
     ),
     rejectedReason: text("rejected_reason"),
+    rejectionCount: integer("rejection_count").default(0).notNull(),
     requestedByAdminId: text("requested_by_admin_id").references(
       () => admins.id,
       { onDelete: "set null" }

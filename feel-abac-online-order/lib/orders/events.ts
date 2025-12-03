@@ -20,6 +20,11 @@ export const ORDER_STATUS_CHANGED_EVENT = "order.status.changed";
 export const ORDER_SUBMITTED_EVENT = "order.submitted";
 export const ORDER_CLOSED_EVENT = "order.closed";
 
+// Payment events
+export const PAYMENT_RECEIPT_UPLOADED_EVENT = "payment.receipt_uploaded";
+export const PAYMENT_VERIFIED_EVENT = "payment.verified";
+export const PAYMENT_REJECTED_EVENT = "payment.rejected";
+
 /**
  * Base payload fields included in all events for deduplication.
  */
@@ -50,4 +55,22 @@ export type OrderClosedPayload = BaseEventPayload & {
   finalStatus: OrderStatus;  // "delivered" | "cancelled"
   actorType: "admin" | "user" | "system";
   reason?: string | null;
+};
+
+// Payment event payloads
+export type PaymentReceiptUploadedPayload = BaseEventPayload & {
+  paymentType: "food" | "delivery";
+  receiptUrl: string;
+};
+
+export type PaymentVerifiedPayload = BaseEventPayload & {
+  paymentType: "food" | "delivery";
+  verifiedByAdminId: string;
+  newStatus: OrderStatus;
+};
+
+export type PaymentRejectedPayload = BaseEventPayload & {
+  paymentType: "food" | "delivery";
+  reason?: string | null;
+  rejectionCount: number;
 };
