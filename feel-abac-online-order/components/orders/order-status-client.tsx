@@ -184,6 +184,11 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   }, [dictionary.orderNotFound, order.displayId]);
 
   useEffect(() => {
+    // Do not subscribe to realtime updates for closed/terminal orders
+    if (order.isClosed || order.status === "cancelled" || order.status === "delivered") {
+      return;
+    }
+
     const pusher = getPusherClient();
     if (!pusher) {
       return;
@@ -234,6 +239,9 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
         cancelReason: payload.reason ?? prev.cancelReason,
       }));
       // Don't redirect - let user see the cancelled/delivered UI and click "Back to Menu"
+
+      // Once the order is closed, we no longer need realtime updates
+      pusher.unsubscribe(channelName);
     };
 
     const handlePaymentVerified = (payload: PaymentVerifiedPayload) => {
