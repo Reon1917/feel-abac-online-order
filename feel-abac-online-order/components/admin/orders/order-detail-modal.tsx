@@ -65,7 +65,7 @@ export function OrderDetailModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl lg:max-w-3xl">
+        <DialogContent showCloseButton={false} className="max-h-[90vh] overflow-y-auto sm:max-w-2xl lg:max-w-3xl">
         <DialogHeader>
           <div className="flex items-center justify-between gap-4">
             <DialogTitle className="text-xl font-bold sm:text-2xl">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import type { PublicMenuItem } from "@/lib/menu/types";
+import { emitCartChange } from "@/lib/cart/events";
 
 export type QuickAddPayload = {
   item: PublicMenuItem;
@@ -57,6 +58,7 @@ export function useQuickAddToCart({ messages }: UseQuickAddOptions) {
         startTransition(() => {
           router.refresh();
         });
+        emitCartChange();
         return { status: "added" };
       } catch (error) {
         const fallback =

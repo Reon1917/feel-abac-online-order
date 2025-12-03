@@ -162,36 +162,34 @@ export function ReceiptReviewSection({
       {/* Full-size image modal */}
       {showModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
           onClick={() => setShowModal(false)}
         >
-          {/* Close button */}
-          <button
-            type="button"
-            onClick={() => setShowModal(false)}
-            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-
-          {/* Image container with nice frame */}
+          {/* Image container */}
           <div
-            className="relative max-w-2xl max-h-[85vh] w-full bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="relative bg-white rounded-xl shadow-2xl overflow-hidden max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-              <p className="text-sm font-medium text-slate-700">Payment Receipt</p>
+            {/* Header with close button */}
+            <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
+              <p className="text-sm font-semibold text-slate-800">Payment Receipt</p>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
             
-            {/* Image with scroll for pan */}
-            <div className="overflow-auto max-h-[calc(85vh-48px)] p-4 bg-slate-100">
+            {/* Image */}
+            <div className="p-4 bg-slate-50">
               <Image
                 src={payment.receiptUrl}
-                alt="Payment receipt full size"
-                width={800}
-                height={1200}
-                className="object-contain w-full h-auto rounded-lg shadow-sm"
+                alt="Payment receipt"
+                width={500}
+                height={650}
+                className="object-contain w-full h-auto rounded-lg border border-slate-200"
                 unoptimized
               />
             </div>
