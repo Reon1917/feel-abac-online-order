@@ -17,6 +17,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { DeliveryLocationPicker } from "./delivery-location-picker";
 import { SwipeToRemove } from "@/components/cart/swipe-to-remove";
+import { emitCartChange } from "@/lib/cart/events";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -186,6 +187,7 @@ export function CartView({
 
       toast.success(removeSuccessMessage);
       router.refresh();
+      emitCartChange();
       return true;
     } catch (error) {
       const message =
@@ -316,6 +318,7 @@ export function CartView({
       }
 
       router.refresh();
+      emitCartChange();
       closeEditModal();
     } catch (error) {
       const message =
@@ -710,11 +713,11 @@ export function CartView({
     {editingItem ? (
       <>
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px]"
+          className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[1px]"
           aria-hidden="true"
         />
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center px-4 py-6 sm:items-center"
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
           onClick={handleModalBackgroundClick}
         >
           <div

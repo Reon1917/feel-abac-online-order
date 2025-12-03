@@ -1,11 +1,13 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, ShoppingCart, ClipboardList, User } from "lucide-react";
 import clsx from "clsx";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { onCartChange } from "@/lib/cart/events";
 
 type MobileBottomNavProps = {
   locale: Locale;
@@ -19,6 +21,33 @@ type MobileBottomNavProps = {
 
 export function MobileBottomNav({ locale, labels }: MobileBottomNavProps) {
   const pathname = usePathname();
+  const [cartCount, setCartCount] = useState(0);
+
+  const fetchCartCount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/cart");
+      if (res.ok) {
+        const data = await res.json();
+        setCartCount(data.summary?.itemCount ?? 0);
+      }
+    } catch {
+      // Ignore errors silently
+    }
+  }, []);
+
+  // Fetch cart count on mount
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchCartCount();
+  }, [fetchCartCount]);
+
+  // Listen for cart changes
+  useEffect(() => {
+    return onCartChange(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchCartCount();
+    });
+  }, [fetchCartCount]);
 
   const navItems = [
     {
@@ -54,6 +83,8 @@ export function MobileBottomNav({ locale, labels }: MobileBottomNavProps) {
         <div className="flex h-16 items-center justify-around px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isCart = item.icon === ShoppingCart;
+            const showBadge = isCart && cartCount > 0;
             return (
               <Link
                 key={item.href}
@@ -65,12 +96,19 @@ export function MobileBottomNav({ locale, labels }: MobileBottomNavProps) {
                     : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                <Icon
-                  className={clsx(
-                    "h-5 w-5",
-                    item.isActive && "stroke-[2.5]"
+                <span className="relative">
+                  <Icon
+                    className={clsx(
+                      "h-5 w-5",
+                      item.isActive && "stroke-[2.5]"
+                    )}
+                  />
+                  {showBadge && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-bold text-white">
+                      {cartCount > 99 ? "99+" : cartCount}
+                    </span>
                   )}
-                />
+                </span>
                 <span
                   className={clsx(
                     "text-[0.65rem] font-medium",
@@ -92,6 +130,8 @@ export function MobileBottomNav({ locale, labels }: MobileBottomNavProps) {
         <div className="mt-16 flex flex-1 flex-col items-center gap-4">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isCart = item.icon === ShoppingCart;
+            const showBadge = isCart && cartCount > 0;
             return (
               <Link
                 key={item.href}
@@ -103,12 +143,19 @@ export function MobileBottomNav({ locale, labels }: MobileBottomNavProps) {
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                 )}
               >
-                <Icon
-                  className={clsx(
-                    "h-5 w-5 lg:h-6 lg:w-6",
-                    item.isActive && "stroke-[2.5]"
+                <span className="relative">
+                  <Icon
+                    className={clsx(
+                      "h-5 w-5 lg:h-6 lg:w-6",
+                      item.isActive && "stroke-[2.5]"
+                    )}
+                  />
+                  {showBadge && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[0.6rem] font-bold text-white">
+                      {cartCount > 99 ? "99+" : cartCount}
+                    </span>
                   )}
-                />
+                </span>
                 <span className="text-[0.7rem] lg:text-[0.75rem]">
                   {item.label}
                 </span>

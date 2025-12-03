@@ -23,7 +23,7 @@
   "statusAwaitingFoodPayment": "Awaiting Food Payment",
   "statusFoodPaymentReview": "Food Payment Review",
   "statusKitchen": "In Kitchen",
-  "statusOutForDelivery": "Out for Delivery",
+  "statusOutForDelivery": "Handed off to delivery",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee",
   "statusDelivered": "Delivered",
   "statusCancelled": "Rejected",
@@ -50,5 +50,16 @@
   "rejectNotesPlaceholder": "Share extra context (optional)",
   "rejectSubmit": "Send rejection",
   "rejectCancel": "Keep order",
-  "rejectReasonRequired": "Select or type a reason before rejecting."
+  "rejectReasonRequired": "Select or type a reason before rejecting.",
+  "deliveryFeeConfirmedBadge": "Delivery fee confirmed ✓",
+  "handoffSectionTitle": "Hand off to delivery",
+  "handoffSectionSubtitle": "Add the delivery tracking link and fee before handing this order to Bolt/Grab.",
+  "handoffVendorLabel": "Courier vendor (optional)",
+  "handoffTrackingLabel": "Delivery tracking link",
+  "handoffFeeLabel": "Delivery fee (THB)",
+  "handoffSubmit": "Hand off to delivery",
+  "handoffSubmitting": "Handing off...",
+  "handoffSummarySubtitle": "Delivery is now handled by the courier. You can still mark this order as delivered once it is completed.",
+  "markDelivered": "Mark as delivered",
+  "markDeliveredSubmitting": "Marking delivered..."
 }

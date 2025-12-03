@@ -14,6 +14,7 @@ import {
   consumeMenuReturnFlag,
   markMenuNeedsRefresh,
 } from "./menu-scroll";
+import { emitCartChange } from "@/lib/cart/events";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -195,6 +196,7 @@ export function MenuItemDetail({
       }
 
       router.refresh();
+      emitCartChange();
 
       toast.success(detail.addedToCart);
       const destination = withLocalePath(locale, "/menu");

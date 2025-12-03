@@ -2,21 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { QRCodeSVG } from "qrcode.react";
 
 import type orderDictionary from "@/dictionaries/en/order.json";
+import { PaymentQrSection } from "@/components/payments/payment-qr-section";
+import { RefundNoticeBanner } from "@/components/payments/refund-notice-banner";
 import { getPusherClient } from "@/lib/pusher/client";
 import {
   ORDER_STATUS_CHANGED_EVENT,
   ORDER_CLOSED_EVENT,
+  PAYMENT_VERIFIED_EVENT,
+  PAYMENT_REJECTED_EVENT,
   buildOrderChannelName,
   type OrderStatusChangedPayload,
   type OrderClosedPayload,
+  type PaymentVerifiedPayload,
+  type PaymentRejectedPayload,
 } from "@/lib/orders/events";
 import type { OrderRecord, OrderStatus } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
-import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
 import { toast } from "sonner";
 import { statusLabel } from "@/lib/orders/format";
 
@@ -37,17 +41,20 @@ const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }>
 
 const PAYMENT_REVIEW_STATUSES = new Set<OrderStatus>([
   "food_payment_review",
+  "delivery_payment_review",
 ]);
 
 function resolveStep(status: OrderStatus) {
   switch (status) {
     case "order_processing":
     case "awaiting_food_payment":
+    case "food_payment_review":
       return 0;
     case "order_in_kitchen":
       return 1;
-    case "order_out_for_delivery":
     case "awaiting_delivery_fee_payment":
+    case "delivery_payment_review":
+    case "order_out_for_delivery":
       return 2;
     case "delivered":
       return 3;
@@ -67,8 +74,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-TH", {
   dateStyle: "medium",
   timeStyle: "short",
 });
-
-const IS_DEV = process.env.NODE_ENV !== "production";
 
 function formatCurrency(amount: number | null | undefined) {
   const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
@@ -102,26 +107,49 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     [order.payments]
   );
 
-  const foodPaymentAccountLabel = useMemo(() => {
-    if (!foodPayment) return "";
-    const phone = formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber ?? "");
-    const parts = [foodPayment.payeeName ?? null, phone || null].filter(Boolean);
-    return parts.join(" · ");
-  }, [foodPayment]);
+  const deliveryPayment = useMemo(
+    () => order.payments?.find((payment) => payment.type === "delivery") ?? null,
+    [order.payments]
+  );
+
+  const isDeliveryPaymentStage =
+    order.status === "awaiting_delivery_fee_payment" ||
+    order.status === "delivery_payment_review";
+
+  const activePayment = isDeliveryPaymentStage ? deliveryPayment : foodPayment;
 
   const canCancel = useMemo(() => {
+    // Never allow cancel for closed/terminal states
     if (order.isClosed || order.status === "cancelled" || order.status === "delivered") {
       return false;
     }
-    if (IS_DEV) return true;
 
+    // Never allow cancel once payment is verified (order_in_kitchen or later)
+    if (
+      order.status === "order_in_kitchen" ||
+      order.status === "awaiting_delivery_fee_payment" ||
+      order.status === "delivery_payment_review" ||
+      order.status === "order_out_for_delivery"
+    ) {
+      return false;
+    }
+
+    // Never allow cancel during payment review (receipt uploaded)
+    if (order.status === "food_payment_review") {
+      return false;
+    }
+
+    // Allow cancel for order_processing
     if (order.status === "order_processing") return true;
+
+    // Allow cancel for awaiting_food_payment only if receipt NOT uploaded
     if (order.status === "awaiting_food_payment") {
       const receiptUploaded =
         Boolean(foodPayment?.receiptUploadedAt) ||
-        (foodPayment?.status && foodPayment.status !== "pending");
+        (foodPayment?.status && foodPayment.status !== "pending" && foodPayment.status !== "rejected");
       return !receiptUploaded;
     }
+
     return false;
   }, [foodPayment?.receiptUploadedAt, foodPayment?.status, order.isClosed, order.status]);
 
@@ -146,6 +174,11 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   }, [dictionary.orderNotFound, order.displayId]);
 
   useEffect(() => {
+    // Do not subscribe to realtime updates for closed/terminal orders
+    if (order.isClosed || order.status === "cancelled" || order.status === "delivered") {
+      return;
+    }
+
     const pusher = getPusherClient();
     if (!pusher) {
       return;
@@ -196,14 +229,45 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
         cancelReason: payload.reason ?? prev.cancelReason,
       }));
       // Don't redirect - let user see the cancelled/delivered UI and click "Back to Menu"
+
+      // Once the order is closed, we no longer need realtime updates
+      pusher.unsubscribe(channelName);
+    };
+
+    const handlePaymentVerified = (payload: PaymentVerifiedPayload) => {
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+      if (payload.orderId !== order.id) return;
+
+      const message =
+        payload.paymentType === "delivery"
+          ? "Delivery fee payment confirmed!"
+          : "Food payment confirmed!";
+      toast.success(message);
+      void refreshOrder();
+    };
+
+    const handlePaymentRejected = (payload: PaymentRejectedPayload) => {
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+      if (payload.orderId !== order.id) return;
+
+      toast.error(
+        payload.reason || "Receipt rejected. Please upload a valid receipt."
+      );
+      void refreshOrder();
     };
 
     channel.bind(ORDER_STATUS_CHANGED_EVENT, handleStatusChange);
     channel.bind(ORDER_CLOSED_EVENT, handleClosed);
+    channel.bind(PAYMENT_VERIFIED_EVENT, handlePaymentVerified);
+    channel.bind(PAYMENT_REJECTED_EVENT, handlePaymentRejected);
 
     return () => {
       channel.unbind(ORDER_STATUS_CHANGED_EVENT, handleStatusChange);
       channel.unbind(ORDER_CLOSED_EVENT, handleClosed);
+      channel.unbind(PAYMENT_VERIFIED_EVENT, handlePaymentVerified);
+      channel.unbind(PAYMENT_REJECTED_EVENT, handlePaymentRejected);
       pusher.unsubscribe(channelName);
     };
   }, [order.displayId, order.id, refreshOrder]);
@@ -301,22 +365,36 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               {dictionary.lastUpdated}: {formatTimestamp(order.updatedAt)}
             </p>
           </div>
-          <span
-            className={clsx(
-              "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
-              cancelled
-                ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200"
-                : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-            )}
-          >
+          <div className="flex flex-col items-end gap-2">
             <span
               className={clsx(
-                "h-2.5 w-2.5 rounded-full",
-                cancelled ? "bg-red-500" : "bg-emerald-500"
+                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
+                cancelled
+                  ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200"
+                  : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
               )}
-            />
-            {statusText}
-          </span>
+            >
+              <span
+                className={clsx(
+                  "h-2.5 w-2.5 rounded-full",
+                  cancelled ? "bg-red-500" : "bg-emerald-500"
+                )}
+              />
+              {statusText}
+            </span>
+            {!isClosed &&
+              order.status === "order_out_for_delivery" &&
+              order.courierTrackingUrl && (
+                <a
+                  href={order.courierTrackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100"
+                >
+                  {dictionary.trackDelivery ?? "Track delivery"}
+                </a>
+              )}
+          </div>
         </div>
         <div className="mt-5 space-y-3">
           <p className="text-sm font-semibold text-slate-700">
@@ -438,50 +516,62 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
         </div>
       </header>
 
-      {order.status === "awaiting_food_payment" && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      {/* Refund notice for cancelled orders with verified payment */}
+      <RefundNoticeBanner order={order} />
+
+      {/* Payment section - shows for awaiting payment and review statuses */}
+      {(order.status === "awaiting_food_payment" ||
+        order.status === "food_payment_review" ||
+        order.status === "order_in_kitchen" ||
+        order.status === "awaiting_delivery_fee_payment" ||
+        order.status === "delivery_payment_review" ||
+        order.status === "order_out_for_delivery" ||
+        order.status === "delivered") && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {dictionary.paymentSectionTitle}
+                {isDeliveryPaymentStage
+                  ? dictionary.deliveryPaymentSectionTitle ?? "Delivery fee payment"
+                  : dictionary.paymentSectionTitle}
               </h2>
               <p className="text-sm text-slate-700">
-                {dictionary.paymentSectionSubtitle}
+                {isDeliveryPaymentStage
+                  ? dictionary.deliveryPaymentSectionSubtitle ??
+                    "Scan the PromptPay QR to pay your delivery fee."
+                  : dictionary.paymentSectionSubtitle}
               </p>
             </div>
-            {foodPayment ? (
+            {activePayment ? (
               <div className="text-right text-sm font-semibold text-slate-900">
-                {dictionary.paymentAmountLabel}: {formatCurrency(foodPayment.amount)}
+                {(isDeliveryPaymentStage
+                  ? dictionary.deliveryPaymentAmountLabel
+                  : dictionary.paymentAmountLabel) ?? dictionary.paymentAmountLabel}
+                : {formatCurrency(activePayment.amount)}
               </div>
             ) : null}
           </div>
 
-          {foodPayment?.qrPayload ? (
-            <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center justify-center rounded-2xl border border-white bg-white/70 p-4 shadow-inner">
-                <QRCodeSVG
-                  value={foodPayment.qrPayload}
-                  size={180}
-                  bgColor="transparent"
-                  fgColor="#064e3b"
-                />
-              </div>
-              <div className="space-y-2 text-sm text-slate-700">
-                <div className="font-semibold text-slate-900">
-                  {dictionary.paymentAccountLabel}
-                </div>
-                <div className="text-base font-bold text-slate-900">
-                  {foodPaymentAccountLabel ||
-                    formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber) ||
-                    "PromptPay account"}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm text-amber-800">
-              {dictionary.qrUnavailable}
-            </div>
-          )}
+          <PaymentQrSection
+            order={order}
+            payment={activePayment}
+            dictionary={{
+              howToPay: dictionary.howToPay ?? "How to pay:",
+              step1: dictionary.step1 ?? "Screenshot this QR code",
+              step2: dictionary.step2 ?? "Open your mobile banking app",
+              step3: dictionary.step3 ?? "Scan QR & pay via PromptPay",
+              step4: dictionary.step4 ?? "Upload your receipt below",
+              uploadReceipt: dictionary.uploadReceipt ?? "I've Paid – Upload Receipt",
+              uploading: dictionary.uploading ?? "Uploading...",
+              underReview: isDeliveryPaymentStage
+                ? dictionary.deliveryUnderReview ?? "Delivery fee under review"
+                : dictionary.underReview ?? "Food Payment Under Review",
+              confirmed: isDeliveryPaymentStage
+                ? dictionary.deliveryConfirmed ?? "Delivery fee confirmed"
+                : dictionary.confirmed ?? "Food Payment Confirmed",
+            }}
+            onReceiptUploaded={refreshOrder}
+          />
         </section>
       )}
 

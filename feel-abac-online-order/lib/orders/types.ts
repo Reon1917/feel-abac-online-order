@@ -3,8 +3,9 @@ export type OrderStatus =
   | "awaiting_food_payment"
   | "food_payment_review"
   | "order_in_kitchen"
-  | "order_out_for_delivery"
   | "awaiting_delivery_fee_payment"
+  | "delivery_payment_review"
+  | "order_out_for_delivery"
   | "delivered"
   | "cancelled";
 
@@ -30,6 +31,7 @@ export type OrderPaymentRecord = {
   verifiedAt: string | null;
   verifiedByAdminId: string | null;
   rejectedReason: string | null;
+  rejectionCount: number;
   requestedByAdminId: string | null;
   paymentIntentId: string | null;
   promptParseData: string | null;

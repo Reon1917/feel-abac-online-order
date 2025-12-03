@@ -13,6 +13,28 @@ const remotePatterns: RemotePattern[] = [
     hostname: "cdn.feelabac.com",
     pathname: "/**",
   },
+  // UploadThing CDN domains
+  {
+    protocol: "https",
+    hostname: "utfs.io",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "uploadthing.com",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "uploadthing-prod.s3.us-west-2.amazonaws.com",
+    pathname: "/**",
+  },
+  // UploadThing v7+ uses *.ufs.sh domains
+  {
+    protocol: "https",
+    hostname: "*.ufs.sh",
+    pathname: "/**",
+  },
 ];
 
 function registerRemotePattern(raw?: string | null) {

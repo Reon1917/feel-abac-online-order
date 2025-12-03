@@ -11,10 +11,13 @@ import {
   ORDER_STATUS_CHANGED_EVENT,
   ORDER_SUBMITTED_EVENT,
   ORDER_CLOSED_EVENT,
+  PAYMENT_RECEIPT_UPLOADED_EVENT,
   type OrderStatusChangedPayload,
   type OrderSubmittedPayload,
   type OrderClosedPayload,
+  type PaymentReceiptUploadedPayload,
 } from "@/lib/orders/events";
+import type { OrderStatus } from "@/lib/orders/types";
 import type { OrderAdminSummary, OrderRecord } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
@@ -194,42 +197,99 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       );
     };
 
+    const handlePaymentReceiptUploaded = (payload: PaymentReceiptUploadedPayload) => {
+      // Deduplicate events by eventId
+      if (seenEvents.has(payload.eventId)) return;
+      seenEvents.add(payload.eventId);
+
+      // Notify admin
+      toast.message("Payment slip received!");
+
+      // Update order status to reflect receipt uploaded
+      const newStatus: OrderStatus =
+        payload.paymentType === "food" ? "food_payment_review" : "delivery_payment_review";
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === payload.orderId
+            ? { ...order, status: newStatus }
+            : order
+        )
+      );
+    };
+
     channel.bind(ORDER_SUBMITTED_EVENT, handleSubmitted);
     channel.bind(ORDER_STATUS_CHANGED_EVENT, handleStatusChanged);
     channel.bind(ORDER_CLOSED_EVENT, handleClosed);
+    channel.bind(PAYMENT_RECEIPT_UPLOADED_EVENT, handlePaymentReceiptUploaded);
 
     return () => {
       channel.unbind(ORDER_SUBMITTED_EVENT, handleSubmitted);
       channel.unbind(ORDER_STATUS_CHANGED_EVENT, handleStatusChanged);
       channel.unbind(ORDER_CLOSED_EVENT, handleClosed);
+      channel.unbind(PAYMENT_RECEIPT_UPLOADED_EVENT, handlePaymentReceiptUploaded);
       pusher.unsubscribe(ADMIN_ORDERS_CHANNEL);
     };
   }, [dictionary.newOrderToast, dictionary.statusUpdatedToast]);
 
-  const renderOrderCard = (order: OrderAdminSummary) => (
-    <div
-      key={order.id}
-      className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-slate-900">
-            {dictionary.orderIdLabel} {order.displayId}
-          </span>
-          <span
-            className={clsx(
-              "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
-              statusBadgeClass(order.status)
+  const renderOrderCard = (order: OrderAdminSummary) => {
+    // Derive payment badges from status
+    const showFoodSlipReceived = order.status === "food_payment_review";
+    const showDeliverySlipReceived = order.status === "delivery_payment_review";
+    const showFoodPaymentConfirmed =
+      order.status === "order_in_kitchen" ||
+      order.status === "awaiting_delivery_fee_payment" ||
+      order.status === "delivery_payment_review" ||
+      order.status === "order_out_for_delivery";
+
+    const showDeliveryFeeConfirmed = order.status === "delivered";
+
+    return (
+      <div
+        key={order.id}
+        className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-slate-900">
+              {dictionary.orderIdLabel} {order.displayId}
+            </span>
+            <span
+              className={clsx(
+                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
+                statusBadgeClass(order.status)
+              )}
+            >
+              {statusLabel(order.status, dictionary)}
+            </span>
+            {/* Food Payment Badge */}
+            {showFoodSlipReceived && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 animate-pulse">
+                Food Payment Slip Received
+              </span>
             )}
-          >
-            {statusLabel(order.status, dictionary)}
-          </span>
+            {/* Delivery Fee Payment Badge */}
+            {showDeliverySlipReceived && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 animate-pulse">
+                Delivery Fee Slip Received
+              </span>
+            )}
+            {showFoodPaymentConfirmed && (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                Food Payment Confirmed ✓
+              </span>
+            )}
+            {showDeliveryFeeConfirmed && (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                {dictionary.deliveryFeeConfirmedBadge ?? "Delivery fee confirmed ✓"}
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-medium text-slate-700">{order.customerName}</p>
+          <p className="text-xs text-slate-500">
+            {dictionary.createdLabel ?? "Created"}: {formatBangkokTimestamp(order.createdAt)}
+          </p>
         </div>
-        <p className="text-sm font-medium text-slate-700">{order.customerName}</p>
-        <p className="text-xs text-slate-500">
-          {dictionary.createdLabel ?? "Created"}: {formatBangkokTimestamp(order.createdAt)}
-        </p>
-      </div>
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-base font-semibold text-slate-900">
@@ -273,7 +333,8 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderColumn = (
     title: string,

@@ -17,6 +17,8 @@ export function statusLabel(
       return dictionary.statusOutForDelivery ?? "Out for Delivery";
     case "awaiting_delivery_fee_payment":
       return dictionary.statusAwaitingDeliveryFee ?? "Awaiting Delivery Fee";
+    case "delivery_payment_review":
+      return dictionary.statusDeliveryPaymentReview ?? "Delivery Payment Review";
     case "delivered":
       return dictionary.statusDelivered ?? "Delivered";
     case "cancelled":
