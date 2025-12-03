@@ -14,7 +14,9 @@ import {
 import {
   broadcastPaymentVerified,
   broadcastOrderStatusChanged,
+  broadcastOrderClosed,
 } from "@/lib/orders/realtime";
+import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 
 type Params = {
   displayId: string;
@@ -97,7 +99,7 @@ export async function POST(
 
   // Determine new order status
   const newStatus: OrderStatus =
-    paymentType === "food" ? "order_in_kitchen" : "order_out_for_delivery";
+    paymentType === "food" ? "order_in_kitchen" : "delivered";
 
   // Update order status
   await updateOrderStatusForPayment(order.id, newStatus);
@@ -140,6 +142,19 @@ export async function POST(
     at: now.toISOString(),
   });
 
+  // If delivery fee payment is verified, close the order
+  if (paymentType === "delivery") {
+    await broadcastOrderClosed({
+      eventId: insertedEvent?.id ?? "",
+      orderId: order.id,
+      displayId: order.displayId,
+      finalStatus: newStatus,
+      actorType: "admin",
+      at: now.toISOString(),
+    });
+
+    await cleanupTransientEvents(order.id);
+  }
+
   return NextResponse.json({ status: newStatus });
 }
-

@@ -110,6 +110,17 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     [order.payments]
   );
 
+  const deliveryPayment = useMemo(
+    () => order.payments?.find((payment) => payment.type === "delivery") ?? null,
+    [order.payments]
+  );
+
+  const isDeliveryPaymentStage =
+    order.status === "awaiting_delivery_fee_payment" ||
+    order.status === "delivery_payment_review";
+
+  const activePayment = isDeliveryPaymentStage ? deliveryPayment : foodPayment;
+
   const foodPaymentAccountLabel = useMemo(() => {
     if (!foodPayment) return "";
     const phone = formatPromptPayPhoneForDisplay(foodPayment.payeePhoneNumber ?? "");
@@ -352,22 +363,36 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               {dictionary.lastUpdated}: {formatTimestamp(order.updatedAt)}
             </p>
           </div>
-          <span
-            className={clsx(
-              "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
-              cancelled
-                ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200"
-                : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
-            )}
-          >
+          <div className="flex flex-col items-end gap-2">
             <span
               className={clsx(
-                "h-2.5 w-2.5 rounded-full",
-                cancelled ? "bg-red-500" : "bg-emerald-500"
+                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
+                cancelled
+                  ? "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200"
+                  : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
               )}
-            />
-            {statusText}
-          </span>
+            >
+              <span
+                className={clsx(
+                  "h-2.5 w-2.5 rounded-full",
+                  cancelled ? "bg-red-500" : "bg-emerald-500"
+                )}
+              />
+              {statusText}
+            </span>
+            {!isClosed &&
+              order.status === "order_out_for_delivery" &&
+              order.courierTrackingUrl && (
+                <a
+                  href={order.courierTrackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100"
+                >
+                  {dictionary.trackDelivery ?? "Track delivery"}
+                </a>
+              )}
+          </div>
         </div>
         <div className="mt-5 space-y-3">
           <p className="text-sm font-semibold text-slate-700">
@@ -495,27 +520,39 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       {/* Payment section - shows for awaiting payment and review statuses */}
       {(order.status === "awaiting_food_payment" ||
         order.status === "food_payment_review" ||
-        order.status === "order_in_kitchen") && (
+        order.status === "order_in_kitchen" ||
+        order.status === "awaiting_delivery_fee_payment" ||
+        order.status === "delivery_payment_review" ||
+        order.status === "order_out_for_delivery" ||
+        order.status === "delivered") && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {dictionary.paymentSectionTitle}
+                {isDeliveryPaymentStage
+                  ? dictionary.deliveryPaymentSectionTitle ?? "Delivery fee payment"
+                  : dictionary.paymentSectionTitle}
               </h2>
               <p className="text-sm text-slate-700">
-                {dictionary.paymentSectionSubtitle}
+                {isDeliveryPaymentStage
+                  ? dictionary.deliveryPaymentSectionSubtitle ??
+                    "Scan the PromptPay QR to pay your delivery fee."
+                  : dictionary.paymentSectionSubtitle}
               </p>
             </div>
-            {foodPayment ? (
+            {activePayment ? (
               <div className="text-right text-sm font-semibold text-slate-900">
-                {dictionary.paymentAmountLabel}: {formatCurrency(foodPayment.amount)}
+                {(isDeliveryPaymentStage
+                  ? dictionary.deliveryPaymentAmountLabel
+                  : dictionary.paymentAmountLabel) ?? dictionary.paymentAmountLabel}
+                : {formatCurrency(activePayment.amount)}
               </div>
             ) : null}
           </div>
 
           <PaymentQrSection
             order={order}
-            payment={foodPayment}
+            payment={activePayment}
             dictionary={{
               howToPay: dictionary.howToPay ?? "How to pay:",
               step1: dictionary.step1 ?? "Screenshot this QR code",
@@ -524,8 +561,12 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               step4: dictionary.step4 ?? "Upload your receipt below",
               uploadReceipt: dictionary.uploadReceipt ?? "I've Paid – Upload Receipt",
               uploading: dictionary.uploading ?? "Uploading...",
-              underReview: dictionary.underReview ?? "Food Payment Under Review",
-              confirmed: dictionary.confirmed ?? "Food Payment Confirmed",
+              underReview: isDeliveryPaymentStage
+                ? dictionary.deliveryUnderReview ?? "Delivery fee under review"
+                : dictionary.underReview ?? "Food Payment Under Review",
+              confirmed: isDeliveryPaymentStage
+                ? dictionary.deliveryConfirmed ?? "Delivery fee confirmed"
+                : dictionary.confirmed ?? "Food Payment Confirmed",
             }}
             onReceiptUploaded={refreshOrder}
           />

@@ -6,7 +6,10 @@ import { requireAdmin } from "@/lib/api/require-admin";
 import { db } from "@/src/db/client";
 import { orderEvents, orderPayments, orders } from "@/src/db/schema";
 import type { OrderStatus } from "@/lib/orders/types";
-import { broadcastOrderStatusChanged, broadcastOrderClosed } from "@/lib/orders/realtime";
+import {
+  broadcastOrderStatusChanged,
+  broadcastOrderClosed,
+} from "@/lib/orders/realtime";
 import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
@@ -32,11 +35,17 @@ export async function PATCH(
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { action?: string; reason?: string }
+    | {
+        action?: string;
+        reason?: string;
+        courierVendor?: string;
+        courierTrackingUrl?: string;
+        deliveryFee?: number | string;
+      }
     | null;
 
   const action = body?.action;
-  const validActions = ["accept", "cancel", "delivered"];
+  const validActions = ["accept", "cancel", "handed_off", "delivered"];
   if (!action || !validActions.includes(action)) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
@@ -72,7 +81,7 @@ export async function PATCH(
   }
 
   const now = new Date();
-  
+
   // Determine next status based on action
   let nextStatus: OrderStatus;
   if (action === "accept") {
@@ -130,7 +139,152 @@ export async function PATCH(
       });
 
     nextStatus = "awaiting_food_payment";
+  } else if (action === "handed_off") {
+    if (order.status !== "order_in_kitchen") {
+      return NextResponse.json(
+        { error: "Order is not in kitchen" },
+        { status: 400 }
+      );
+    }
+
+    const courierTrackingUrl =
+      typeof body?.courierTrackingUrl === "string"
+        ? body.courierTrackingUrl.trim()
+        : "";
+
+    if (!courierTrackingUrl) {
+      return NextResponse.json(
+        { error: "Delivery tracking link is required" },
+        { status: 400 }
+      );
+    }
+
+    const courierVendor =
+      typeof body?.courierVendor === "string"
+        ? body.courierVendor.trim()
+        : null;
+
+    const rawFee = body?.deliveryFee;
+    const parsedFee =
+      typeof rawFee === "number"
+        ? rawFee
+        : typeof rawFee === "string"
+          ? Number(rawFee)
+          : NaN;
+
+    if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+      return NextResponse.json(
+        { error: "Delivery fee must be a non-negative number" },
+        { status: 400 }
+      );
+    }
+
+    // Round to whole THB for storage
+    const deliveryFeeValue = Math.round(parsedFee);
+
+    const activeAccount = await getActivePromptPayAccount();
+    if (!activeAccount) {
+      return NextResponse.json(
+        { error: "Activate a PromptPay account before handing off orders" },
+        { status: 400 }
+      );
+    }
+
+    const { payload, normalizedPhone, amount } = buildPromptPayPayload({
+      phoneNumber: activeAccount.phoneNumber,
+      amount: deliveryFeeValue,
+    });
+
+    const promptParseData = JSON.stringify({
+      phoneNumber: normalizedPhone,
+      amount,
+      accountId: activeAccount.id,
+    });
+
+    // Create or update delivery payment record
+    await db
+      .insert(orderPayments)
+      .values({
+        orderId: order.id,
+        promptpayAccountId: activeAccount.id,
+        type: "delivery",
+        amount: amount.toFixed(2),
+        status: "pending",
+        qrPayload: payload,
+        promptParseData,
+        requestedByAdminId: adminRow.id,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [orderPayments.orderId, orderPayments.type],
+        set: {
+          amount: amount.toFixed(2),
+          status: "pending",
+          qrPayload: payload,
+          promptpayAccountId: activeAccount.id,
+          promptParseData,
+          requestedByAdminId: adminRow.id,
+          updatedAt: now,
+        },
+      });
+
+    nextStatus = "awaiting_delivery_fee_payment";
+
+    const updatePayload: Partial<typeof orders.$inferInsert> = {
+      status: nextStatus,
+      courierVendor,
+      courierTrackingUrl,
+      deliveryFee: deliveryFeeValue,
+      // Keep totalAmount as originally charged for food;
+      // delivery fee is surfaced separately in UI.
+      updatedAt: now,
+    };
+
+    await db
+      .update(orders)
+      .set(updatePayload)
+      .where(eq(orders.id, order.id));
+
+    const [insertedEvent] = await db
+      .insert(orderEvents)
+      .values({
+        orderId: order.id,
+        actorType: "admin",
+        actorId: userId,
+        eventType: "status_updated",
+        fromStatus: order.status,
+        toStatus: nextStatus,
+        metadata: {
+          courierVendor,
+          courierTrackingUrl,
+          deliveryFee: deliveryFeeValue,
+        },
+      })
+      .returning({ id: orderEvents.id });
+
+    await broadcastOrderStatusChanged({
+      eventId: insertedEvent?.id ?? "",
+      orderId: order.id,
+      displayId: order.displayId,
+      fromStatus: order.status as OrderStatus,
+      toStatus: nextStatus,
+      actorType: "admin",
+      reason,
+      at: now.toISOString(),
+    });
+
+    return NextResponse.json({ status: nextStatus });
   } else if (action === "delivered") {
+    if (
+      order.status !== "order_out_for_delivery" &&
+      order.status !== "order_in_kitchen"
+    ) {
+      return NextResponse.json(
+        { error: "Order cannot be marked delivered from current status" },
+        { status: 400 }
+      );
+    }
+
     nextStatus = "delivered";
   } else {
     nextStatus = "cancelled";
@@ -159,17 +313,21 @@ export async function PATCH(
     .where(eq(orders.id, order.id));
 
   const isTerminalState = action === "cancel" || action === "delivered";
-  const criticalEventType = action === "cancel" ? "order_cancelled" : "order_delivered";
+  const criticalEventType =
+    action === "cancel" ? "order_cancelled" : "order_delivered";
 
-  const [insertedEvent] = await db.insert(orderEvents).values({
-    orderId: order.id,
-    actorType: "admin",
-    actorId: userId,
-    eventType: isTerminalState ? criticalEventType : "status_updated",
-    fromStatus: order.status,
-    toStatus: nextStatus,
-    metadata: reason ? { reason } : null,
-  }).returning({ id: orderEvents.id });
+  const [insertedEvent] = await db
+    .insert(orderEvents)
+    .values({
+      orderId: order.id,
+      actorType: "admin",
+      actorId: userId,
+      eventType: isTerminalState ? criticalEventType : "status_updated",
+      fromStatus: order.status,
+      toStatus: nextStatus,
+      metadata: reason ? { reason } : null,
+    })
+    .returning({ id: orderEvents.id });
 
   await broadcastOrderStatusChanged({
     eventId: insertedEvent?.id ?? "",

@@ -5,7 +5,7 @@
   "statusProcessing": "Order Processing",
   "statusAwaitingFoodPayment": "Awaiting Food Payment",
   "statusKitchen": "Order in Kitchen",
-  "statusOutForDelivery": "Out for Delivery",
+  "statusOutForDelivery": "Handed off to delivery",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee Payment",
   "statusDelivered": "Delivered",
   "statusCancelled": "Cancelled",
@@ -38,6 +38,9 @@
   "paymentSectionTitle": "Food payment",
   "paymentSectionSubtitle": "Scan the PromptPay QR to pay for your food total.",
   "paymentAmountLabel": "Amount",
+  "deliveryPaymentSectionTitle": "Delivery fee payment",
+  "deliveryPaymentSectionSubtitle": "Scan the PromptPay QR to pay your delivery fee.",
+  "deliveryPaymentAmountLabel": "Delivery fee",
   "paymentAccountLabel": "Receiving account",
   "paymentCodeLabel": "Payment code",
   "copyCode": "Copy code",
@@ -46,6 +49,8 @@
   "awaitingPaymentCopy": "We'll start cooking after you pay and upload the receipt.",
   "paymentReviewWarningTitle": "Hang tight while we review your payment",
   "paymentReviewWarningBody": "Please keep this page open so we can confirm your slip and update the status instantly.",
+  "deliveryUnderReview": "Delivery fee under review",
+  "deliveryConfirmed": "Delivery fee confirmed",
   "cancelReasonDisplayLabel": "Reason provided",
   "tabOngoing": "Ongoing",
   "tabCompleted": "Completed",
@@ -53,5 +58,6 @@
   "browseMenu": "Browse Menu",
   "listPageTitle": "Your Orders",
   "noOrdersYet": "No orders yet",
-  "startOrdering": "Start ordering to see your order history here."
+  "startOrdering": "Start ordering to see your order history here.",
+  "trackDelivery": "Track delivery"
 }
