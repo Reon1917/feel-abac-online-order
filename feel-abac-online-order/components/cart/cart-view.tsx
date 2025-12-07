@@ -541,14 +541,7 @@ export function CartView({
                                 key={option.id}
                                 className="flex items-center justify-between"
                               >
-                                <span className="flex items-center gap-1.5">
-                                  {option.menuCode && (
-                                    <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-medium text-emerald-700">
-                                      {option.menuCode}
-                                    </span>
-                                  )}
-                                  <span>{option.label}</span>
-                                </span>
+                                <span>{option.label}</span>
                                 {option.extraPrice > 0 ? (
                                   <span className="text-xs font-semibold text-emerald-600">
                                     +฿{formatPrice(option.extraPrice)}

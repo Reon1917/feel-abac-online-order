@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AdminList } from "./admin-list";
 import { AdminManagement } from "./admin-management";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { Locale } from "@/lib/i18n/config";
 
@@ -34,8 +35,8 @@ const panels = [
   },
   {
     id: "menu",
-    title: "Menu drops",
-    description: "Plan rotations, attach prep notes, and preview customer view.",
+    title: "Menu & set menus",
+    description: "Manage categories, dishes, layout, and set-menu pools in one place.",
   },
   {
     id: "team",
@@ -53,39 +54,50 @@ export function AdminWorkspace({
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
-  const currentPanel = panels.find((panel) => panel.id === activePanel);
-
   const handleNavigate = (path: string) => {
     router.push(withLocalePath(locale, path));
   };
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-6 md:grid-cols-2">
-        {panels.map((panel) => (
-          <button
-            key={panel.id}
-            type="button"
-            onClick={() => {
-              setActivePanel(panel.id);
-            }}
-            className={clsx(
-              "flex h-full flex-col justify-between gap-4 rounded-lg border p-5 text-left transition",
-              activePanel === panel.id
-                ? "border-emerald-400 bg-emerald-50"
-                : "border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40"
-            )}
-          >
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                {panel.id === "team" ? "Admins" : panel.id === "menu" ? "Menu" : "Operations"}
-              </p>
-              <h2 className="text-lg font-semibold text-slate-900">{panel.title}</h2>
-              <p className="text-sm text-slate-600">{panel.description}</p>
-            </div>
-            <span className="text-sm font-semibold text-emerald-700">Open workspace →</span>
-          </button>
-        ))}
+      <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-6 md:grid-cols-3">
+        {panels.map((panel) => {
+          const href =
+            panel.id === "orders"
+              ? "/admin/orders"
+              : panel.id === "menu"
+                ? "/admin/menu"
+                : "/admin/settings/admins";
+
+          return (
+            <button
+              key={panel.id}
+              type="button"
+              onClick={() => handleNavigate(href)}
+              className={clsx(
+                "flex h-full flex-col justify-between gap-4 rounded-lg border p-5 text-left transition",
+                "border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40"
+              )}
+            >
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                  {panel.id === "team"
+                    ? "Admins"
+                    : panel.id === "menu"
+                      ? "Menu"
+                      : "Operations"}
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {panel.title}
+                </h2>
+                <p className="text-sm text-slate-600">{panel.description}</p>
+              </div>
+              <span className="text-sm font-semibold text-emerald-700">
+                Go to {panel.id === "team" ? "team" : panel.id} →
+              </span>
+            </button>
+          );
+        })}
       </section>
 
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -107,113 +119,117 @@ export function AdminWorkspace({
         </Button>
       </div>
 
-      {activePanel && currentPanel && (
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                {currentPanel.id === "team" ? "Admin guardrails" : currentPanel.id === "menu" ? "Menu planning" : "Fulfilment"}
+                Builder studio
               </p>
-              <h2 className="text-xl font-semibold text-slate-900">{currentPanel.title}</h2>
-              <p className="mt-1 text-sm text-slate-600">{currentPanel.description}</p>
+              <h2 className="text-base font-semibold text-slate-900">
+                Menu builder
+              </h2>
+              <p className="text-sm text-slate-600">
+                Manage categories, items, and choice groups in the full builder workspace.
+              </p>
             </div>
-            <Button variant="ghost" onClick={() => setActivePanel(null)}>
-              Close panel
+            <Button
+              className="mt-4"
+              size="sm"
+              onClick={() => handleNavigate("/admin/menu")}
+            >
+              Open menu builder
             </Button>
           </div>
-
-          <div className="mt-6 space-y-4">
-            {activePanel === "team" ? (
-              <div className="grid gap-5 lg:grid-cols-2">
-                <AdminManagement isSuperAdmin={isSuperAdmin} />
-                <AdminList
-                  initialAdmins={adminList}
-                  currentUserId={currentUserId}
-                  isSuperAdmin={isSuperAdmin}
-                />
-              </div>
-            ) : activePanel === "menu" ? (
-              <div className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 md:grid-cols-2 lg:grid-cols-3">
-                <div className="flex h-full flex-col justify-between rounded-xl border border-white/60 bg-white/70 p-4 shadow-xs">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                      Builder studio
-                    </p>
-                    <p className="text-base font-semibold text-slate-900">
-                      Create and edit dishes
-                    </p>
-                    <p>
-                      Manage categories, menu items, and choice groups in the full builder workspace.
-                    </p>
-                  </div>
-                  <Button
-                    className="mt-4"
-                    size="sm"
-                    onClick={() => handleNavigate("/admin/menu")}
-                  >
-                    Launch builder
-                  </Button>
-                </div>
-                <div className="flex h-full flex-col justify-between rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 shadow-xs">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                      Layout editor
-                    </p>
-                    <p className="text-base font-semibold text-slate-900">
-                      Control display order
-                    </p>
-                    <p>
-                      Drag categories or items to change how diners see the menu without touching copy.
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="mt-4 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                    size="sm"
-                    onClick={() => handleNavigate("/admin/menu/layout")}
-                  >
-                    Open layout editor
-                  </Button>
-                </div>
-                <div className="flex h-full flex-col justify-between rounded-xl border border-emerald-100 bg-white p-4 shadow-xs">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                      Recommended drops
-                    </p>
-                    <p className="text-base font-semibold text-slate-900">
-                      Pin top dishes
-                    </p>
-                    <p>
-                      Curate the featured carousel so diners always see your must-try items first.
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    className="mt-4 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                    size="sm"
-                    onClick={() => handleNavigate("/admin/menu/recommended")}
-                  >
-                    Manage recommendations
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-                <p className="text-base font-semibold text-slate-900">Orders control (mock)</p>
-                <p>
-                  Visualize ticket load, pause intake when stations hit thresholds, and send quick pickup
-                  updates to customers.
-                </p>
-                <ul className="list-disc space-y-2 pl-5">
-                  <li>Live timers for each order stage.</li>
-                  <li>Auto-throttle presets for peak hours.</li>
-                  <li>Escalation feed for delayed dishes.</li>
-                </ul>
-              </div>
-            )}
+          <div className="flex flex-col justify-between rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                Set menu pools
+              </p>
+              <h2 className="text-base font-semibold text-slate-900">
+                Choice pools & options
+              </h2>
+              <p className="text-sm text-slate-600">
+                Configure reusable pools for set menus, then attach them in the menu builder.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="mt-4 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+              size="sm"
+              onClick={() => handleNavigate("/admin/menu/pools")}
+            >
+              Manage choice pools
+            </Button>
+          </div>
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                Recommendations & layout
+              </p>
+              <h2 className="text-base font-semibold text-slate-900">
+                Layout & featured items
+              </h2>
+              <p className="text-sm text-slate-600">
+                Reorder sections, adjust layout, and pin must-try items for diners.
+              </p>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => handleNavigate("/admin/menu/layout")}
+              >
+                Layout editor
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => handleNavigate("/admin/menu/recommended")}
+              >
+                Featured items
+              </Button>
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              Team access
+            </p>
+            <p className="text-base font-semibold text-slate-900">
+              Admin guardrails & access
+            </p>
+            <p className="text-sm text-slate-600">
+              Promote or retire admins with safe-guarded workflows. Only super admins can manage roles.
+            </p>
+            <div className="mt-4">
+              <AdminManagement isSuperAdmin={isSuperAdmin} />
+            </div>
+          </div>
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              Admin directory
+            </p>
+            <p className="text-base font-semibold text-slate-900">
+              Current admin list
+            </p>
+            <p className="text-sm text-slate-600">
+              See who has access to the dashboard and quickly pause or remove accounts.
+            </p>
+            <div className="mt-4">
+              <AdminList
+                initialAdmins={adminList}
+                currentUserId={currentUserId}
+                isSuperAdmin={isSuperAdmin}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

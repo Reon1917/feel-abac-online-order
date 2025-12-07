@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { CheckIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,12 @@ type SetMenuBuilderProps = {
     quantity: number
   ) => Promise<void>;
   isSubmitting?: boolean;
+  onTotalsChange?: (totals: {
+    basePrice: number;
+    addonsTotal: number;
+    totalPrice: number;
+    quantity: number;
+  }) => void;
 };
 
 export type SetMenuBuilderSelection = SetMenuSelection;
@@ -120,16 +126,9 @@ function PoolSection({
 
               {/* Option info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {option.menuCode && (
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
-                      {option.menuCode}
-                    </span>
-                  )}
-                  <span className="font-medium text-slate-900 truncate">
-                    {optionName}
-                  </span>
-                </div>
+                <span className="font-medium text-slate-900 truncate">
+                  {optionName}
+                </span>
               </div>
 
               {/* Price */}
@@ -156,6 +155,7 @@ export function SetMenuBuilder({
   menuLocale,
   onAddToCart,
   isSubmitting = false,
+  onTotalsChange,
 }: SetMenuBuilderProps) {
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptions>(new Map());
   const [quantity, setQuantity] = useState(1);
@@ -202,7 +202,7 @@ export function SetMenuBuilder({
   );
 
   // Calculate total price and build selections for cart
-  const { totalPrice, isValid, selections } = useMemo(() => {
+  const { basePrice, addonsTotal, totalPrice, isValid, selections } = useMemo(() => {
     let base = 0;
     let addons = 0;
     let valid = true;
@@ -244,14 +244,25 @@ export function SetMenuBuilder({
       }
     }
 
+    const total = (base + addons) * quantity;
     return {
       basePrice: base,
       addonsTotal: addons,
-      totalPrice: (base + addons) * quantity,
+      totalPrice: total,
       isValid: valid,
       selections: builtSelections,
     };
   }, [sortedLinks, selectedOptions, quantity]);
+
+  useEffect(() => {
+    if (!onTotalsChange) return;
+    onTotalsChange({
+      basePrice,
+      addonsTotal,
+      totalPrice,
+      quantity,
+    });
+  }, [addonsTotal, basePrice, onTotalsChange, quantity, totalPrice]);
 
   // Handle add to cart
   const handleAddToCart = useCallback(async () => {

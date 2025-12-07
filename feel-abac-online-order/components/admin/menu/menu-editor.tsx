@@ -24,6 +24,7 @@ import {
   MenuChoiceOption,
   MenuItemRecord,
   MenuItemStatus,
+  SetMenuPoolRole,
 } from "@/lib/menu/types";
 import { defaultHeaders, fetchJSON } from "./api-client";
 import { useAdminMenuStore } from "./store";
@@ -82,6 +83,18 @@ type MenuChoiceGroupFormValue = {
   options: MenuOptionFormValue[];
 };
 
+type SetMenuPoolLinkFormValue = {
+  role: SetMenuPoolRole;
+  poolId: string | null;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  isPriceDetermining: boolean;
+  usesOptionPrice: boolean;
+  flatPrice: string;
+  displayOrder: number;
+};
+
 type MenuEditorFormValues = {
   id?: string;
   categoryId: string | null;
@@ -97,6 +110,7 @@ type MenuEditorFormValues = {
   allowUserNotes: boolean;
   status: MenuItemStatus;
   choiceGroups: MenuChoiceGroupFormValue[];
+  poolLinks: SetMenuPoolLinkFormValue[];
 };
 
 export type MenuEditorPreviewSnapshot = {
@@ -146,6 +160,26 @@ const STATUS_BADGE_STYLES: Record<MenuItemStatus, string> = {
   published: "bg-emerald-100 text-emerald-700",
 };
 
+const NO_POOL_VALUE = "__none__";
+
+const SET_MENU_ROLES: SetMenuPoolRole[] = [
+  "base_curry",
+  "addon_curry",
+  "addon_veggie",
+];
+
+const SET_MENU_ROLE_LABELS: Record<SetMenuPoolRole, string> = {
+  base_curry: "Base selection",
+  addon_curry: "Add-on group 1",
+  addon_veggie: "Add-on group 2",
+};
+
+const SET_MENU_ROLE_DESCRIPTIONS: Record<SetMenuPoolRole, string> = {
+  base_curry: "Required base that typically sets the starting price.",
+  addon_curry: "Optional add-ons such as extra mains or toppings.",
+  addon_veggie: "Optional add-ons such as sides, drinks, or extras.",
+};
+
 const PRIMARY_BUTTON_CLASS =
   "border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500";
 const SUBTLE_BUTTON_CLASS =
@@ -192,6 +226,149 @@ type StoredDraftPayload = {
   values: Partial<MenuEditorFormValues>;
   updatedAt: number;
 };
+
+type NormalizedPoolLinkForPayload = {
+  poolId: string;
+  role: SetMenuPoolRole;
+  isPriceDetermining: boolean;
+  usesOptionPrice: boolean;
+  flatPrice: number | null;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  displayOrder: number;
+};
+
+function buildDefaultPoolLink(role: SetMenuPoolRole, displayOrder: number): SetMenuPoolLinkFormValue {
+  if (role === "base_curry") {
+    return {
+      role,
+      poolId: null,
+      isRequired: true,
+      minSelect: 1,
+      maxSelect: 1,
+      isPriceDetermining: true,
+      usesOptionPrice: true,
+      flatPrice: "",
+      displayOrder,
+    };
+  }
+
+  return {
+    role,
+    poolId: null,
+    isRequired: false,
+    minSelect: 0,
+    maxSelect: 3,
+    isPriceDetermining: false,
+    usesOptionPrice: true,
+    flatPrice: "",
+    displayOrder,
+  };
+}
+
+function buildPoolLinksFromItem(
+  item: MenuItemRecord | null | undefined
+): SetMenuPoolLinkFormValue[] {
+  const base = SET_MENU_ROLES.map((role, index) =>
+    buildDefaultPoolLink(role, index)
+  );
+
+  if (!item?.poolLinks || item.poolLinks.length === 0) {
+    return base;
+  }
+
+  return base.map((defaultLink) => {
+    const existing = item.poolLinks?.find(
+      (link) => link.role === defaultLink.role
+    );
+    if (!existing) {
+      return defaultLink;
+    }
+
+    return {
+      role: existing.role,
+      poolId: existing.pool.id,
+      isRequired: existing.isRequired,
+      minSelect: existing.minSelect,
+      maxSelect: existing.maxSelect,
+      isPriceDetermining: existing.isPriceDetermining,
+      usesOptionPrice: existing.usesOptionPrice,
+      flatPrice:
+        existing.flatPrice != null ? existing.flatPrice.toString() : "",
+      displayOrder: existing.displayOrder,
+    };
+  });
+}
+
+function normalizePoolLinksFromItem(
+  item: MenuItemRecord | null
+): NormalizedPoolLinkForPayload[] {
+  if (!item?.poolLinks || item.poolLinks.length === 0) {
+    return [];
+  }
+
+  return item.poolLinks
+    .map((link) => ({
+      poolId: link.pool.id,
+      role: link.role,
+      isPriceDetermining: link.isPriceDetermining ?? false,
+      usesOptionPrice: link.usesOptionPrice ?? true,
+      flatPrice: link.flatPrice ?? null,
+      isRequired: link.isRequired ?? true,
+      minSelect: link.minSelect ?? 1,
+      maxSelect: link.maxSelect ?? 99,
+      displayOrder: link.displayOrder ?? 0,
+    }))
+    .sort((a, b) => {
+      if (a.displayOrder === b.displayOrder) {
+        return a.role.localeCompare(b.role);
+      }
+      return a.displayOrder - b.displayOrder;
+    });
+}
+
+function buildPoolLinksPayloadFromForm(
+  values: MenuEditorFormValues
+): NormalizedPoolLinkForPayload[] {
+  const links = values.poolLinks ?? [];
+  const activeLinks = links.filter((link) => link.poolId);
+
+  if (activeLinks.length === 0 || !values.isSetMenu) {
+    return [];
+  }
+
+  return activeLinks
+    .map((link, index) => {
+      const flatPriceValue = link.flatPrice?.trim() ?? "";
+      const parsedFlat = Number.parseFloat(flatPriceValue);
+      const flatPrice =
+        flatPriceValue.length > 0 && Number.isFinite(parsedFlat)
+          ? parsedFlat
+          : null;
+
+      return {
+        poolId: link.poolId as string,
+        role: link.role,
+        isPriceDetermining: link.isPriceDetermining,
+        usesOptionPrice: link.usesOptionPrice,
+        flatPrice,
+        isRequired: link.isRequired,
+        minSelect: link.minSelect,
+        maxSelect: link.maxSelect,
+        displayOrder:
+          typeof link.displayOrder === "number"
+            ? link.displayOrder
+            : index,
+      };
+    })
+    .sort((a, b) => {
+      if (a.displayOrder === b.displayOrder) {
+        return a.role.localeCompare(b.role);
+      }
+      return a.displayOrder - b.displayOrder;
+    });
+}
 
 function getDraftStorageKey(itemId: string) {
   return `${DRAFT_STORAGE_PREFIX}${itemId}`;
@@ -323,6 +500,18 @@ function buildDraftDiff(
     changedFields.add("allowUserNotes");
   }
 
+  // Set menu pool links (for set menu items)
+  const existingPoolLinks = normalizePoolLinksFromItem(item);
+  const currentPoolLinks = buildPoolLinksPayloadFromForm(values);
+
+  if (
+    JSON.stringify(existingPoolLinks) !==
+    JSON.stringify(currentPoolLinks)
+  ) {
+    payload.poolLinks = currentPoolLinks;
+    changedFields.add("poolLinks");
+  }
+
   const hasChanges = changedFields.size > 0;
   return { payload, changedFields, hasChanges };
 }
@@ -356,6 +545,7 @@ function itemToFormValues(
       allowUserNotes: false,
       status: "draft",
       choiceGroups: [],
+      poolLinks: buildPoolLinksFromItem(null),
     };
   }
 
@@ -389,6 +579,7 @@ function itemToFormValues(
         isAvailable: option.isAvailable,
       })),
     })),
+    poolLinks: buildPoolLinksFromItem(item),
   };
 }
 
@@ -1337,9 +1528,11 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
           </CardTitle>
           <CardDescription className="text-sm text-slate-600">
             Bundle sides, toppings, and upsells into tidy sections. Drag cards to reorder and keep the menu clear.
+            For set menus, attach choice pools in the “Set menu pools” screen, then link them here.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <SetMenuPoolsPanel form={form} />
           <ChoiceGroupPanel
             form={form}
             groupFields={groupFields}
@@ -2282,6 +2475,269 @@ function ChoiceGroupCard({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+type ChoicePoolSummary = {
+  id: string;
+  nameEn: string;
+  nameMm: string | null;
+  isActive: boolean;
+};
+
+type SetMenuPoolsPanelProps = {
+  form: UseFormReturn<MenuEditorFormValues>;
+};
+
+function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
+  const isSetMenu = useWatch({
+    control: form.control,
+    name: "isSetMenu",
+  });
+  const poolLinks = (useWatch({
+    control: form.control,
+    name: "poolLinks",
+  }) ?? []) as SetMenuPoolLinkFormValue[];
+
+  const [pools, setPools] = useState<ChoicePoolSummary[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSetMenu) return;
+
+    let cancelled = false;
+
+    fetchJSON<{ pools: ChoicePoolSummary[] }>("/api/admin/menu/pools", {
+      method: "GET",
+      cache: "no-store",
+    })
+      .then((data) => {
+        if (cancelled) return;
+        setPools(data.pools);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load choice pools."
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          // no-op; loading state is derived from pools + error
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSetMenu]);
+
+  if (!isSetMenu) {
+    return null;
+  }
+
+  const linksByRole = new Map<SetMenuPoolRole, SetMenuPoolLinkFormValue>();
+  for (const link of poolLinks) {
+    linksByRole.set(link.role, link);
+  }
+
+  const handleUpdateLink = (
+    role: SetMenuPoolRole,
+    updater: (current: SetMenuPoolLinkFormValue) => SetMenuPoolLinkFormValue
+  ) => {
+    const currentLinks =
+      poolLinks.length > 0
+        ? poolLinks
+        : SET_MENU_ROLES.map((r, index) => buildDefaultPoolLink(r, index));
+
+    const nextLinks = currentLinks.map((link) =>
+      link.role === role ? updater(link) : link
+    );
+
+    form.setValue("poolLinks", nextLinks, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+  };
+
+  const isLoading = isSetMenu && pools.length === 0 && !loadError;
+
+  return (
+    <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Set menu pools
+          </p>
+          <p className="text-sm text-slate-700">
+            Attach choice pools for the base curry and add-ons. Diners will pick
+            from these when building a set.
+          </p>
+        </div>
+        {isLoading ? (
+          <span className="text-xs text-slate-500">Loading pools…</span>
+        ) : null}
+      </div>
+      {loadError ? (
+        <p className="text-xs text-rose-600">{loadError}</p>
+      ) : null}
+      {pools.length === 0 ? (
+        <p className="text-xs text-slate-600">
+          No choice pools found. Create pools under{" "}
+          <span className="font-semibold">Admin → Menu → Choice pools</span>{" "}
+          first, then attach them here.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {SET_MENU_ROLES.map((role) => {
+            const link =
+              linksByRole.get(role) ??
+              buildDefaultPoolLink(role, SET_MENU_ROLES.indexOf(role));
+
+            return (
+              <div
+                key={role}
+                className="rounded-lg border border-emerald-200 bg-white px-3 py-3 sm:px-4 sm:py-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {SET_MENU_ROLE_LABELS[role]}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {SET_MENU_ROLE_DESCRIPTIONS[role]}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-emerald-700">
+                    {role}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.6fr)]">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-slate-600">
+                      Attached pool
+                    </p>
+                    <Select
+                      value={link.poolId ?? NO_POOL_VALUE}
+                      onValueChange={(value) => {
+                        const nextPoolId =
+                          value === NO_POOL_VALUE ? null : value;
+                        handleUpdateLink(role, (current) => ({
+                          ...current,
+                          poolId: nextPoolId,
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
+                        <SelectValue placeholder="No pool attached" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_POOL_VALUE}>
+                          <span className="text-slate-500">
+                            No pool attached
+                          </span>
+                        </SelectItem>
+                        {pools.map((pool) => (
+                          <SelectItem key={pool.id} value={pool.id}>
+                            <span className="font-medium text-slate-900">
+                              {pool.nameEn}
+                            </span>
+                            {pool.nameMm ? (
+                              <span className="ml-1 text-xs text-slate-500">
+                                ({pool.nameMm})
+                              </span>
+                            ) : null}
+                            {!pool.isActive && (
+                              <span className="ml-2 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                                Inactive
+                              </span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                      <span className="text-xs font-medium text-slate-700">
+                        Required selection
+                      </span>
+                      <Switch
+                        checked={link.isRequired}
+                        onCheckedChange={(checked) =>
+                          handleUpdateLink(role, (current) => ({
+                            ...current,
+                            isRequired: checked,
+                          }))
+                        }
+                        className={SWITCH_TONE_CLASS}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-slate-600">
+                          Min selects
+                        </p>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={link.minSelect}
+                          onChange={(event) => {
+                            const value = Number.parseInt(
+                              event.target.value,
+                              10
+                            );
+                            const nextMin = Number.isFinite(value)
+                              ? value
+                              : 0;
+                            handleUpdateLink(role, (current) => ({
+                              ...current,
+                              minSelect: nextMin,
+                            }));
+                          }}
+                          className={COMPACT_INPUT_CLASS}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-slate-600">
+                          Max selects
+                        </p>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={link.maxSelect}
+                          onChange={(event) => {
+                            const value = Number.parseInt(
+                              event.target.value,
+                              10
+                            );
+                            const nextMax = Number.isFinite(value)
+                              ? value
+                              : 1;
+                            handleUpdateLink(role, (current) => ({
+                              ...current,
+                              maxSelect: nextMax,
+                            }));
+                          }}
+                          className={COMPACT_INPUT_CLASS}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

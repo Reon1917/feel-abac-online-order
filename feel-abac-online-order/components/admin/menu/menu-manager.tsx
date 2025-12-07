@@ -343,7 +343,7 @@ export function AdminMenuManager({
   const headerSubtitle =
     variant === "standalone"
       ? "Everything autosaves as you go—no more lost work. Preview changes instantly and publish when you’re ready."
-      : "Organize categories, curate dishes, and adjust availability without leaving this workspace. Autosave keeps drafts safe while you experiment.";
+      : "Organize categories, curate dishes, attach choice groups and set-menu pools, and adjust availability from one workspace. Autosave keeps drafts safe while you experiment.";
 
   const builderTabs = useMemo<BuilderTabOption[]>(
     () => [
@@ -908,4 +908,3 @@ function ItemsCard({
     </Card>
   );
 }
-
