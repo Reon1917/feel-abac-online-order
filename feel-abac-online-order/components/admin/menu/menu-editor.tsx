@@ -93,6 +93,7 @@ type MenuEditorFormValues = {
   menuCode?: string;
   price: string;
   isAvailable: boolean;
+  isSetMenu: boolean;
   allowUserNotes: boolean;
   status: MenuItemStatus;
   choiceGroups: MenuChoiceGroupFormValue[];
@@ -312,6 +313,11 @@ function buildDraftDiff(
     changedFields.add("isAvailable");
   }
 
+  if (values.isSetMenu !== item.isSetMenu) {
+    payload.isSetMenu = values.isSetMenu;
+    changedFields.add("isSetMenu");
+  }
+
   if (values.allowUserNotes !== item.allowUserNotes) {
     payload.allowUserNotes = values.allowUserNotes;
     changedFields.add("allowUserNotes");
@@ -346,6 +352,7 @@ function itemToFormValues(
       menuCode: "",
       price: "",
       isAvailable: true,
+      isSetMenu: false,
       allowUserNotes: false,
       status: "draft",
       choiceGroups: [],
@@ -363,6 +370,7 @@ function itemToFormValues(
     menuCode: item.menuCode ?? "",
     price: item.price ? item.price.toString() : "",
     isAvailable: item.isAvailable,
+    isSetMenu: item.isSetMenu,
     allowUserNotes: item.allowUserNotes,
     status: item.status,
     choiceGroups: (item.choiceGroups ?? []).map((group) => ({
@@ -1291,6 +1299,23 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
                 <Controller
                   control={form.control}
                   name="allowUserNotes"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked)}
+                      className={SWITCH_TONE_CLASS}
+                    />
+                  )}
+                />
+              </ToggleBlock>
+              <ToggleBlock
+                label="Set Menu item"
+                description="Enable to make this a configurable set menu with choice pools."
+                changed={changedFields.has("isSetMenu")}
+              >
+                <Controller
+                  control={form.control}
+                  name="isSetMenu"
                   render={({ field }) => (
                     <Switch
                       checked={field.value}

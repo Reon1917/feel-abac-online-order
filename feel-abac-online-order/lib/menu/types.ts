@@ -34,6 +34,42 @@ export type MenuChoiceGroup = {
 
 export type MenuItemStatus = "draft" | "published";
 
+export type SetMenuPoolRole = "base_curry" | "addon_curry" | "addon_veggie";
+
+export type SetMenuPoolLinkRecord = {
+  id: string;
+  menuItemId: string;
+  poolId: string;
+  role: SetMenuPoolRole;
+  isPriceDetermining: boolean;
+  usesOptionPrice: boolean;
+  flatPrice: number | null;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  labelEn: string | null;
+  labelMm: string | null;
+  displayOrder: number;
+  createdAt: Date;
+  pool: {
+    id: string;
+    nameEn: string;
+    nameMm: string | null;
+    isActive: boolean;
+    displayOrder: number;
+    options: {
+      id: string;
+      poolId: string;
+      menuCode: string | null;
+      nameEn: string;
+      nameMm: string | null;
+      price: number;
+      isAvailable: boolean;
+      displayOrder: number;
+    }[];
+  };
+};
+
 export type MenuItemRecord = {
   id: string;
   categoryId: string;
@@ -47,12 +83,14 @@ export type MenuItemRecord = {
   descriptionEn: string | null;
   descriptionMm: string | null;
   isAvailable: boolean;
+  isSetMenu: boolean;
   allowUserNotes: boolean;
   status: MenuItemStatus;
   displayOrder: number;
   createdAt: Date;
   updatedAt: Date;
   choiceGroups: MenuChoiceGroup[];
+  poolLinks?: SetMenuPoolLinkRecord[];
 };
 
 export type MenuCategoryRecord = {
@@ -113,6 +151,36 @@ export type PublicMenuChoiceGroup = {
   options: PublicMenuOption[];
 };
 
+export type PublicSetMenuPoolOption = {
+  id: string;
+  menuCode: string | null;
+  name: string;
+  nameMm: string | null;
+  price: number;
+  isAvailable: boolean;
+  displayOrder: number;
+};
+
+export type PublicSetMenuPoolLink = {
+  id: string;
+  role: SetMenuPoolRole;
+  isPriceDetermining: boolean;
+  usesOptionPrice: boolean;
+  flatPrice: number | null;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  label: string | null;
+  labelMm: string | null;
+  displayOrder: number;
+  pool: {
+    id: string;
+    name: string;
+    nameMm: string | null;
+    options: PublicSetMenuPoolOption[];
+  };
+};
+
 export type PublicMenuItem = {
   id: string;
   name: string;
@@ -125,7 +193,9 @@ export type PublicMenuItem = {
   menuCode: string | null;
   allowUserNotes: boolean;
   isAvailable: boolean;
+  isSetMenu: boolean;
   choiceGroups: PublicMenuChoiceGroup[];
+  poolLinks?: PublicSetMenuPoolLink[];
   displayOrder: number;
 };
 

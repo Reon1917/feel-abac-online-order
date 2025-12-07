@@ -12,6 +12,10 @@ import {
   menuItemUpdateSchema,
   toDecimalString,
 } from "@/lib/menu/validators";
+import {
+  syncPoolLinksForMenuItem,
+  getPoolLinksForMenuItem,
+} from "@/lib/menu/pool-queries";
 
 export const revalidate = 0;
 
@@ -20,6 +24,37 @@ type RouteContext = {
     itemId: string;
   }>;
 };
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  const session = await requireActiveAdmin();
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { itemId: rawItemId } = await context.params;
+  const itemId = rawItemId?.trim();
+  if (!itemId) {
+    return Response.json({ error: "Menu item ID is required" }, { status: 400 });
+  }
+
+  const [item] = await db
+    .select()
+    .from(menuItems)
+    .where(eq(menuItems.id, itemId))
+    .limit(1);
+
+  if (!item) {
+    return Response.json({ error: "Menu item not found" }, { status: 404 });
+  }
+
+  // If it's a set menu, include pool links
+  if (item.isSetMenu) {
+    const poolLinks = await getPoolLinksForMenuItem(itemId);
+    return Response.json({ item: { ...item, poolLinks } });
+  }
+
+  return Response.json({ item });
+}
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const session = await requireActiveAdmin();
@@ -43,7 +78,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const updates = parsed.data;
-  if (Object.keys(updates).length === 0) {
+  const { poolLinks, ...itemUpdates } = updates;
+
+  if (Object.keys(itemUpdates).length === 0 && !poolLinks) {
     return Response.json(
       { error: "No changes provided" },
       { status: 400 }
@@ -54,61 +91,106 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     updatedAt: new Date(),
   };
 
-  if (updates.categoryId !== undefined) {
-    updateData.categoryId = updates.categoryId;
+  if (itemUpdates.categoryId !== undefined) {
+    updateData.categoryId = itemUpdates.categoryId;
   }
-  if (updates.nameEn !== undefined) {
-    updateData.nameEn = updates.nameEn;
+  if (itemUpdates.nameEn !== undefined) {
+    updateData.nameEn = itemUpdates.nameEn;
   }
-  if (updates.nameMm !== undefined) {
-    updateData.nameMm = updates.nameMm ?? null;
+  if (itemUpdates.nameMm !== undefined) {
+    updateData.nameMm = itemUpdates.nameMm ?? null;
   }
-  if (updates.descriptionEn !== undefined) {
-    updateData.descriptionEn = updates.descriptionEn ?? null;
+  if (itemUpdates.descriptionEn !== undefined) {
+    updateData.descriptionEn = itemUpdates.descriptionEn ?? null;
   }
-  if (updates.descriptionMm !== undefined) {
-    updateData.descriptionMm = updates.descriptionMm ?? null;
+  if (itemUpdates.descriptionMm !== undefined) {
+    updateData.descriptionMm = itemUpdates.descriptionMm ?? null;
   }
-  if (updates.placeholderIcon !== undefined) {
-    updateData.placeholderIcon = updates.placeholderIcon ?? null;
+  if (itemUpdates.placeholderIcon !== undefined) {
+    updateData.placeholderIcon = itemUpdates.placeholderIcon ?? null;
   }
-  if (updates.menuCode !== undefined) {
-    updateData.menuCode = updates.menuCode ?? null;
+  if (itemUpdates.menuCode !== undefined) {
+    updateData.menuCode = itemUpdates.menuCode ?? null;
   }
-  if (updates.imageUrl !== undefined) {
-    updateData.imageUrl = updates.imageUrl ?? null;
-    updateData.hasImage = Boolean(updates.imageUrl);
+  if (itemUpdates.imageUrl !== undefined) {
+    updateData.imageUrl = itemUpdates.imageUrl ?? null;
+    updateData.hasImage = Boolean(itemUpdates.imageUrl);
   }
-  if (updates.price !== undefined) {
-    updateData.price = toDecimalString(updates.price);
+  if (itemUpdates.price !== undefined) {
+    updateData.price = toDecimalString(itemUpdates.price);
   }
-  if (updates.isAvailable !== undefined) {
-    updateData.isAvailable = updates.isAvailable;
+  if (itemUpdates.isAvailable !== undefined) {
+    updateData.isAvailable = itemUpdates.isAvailable;
   }
-  if (updates.allowUserNotes !== undefined) {
-    updateData.allowUserNotes = updates.allowUserNotes;
+  if (itemUpdates.isSetMenu !== undefined) {
+    updateData.isSetMenu = itemUpdates.isSetMenu;
   }
-  if (updates.displayOrder !== undefined) {
-    updateData.displayOrder = updates.displayOrder;
+  if (itemUpdates.allowUserNotes !== undefined) {
+    updateData.allowUserNotes = itemUpdates.allowUserNotes;
   }
-  if (updates.status !== undefined) {
-    updateData.status = updates.status;
+  if (itemUpdates.displayOrder !== undefined) {
+    updateData.displayOrder = itemUpdates.displayOrder;
   }
-  if (updates.hasImage !== undefined && updates.imageUrl === undefined) {
-    updateData.hasImage = updates.hasImage;
+  if (itemUpdates.status !== undefined) {
+    updateData.status = itemUpdates.status;
+  }
+  if (itemUpdates.hasImage !== undefined && itemUpdates.imageUrl === undefined) {
+    updateData.hasImage = itemUpdates.hasImage;
   }
 
-  const [item] = await db
-    .update(menuItems)
-    .set(updateData)
-    .where(eq(menuItems.id, itemId))
-    .returning();
+  // Update item if there are changes
+  let item;
+  if (Object.keys(updateData).length > 1) { // More than just updatedAt
+    [item] = await db
+      .update(menuItems)
+      .set(updateData)
+      .where(eq(menuItems.id, itemId))
+      .returning();
+  } else {
+    [item] = await db
+      .select()
+      .from(menuItems)
+      .where(eq(menuItems.id, itemId))
+      .limit(1);
+  }
 
   if (!item) {
     return Response.json({ error: "Menu item not found" }, { status: 404 });
   }
 
+  // Sync pool links if provided and item is a set menu
+  if (poolLinks !== undefined && (item.isSetMenu || itemUpdates.isSetMenu)) {
+    await syncPoolLinksForMenuItem(
+      itemId,
+      poolLinks.map((link) => ({
+        menuItemId: itemId,
+        poolId: link.poolId,
+        role: link.role,
+        isPriceDetermining: link.isPriceDetermining,
+        usesOptionPrice: link.usesOptionPrice,
+        flatPrice: link.flatPrice,
+        isRequired: link.isRequired,
+        minSelect: link.minSelect,
+        maxSelect: link.maxSelect,
+        labelEn: link.labelEn,
+        labelMm: link.labelMm,
+        displayOrder: link.displayOrder,
+      }))
+    );
+  }
+
+  // If not a set menu anymore, clear pool links
+  if (itemUpdates.isSetMenu === false) {
+    await syncPoolLinksForMenuItem(itemId, []);
+  }
+
   revalidateTag("public-menu", "default");
+
+  // Return item with pool links if it's a set menu
+  if (item.isSetMenu || itemUpdates.isSetMenu) {
+    const updatedPoolLinks = await getPoolLinksForMenuItem(itemId);
+    return Response.json({ item: { ...item, poolLinks: updatedPoolLinks } });
+  }
 
   return Response.json({ item });
 }

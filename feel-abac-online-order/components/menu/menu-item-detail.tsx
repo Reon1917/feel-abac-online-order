@@ -15,6 +15,7 @@ import {
   markMenuNeedsRefresh,
 } from "./menu-scroll";
 import { emitCartChange } from "@/lib/cart/events";
+import { SetMenuBuilder, type SetMenuBuilderSelection } from "./set-menu-builder";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -236,6 +237,74 @@ export function MenuItemDetail({
     }
   };
 
+  // Handler for set menu add to cart
+  const handleSetMenuAddToCart = async (
+    setMenuSelections: SetMenuBuilderSelection[],
+    qty: number
+  ) => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/cart/set-menu", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          menuItemId: item.id,
+          quantity: qty,
+          note: notes.trim() || null,
+          selections: setMenuSelections,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const errorMessage =
+          (data && typeof data.error === "string" && data.error) ||
+          detail.addToCartError;
+        throw new Error(errorMessage);
+      }
+
+      router.refresh();
+      emitCartChange();
+
+      toast.success(detail.addedToCart);
+      const destination = withLocalePath(locale, "/menu");
+      const shouldReturnToMenu = consumeMenuReturnFlag(locale);
+      let isSafeSameOriginReferrer = false;
+
+      if (shouldReturnToMenu) {
+        try {
+          const referrer = document.referrer;
+          if (referrer) {
+            const referrerUrl = new URL(referrer);
+            isSafeSameOriginReferrer =
+              referrerUrl.origin === window.location.origin;
+          }
+        } catch {
+          isSafeSameOriginReferrer = false;
+        }
+      }
+
+      if (shouldReturnToMenu && isSafeSameOriginReferrer) {
+        markMenuNeedsRefresh(locale);
+        router.back();
+      } else {
+        router.push(destination, { scroll: false });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : detail.addToCartError;
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderAddButton = (variant: "desktop" | "mobile") => {
     const isMobileVariant = variant === "mobile";
     const label = isMobileVariant ? mobileButtonLabel : detail.button;
@@ -344,16 +413,37 @@ export function MenuItemDetail({
                 ) : null}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-4">
-                <strong className="font-semibold text-slate-900">
-                  {detail.basePrice}:
-                </strong>{" "}
-                ฿{formattedBasePrice}
-              </div>
+              {!item.isSetMenu && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-4">
+                  <strong className="font-semibold text-slate-900">
+                    {detail.basePrice}:
+                  </strong>{" "}
+                  ฿{formattedBasePrice}
+                </div>
+              )}
+              {item.isSetMenu && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700 sm:px-4">
+                  <strong className="font-semibold text-emerald-900">
+                    Build Your Set:
+                  </strong>{" "}
+                  Choose your options below
+                </div>
+              )}
             </div>
           </div>
 
-          {enhancedGroups.length > 0 ? (
+          {/* Set Menu Builder */}
+          {item.isSetMenu && item.poolLinks && item.poolLinks.length > 0 ? (
+            <SetMenuBuilder
+              poolLinks={item.poolLinks}
+              menuLocale={menuLocale}
+              onAddToCart={handleSetMenuAddToCart}
+              isSubmitting={isSubmitting}
+            />
+          ) : null}
+
+          {/* Regular Choice Groups (only for non-set menus) */}
+          {!item.isSetMenu && enhancedGroups.length > 0 ? (
             <section className="space-y-6">
               <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
                 {detail.choicesHeading}

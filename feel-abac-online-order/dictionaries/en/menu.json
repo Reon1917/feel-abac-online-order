@@ -39,7 +39,7 @@
     "chooseBetween": "Choose between {{min}} and {{max}}",
     "chooseAtLeast": "Choose at least {{min}}",
     "noteLabel": "Special instructions",
-  "notePlaceholder": "Add a note for the kitchen...",
+    "notePlaceholder": "Add a note for the kitchen...",
     "totalLabel": "Total",
     "addonsLabel": "Add-ons",
     "included": "Included",
@@ -51,7 +51,18 @@
     "missingRequired": "Please complete the required choices before adding this item to your cart.",
     "addedToCart": "Added to cart",
     "addingToCart": "Adding…",
-    "addToCartError": "We couldn’t add this item right now. Please try again."
+    "addToCartError": "We couldn't add this item right now. Please try again.",
+    "setMenu": {
+      "buildYourSet": "Build Your Set",
+      "selectOptionsBelow": "Choose your options below",
+      "fromPrice": "from",
+      "buildButton": "Build",
+      "setsBasePrice": "Sets base price",
+      "upToMax": "Up to {{max}}",
+      "selected": "{{count}} selected",
+      "maxSelectionsReached": "Maximum {{max}} selections allowed",
+      "requiredSelectionMissing": "Please complete all required selections"
+    }
   },
   "emptyState": {
     "heading": "No menu items yet",

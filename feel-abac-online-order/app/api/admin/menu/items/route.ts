@@ -6,6 +6,7 @@ import { requireActiveAdmin } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { menuItems } from "@/src/db/schema";
 import { menuItemSchema, toDecimalString } from "@/lib/menu/validators";
+import { getPoolLinksForMenuItem } from "@/lib/menu/pool-queries";
 
 export const revalidate = 0;
 
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const categoryId = searchParams.get("categoryId");
+  const includePoolLinks = searchParams.get("includePoolLinks") === "true";
 
   const baseQuery = db.select().from(menuItems);
 
@@ -28,6 +30,21 @@ export async function GET(request: NextRequest) {
     asc(menuItems.displayOrder),
     asc(menuItems.createdAt)
   );
+
+  // If includePoolLinks is requested, fetch pool links for set menu items
+  if (includePoolLinks) {
+    const itemsWithLinks = await Promise.all(
+      items.map(async (item) => {
+        if (!item.isSetMenu) {
+          return { ...item, poolLinks: [] };
+        }
+        const poolLinks = await getPoolLinksForMenuItem(item.id);
+        return { ...item, poolLinks };
+      })
+    );
+    return Response.json({ items: itemsWithLinks });
+  }
+
   return Response.json({ items });
 }
 
@@ -62,6 +79,7 @@ export async function POST(request: NextRequest) {
       imageUrl: values.imageUrl ?? null,
       price: toDecimalString(values.price),
       isAvailable: values.isAvailable ?? true,
+      isSetMenu: values.isSetMenu ?? false,
       allowUserNotes: values.allowUserNotes ?? false,
       displayOrder: values.displayOrder ?? 0,
       hasImage: values.hasImage ?? Boolean(values.imageUrl),

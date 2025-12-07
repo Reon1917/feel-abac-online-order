@@ -1,3 +1,5 @@
+export type SetMenuPoolRole = "base_curry" | "addon_curry" | "addon_veggie";
+
 export type CartItemChoice = {
   id: string;
   cartItemId: string;
@@ -6,6 +8,9 @@ export type CartItemChoice = {
   optionName: string;
   optionNameMm: string | null;
   extraPrice: number;
+  // Set menu specific fields
+  selectionRole: SetMenuPoolRole | null;
+  menuCode: string | null;
 };
 
 export type CartItemRecord = {
@@ -68,4 +73,34 @@ export type UpdateCartItemInput = {
 export type RemoveCartItemInput = {
   userId: string;
   cartItemId: string;
+};
+
+// ===== SET MENU TYPES =====
+
+export type SetMenuSelection = {
+  poolLinkId: string;
+  optionId: string;
+  role: SetMenuPoolRole;
+  menuCode: string | null;
+  optionNameEn: string;
+  optionNameMm: string | null;
+  price: number; // The price to apply for this selection
+};
+
+export type AddSetMenuToCartInput = {
+  userId: string;
+  menuItemId: string; // The set menu item
+  quantity: number;
+  note?: string | null;
+  selections: SetMenuSelection[];
+};
+
+export type SetMenuCartItemData = {
+  menuItemId: string;
+  menuItemName: string;
+  menuItemNameMm: string | null;
+  basePrice: number; // From base_curry selection
+  addonsTotal: number; // Sum of addon selections
+  totalPrice: number;
+  selections: SetMenuSelection[];
 };
