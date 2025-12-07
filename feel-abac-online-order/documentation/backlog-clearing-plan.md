@@ -591,43 +591,43 @@ GET    /api/menu/items/[id]           – If set menu, includes pools + options 
 ### Tasks
 
 **Schema & Migration**
-- [ ] Add `isSetMenu` column to `menuItems`
-- [ ] Add `choicePools` table (id, nameEn, nameMm, isActive, displayOrder)
-- [ ] Add `choicePoolOptions` table (id, poolId, **menuCode**, nameEn, nameMm, price, isAvailable, displayOrder)
-- [ ] Add `setMenuPoolLinks` table (menuItemId, poolId, role, isPriceDetermining, usesOptionPrice, flatPrice, isRequired, minSelect, maxSelect, labelEn, labelMm, displayOrder)
-- [ ] Add `selectionRole` + `menuCode` columns to `cartItemChoices`
-- [ ] Add `selectionRole` + `menuCode` columns to `orderItemChoices`
-- [ ] Create migration and push to DB
+- [x] Add `isSetMenu` column to `menuItems`
+- [x] Add `choicePools` table (id, nameEn, nameMm, isActive, displayOrder)
+- [x] Add `choicePoolOptions` table (id, poolId, **menuCode**, nameEn, nameMm, price, isAvailable, displayOrder)
+- [x] Add `setMenuPoolLinks` table (menuItemId, poolId, role, isPriceDetermining, usesOptionPrice, flatPrice, isRequired, minSelect, maxSelect, labelEn, labelMm, displayOrder)
+- [x] Add `selectionRole` + `menuCode` columns to `cartItemChoices`
+- [x] Add `selectionRole` + `menuCode` columns to `orderItemChoices`
+- [x] Create migration and push to DB
 
 **Admin UI**
-- [ ] Create Choice Pool management page (`/admin/menu/pools`)
-- [ ] Pool list with CRUD
-- [ ] Pool option list with inline add/edit/delete + menuCode field
-- [ ] Extend item editor with "This is a Set Menu" toggle
-- [ ] Set Menu builder: attach pools, assign roles, configure pricing
+- [x] Create Choice Pool management page (`/admin/menu/pools`)
+- [x] Pool list with CRUD
+- [x] Pool option list with inline add/edit/delete + menuCode field
+- [x] Extend item editor with "This is a Set Menu" toggle
+- [x] Set Menu builder: attach pools via dedicated "Set menu pools" panel in menu editor (assign roles, required/min/max, pricing flags)
 
 **API Routes**
-- [ ] `GET/POST /api/admin/menu/pools` – List/create pools
-- [ ] `GET/PATCH/DELETE /api/admin/menu/pools/[id]` – Pool CRUD
-- [ ] `POST/PATCH/DELETE /api/admin/menu/pools/[id]/options` – Option CRUD
-- [ ] Update `POST/PATCH /api/admin/menu/items` to handle pool links when isSetMenu
-- [ ] Update `GET /api/menu` to include resolved pools for set menu items
-- [ ] Update `GET /api/menu/items/[id]` to return pool data for builder UI
+- [x] `GET/POST /api/admin/menu/pools` – List/create pools
+- [x] `GET/PATCH/DELETE /api/admin/menu/pools/[id]` – Pool CRUD
+- [x] `POST/PATCH/DELETE /api/admin/menu/pools/[id]/options` – Option CRUD
+- [x] Update `POST/PATCH /api/admin/menu/items` to handle pool links when `isSetMenu` (sync via `setMenuPoolLinks`)
+- [x] Update `GET /api/menu` to include resolved pools for set menu items (`poolLinks` on `PublicMenuItem`)
+- [x] Update `GET /api/menu/items/[id]` to return pool data for builder UI
 
 **Customer UI**
-- [ ] Update menu card to show "from ฿XX" + "Build →" for set menus
-- [ ] Create `SetMenuBuilder` component (select base curry → addons → veggies)
-- [ ] Live price calculation as user selects
-- [ ] Validation: require base curry selection
+- [x] Update menu card and list rows to show "from ฿XX" + "Build" for set menus (navigates to detail page)
+- [x] Create `SetMenuBuilder` component (select base group → addons) backed by `poolLinks`
+- [x] Live price calculation as user selects (base + addons × quantity)
+- [x] Validation: enforce required pools/min selections client-side
 
 **Cart/Order**
-- [ ] Update cart add to handle set menu selections + pricing
-- [ ] Update cart display to show set menu choices with menu codes
-- [ ] Update order item display to show menu codes (RS4, AD1, etc.)
-- [ ] Kitchen ticket format with codes
+- [x] Update cart add to handle set menu selections + pricing (server derives prices from pool options, ignores client prices)
+- [x] Update cart display to show set menu choices (menu codes are stored for kitchen but hidden from customer UI)
+- [x] Update order item display to include set menu choices and codes for kitchen/admin views
+- [x] Persist `selectionRole` + `menuCode` on cart/order choices for stable kitchen tickets and reporting
 
 **i18n**
-- [ ] Add dictionary entries for pool/set menu UI copy (en/my)
+- [x] Add dictionary entries for pool/set menu UI copy (en/my), detail-page set-menu copy, and admin menu builder strings
 
 ---
 
