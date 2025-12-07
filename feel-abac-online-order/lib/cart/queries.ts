@@ -675,25 +675,27 @@ export async function removeCartItem(input: RemoveCartItemInput) {
 
 function generateSetMenuHash(
   menuItemId: string,
-  selections: SetMenuSelection[],
+  selections: { role: string; optionId: string }[],
   note?: string | null
 ): string {
   const sortedSelections = [...selections]
     .sort((a, b) => a.optionId.localeCompare(b.optionId))
     .map((s) => `${s.role}:${s.optionId}`);
-  
+
   const parts = [
     `item:${menuItemId}`,
     `selections:${sortedSelections.join("|")}`,
     `note:${note ?? ""}`,
   ];
-  
+
   return crypto.createHash("md5").update(parts.join("::")).digest("hex");
 }
 
-export async function addSetMenuToCart(input: AddSetMenuToCartInput): Promise<CartRecord> {
+export async function addSetMenuToCart(
+  input: AddSetMenuToCartInput
+): Promise<CartRecord> {
   const { userId, menuItemId, quantity, note, selections } = input;
-  
+
   if (quantity < 1 || quantity > MAX_QUANTITY_PER_LINE) {
     throw new Error(`Quantity must be between 1 and ${MAX_QUANTITY_PER_LINE}.`);
   }
@@ -713,10 +715,60 @@ export async function addSetMenuToCart(input: AddSetMenuToCartInput): Promise<Ca
     throw new Error("Set menu configuration is invalid.");
   }
 
-  // Validate required selections
-  const requiredRoles = poolLinks.filter((link) => link.isRequired).map((link) => link.role);
-  const selectedRoles = new Set(selections.map((s) => s.role));
-  
+  const poolLinksById = new Map(poolLinks.map((link) => [link.id, link]));
+
+  type NormalizedSetMenuSelection = {
+    link: (typeof poolLinks)[number];
+    option: (typeof poolLinks)[number]["pool"]["options"][number];
+    unitPrice: number;
+    extraPrice: number;
+  };
+
+  const normalizedSelections: NormalizedSetMenuSelection[] = [];
+  const selectedRoles = new Set<string>();
+  const hashSelections: { role: string; optionId: string }[] = [];
+
+  // Normalize selections against pool links and options from the DB.
+  for (const selection of selections) {
+    const link = poolLinksById.get(selection.poolLinkId);
+    if (!link) {
+      throw new Error("Invalid set menu selection.");
+    }
+
+    const option = link.pool.options.find(
+      (opt) => opt.id === selection.optionId
+    );
+    if (!option) {
+      throw new Error("Invalid option for set menu selection.");
+    }
+    if (!option.isAvailable) {
+      throw new Error("Selected option is not available.");
+    }
+
+    selectedRoles.add(link.role);
+    hashSelections.push({ role: link.role, optionId: option.id });
+
+    const isFlatAddon =
+      !link.isPriceDetermining &&
+      !link.usesOptionPrice &&
+      link.flatPrice !== null;
+
+    const unitPrice = isFlatAddon ? link.flatPrice : option.price;
+    const extraPrice = link.isPriceDetermining ? 0 : unitPrice;
+
+    normalizedSelections.push({
+      link,
+      option,
+      unitPrice,
+      extraPrice,
+    });
+  }
+
+  // Validate required selections using server-derived roles
+  const requiredRoles = poolLinks
+    .filter((link) => link.isRequired)
+    .map((link) => link.role);
+
   for (const requiredRole of requiredRoles) {
     if (!selectedRoles.has(requiredRole)) {
       throw new Error(`Required selection missing: ${requiredRole}`);
@@ -727,31 +779,24 @@ export async function addSetMenuToCart(input: AddSetMenuToCartInput): Promise<Ca
   let basePrice = 0;
   let addonsTotal = 0;
 
-  for (const selection of selections) {
-    const link = poolLinks.find((l) => l.role === selection.role);
-    if (!link) {
-      throw new Error(`Invalid selection role: ${selection.role}`);
-    }
-
-    if (link.isPriceDetermining) {
+  for (const selection of normalizedSelections) {
+    if (selection.link.isPriceDetermining) {
       // This is the base price (from base_curry)
-      basePrice = selection.price;
+      basePrice = selection.unitPrice;
     } else {
       // This is an addon
-      if (link.usesOptionPrice) {
-        addonsTotal += selection.price;
-      } else if (link.flatPrice !== null) {
-        addonsTotal += link.flatPrice;
-      } else {
-        addonsTotal += selection.price;
-      }
+      addonsTotal += selection.unitPrice;
     }
   }
 
   const totalPrice = (basePrice + addonsTotal) * quantity;
 
   // Generate hash for deduplication
-  const hashKey = generateSetMenuHash(menuItemId, selections, note);
+  const hashKey = generateSetMenuHash(
+    menuItemId,
+    hashSelections,
+    note
+  );
 
   // Ensure active cart
   const cart = await ensureActiveCart(userId);
@@ -800,26 +845,19 @@ export async function addSetMenuToCart(input: AddSetMenuToCartInput): Promise<Ca
       .returning();
 
     // Insert choices with set menu fields
-    if (selections.length > 0) {
-      const choiceValues = selections.map((selection) => {
-        const link = poolLinks.find((l) => l.role === selection.role);
-        return {
+    if (normalizedSelections.length > 0) {
+      const choiceValues = normalizedSelections.map(
+        ({ link, option, extraPrice }) => ({
           cartItemId: newCartItem.id,
-          groupName: link?.labelEn ?? selection.role,
-          groupNameMm: link?.labelMm ?? null,
-          optionName: selection.optionNameEn,
-          optionNameMm: selection.optionNameMm,
-          extraPrice: toNumericString(
-            link?.isPriceDetermining
-              ? 0 // Base price is not an "extra"
-              : link?.usesOptionPrice
-                ? selection.price
-                : link?.flatPrice ?? selection.price
-          ),
-          selectionRole: selection.role,
-          menuCode: selection.menuCode,
-        };
-      });
+          groupName: link.labelEn ?? link.role,
+          groupNameMm: link.labelMm ?? null,
+          optionName: option.nameEn,
+          optionNameMm: option.nameMm,
+          extraPrice: toNumericString(extraPrice),
+          selectionRole: link.role as CartItemChoice["selectionRole"],
+          menuCode: option.menuCode,
+        })
+      );
 
       await db.insert(cartItemChoices).values(choiceValues);
     }

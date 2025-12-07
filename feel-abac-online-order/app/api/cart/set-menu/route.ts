@@ -6,11 +6,6 @@ import { resolveUserId } from "@/lib/api/require-user";
 const setMenuSelectionSchema = z.object({
   poolLinkId: z.string().uuid(),
   optionId: z.string().uuid(),
-  role: z.enum(["base_curry", "addon_curry", "addon_veggie"]),
-  menuCode: z.string().nullable(),
-  optionNameEn: z.string(),
-  optionNameMm: z.string().nullable(),
-  price: z.number().min(0),
 });
 
 const addSetMenuToCartSchema = z.object({

@@ -80,11 +80,6 @@ export type RemoveCartItemInput = {
 export type SetMenuSelection = {
   poolLinkId: string;
   optionId: string;
-  role: SetMenuPoolRole;
-  menuCode: string | null;
-  optionNameEn: string;
-  optionNameMm: string | null;
-  price: number; // The price to apply for this selection
 };
 
 export type AddSetMenuToCartInput = {

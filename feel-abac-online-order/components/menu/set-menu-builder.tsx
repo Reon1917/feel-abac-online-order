@@ -9,23 +9,19 @@ import type {
   PublicSetMenuPoolLink,
   PublicSetMenuPoolOption,
 } from "@/lib/menu/types";
+import type { SetMenuSelection } from "@/lib/cart/types";
 
 type SetMenuBuilderProps = {
   poolLinks: PublicSetMenuPoolLink[];
   menuLocale: "en" | "my";
-  onAddToCart: (selections: SetMenuBuilderSelection[], quantity: number) => Promise<void>;
+  onAddToCart: (
+    selections: SetMenuSelection[],
+    quantity: number
+  ) => Promise<void>;
   isSubmitting?: boolean;
 };
 
-export type SetMenuBuilderSelection = {
-  poolLinkId: string;
-  optionId: string;
-  role: string;
-  menuCode: string | null;
-  optionNameEn: string;
-  optionNameMm: string | null;
-  price: number;
-};
+export type SetMenuBuilderSelection = SetMenuSelection;
 
 type SelectedOptions = Map<string, Set<string>>; // poolLinkId -> Set<optionId>
 
@@ -205,11 +201,12 @@ export function SetMenuBuilder({
     []
   );
 
-  // Calculate total price
-  const { totalPrice, isValid } = useMemo(() => {
+  // Calculate total price and build selections for cart
+  const { totalPrice, isValid, selections } = useMemo(() => {
     let base = 0;
     let addons = 0;
     let valid = true;
+    const builtSelections: SetMenuSelection[] = [];
 
     for (const link of sortedLinks) {
       const selected = selectedOptions.get(link.id);
@@ -226,13 +223,23 @@ export function SetMenuBuilder({
           const option = link.pool.options.find((o) => o.id === optionId);
           if (!option) continue;
 
+          const isFlatAddon =
+            !link.isPriceDetermining &&
+            !link.usesOptionPrice &&
+            link.flatPrice !== null;
+
+          const unitPrice = isFlatAddon ? link.flatPrice : option.price;
+
           if (link.isPriceDetermining) {
-            base = option.price;
-          } else if (!link.usesOptionPrice && link.flatPrice !== null) {
-            addons += link.flatPrice;
+            base = unitPrice;
           } else {
-            addons += option.price;
+            addons += unitPrice;
           }
+
+          builtSelections.push({
+            poolLinkId: link.id,
+            optionId: option.id,
+          });
         }
       }
     }
@@ -242,40 +249,9 @@ export function SetMenuBuilder({
       addonsTotal: addons,
       totalPrice: (base + addons) * quantity,
       isValid: valid,
+      selections: builtSelections,
     };
   }, [sortedLinks, selectedOptions, quantity]);
-
-  // Build selections for cart
-  const buildSelections = useCallback((): SetMenuBuilderSelection[] => {
-    const selections: SetMenuBuilderSelection[] = [];
-
-    for (const link of sortedLinks) {
-      const selected = selectedOptions.get(link.id);
-      if (!selected) continue;
-
-      for (const optionId of selected) {
-        const option = link.pool.options.find((o) => o.id === optionId);
-        if (!option) continue;
-
-        let price = option.price;
-        if (!link.isPriceDetermining && !link.usesOptionPrice && link.flatPrice !== null) {
-          price = link.flatPrice;
-        }
-
-        selections.push({
-          poolLinkId: link.id,
-          optionId: option.id,
-          role: link.role,
-          menuCode: option.menuCode,
-          optionNameEn: option.name,
-          optionNameMm: option.nameMm,
-          price,
-        });
-      }
-    }
-
-    return selections;
-  }, [sortedLinks, selectedOptions]);
 
   // Handle add to cart
   const handleAddToCart = useCallback(async () => {
@@ -284,9 +260,8 @@ export function SetMenuBuilder({
       return;
     }
 
-    const selections = buildSelections();
     await onAddToCart(selections, quantity);
-  }, [isValid, buildSelections, onAddToCart, quantity]);
+  }, [isValid, selections, onAddToCart, quantity]);
 
   return (
     <div className="flex flex-col">
