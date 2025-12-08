@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SET_MENU_POOL_ROLES } from "./pool-types";
 
 export const MAX_MENU_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB upper limit
 export const ALLOWED_IMAGE_MIME_TYPES = [
@@ -299,12 +300,6 @@ export function toDecimalString(value: number) {
 }
 
 // ===== CHOICE POOL VALIDATORS =====
-
-export const SET_MENU_POOL_ROLES = [
-  "base_curry",
-  "addon_curry",
-  "addon_veggie",
-] as const;
 
 export const choicePoolSchema = z.object({
   nameEn: z.string().trim().min(1, "English name is required"),

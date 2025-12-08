@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import {
   PlusIcon,
   PencilIcon,
@@ -31,34 +30,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-
-type ChoicePoolOption = {
-  id: string;
-  poolId: string;
-  menuCode: string | null;
-  nameEn: string;
-  nameMm: string | null;
-  price: number;
-  isAvailable: boolean;
-  displayOrder: number;
-};
-
-type ChoicePool = {
-  id: string;
-  nameEn: string;
-  nameMm: string | null;
-  isActive: boolean;
-  displayOrder: number;
-  options: ChoicePoolOption[];
-};
+import type {
+  ChoicePoolOption,
+  ChoicePoolWithOptions,
+} from "@/lib/menu/pool-types";
+import { useChoicePools } from "./use-choice-pools";
 
 type PoolManagerProps = {
-  initialPools: ChoicePool[];
+  initialPools: ChoicePoolWithOptions[];
 };
 
 type PoolDialogState =
   | { mode: "create" }
-  | { mode: "edit"; pool: ChoicePool }
+  | { mode: "edit"; pool: ChoicePoolWithOptions }
   | null;
 
 type OptionDialogState =
@@ -68,11 +52,19 @@ type OptionDialogState =
 
 export function PoolManager({ initialPools }: PoolManagerProps) {
   const router = useRouter();
-  const [pools, setPools] = useState<ChoicePool[]>(initialPools);
+  const {
+    pools,
+    isSubmitting,
+    createPool,
+    updatePool,
+    deletePool,
+    createOption,
+    updateOption,
+    deleteOption,
+  } = useChoicePools(initialPools);
   const [expandedPools, setExpandedPools] = useState<Set<string>>(new Set());
   const [poolDialog, setPoolDialog] = useState<PoolDialogState>(null);
   const [optionDialog, setOptionDialog] = useState<OptionDialogState>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: "pool" | "option";
     id: string;
@@ -98,7 +90,6 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
       e.preventDefault();
       if (!poolDialog) return;
 
-      setIsSubmitting(true);
       const formData = new FormData(e.currentTarget);
       const data = {
         nameEn: formData.get("nameEn") as string,
@@ -108,69 +99,30 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
 
       try {
         if (poolDialog.mode === "create") {
-          const res = await fetch("/api/admin/menu/pools", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          });
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || "Failed to create pool");
-          }
-          const { pool } = await res.json();
-          setPools((prev) => [...prev, { ...pool, options: [] }]);
-          toast.success("Pool created");
+          await createPool(data);
         } else {
-          const res = await fetch(`/api/admin/menu/pools/${poolDialog.pool.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          });
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || "Failed to update pool");
-          }
-          const { pool } = await res.json();
-          setPools((prev) =>
-            prev.map((p) =>
-              p.id === pool.id ? { ...pool, options: p.options } : p
-            )
-          );
-          toast.success("Pool updated");
+          await updatePool(poolDialog.pool.id, data);
         }
         setPoolDialog(null);
         router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Error handling is performed in useChoicePools
       }
     },
-    [poolDialog, router]
+    [createPool, poolDialog, router, updatePool]
   );
 
   const handleDeletePool = useCallback(
     async (poolId: string) => {
-      setIsSubmitting(true);
       try {
-        const res = await fetch(`/api/admin/menu/pools/${poolId}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to delete pool");
-        }
-        setPools((prev) => prev.filter((p) => p.id !== poolId));
-        toast.success("Pool deleted");
+        await deletePool(poolId);
         setDeleteConfirm(null);
         router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Error handling is performed in useChoicePools
       }
     },
-    [router]
+    [deletePool, router]
   );
 
   // Option CRUD
@@ -179,7 +131,6 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
       e.preventDefault();
       if (!optionDialog) return;
 
-      setIsSubmitting(true);
       const formData = new FormData(e.currentTarget);
       const data = {
         menuCode: (formData.get("menuCode") as string) || undefined,
@@ -191,95 +142,34 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
 
       try {
         if (optionDialog.mode === "create") {
-          const res = await fetch(
-            `/api/admin/menu/pools/${optionDialog.poolId}/options`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data),
-            }
-          );
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || "Failed to create option");
-          }
-          const { option } = await res.json();
-          setPools((prev) =>
-            prev.map((pool) =>
-              pool.id === optionDialog.poolId
-                ? { ...pool, options: [...pool.options, option] }
-                : pool
-            )
-          );
-          toast.success("Option created");
+          await createOption(optionDialog.poolId, data);
         } else {
-          const res = await fetch(
-            `/api/admin/menu/pools/${optionDialog.poolId}/options/${optionDialog.option.id}`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data),
-            }
+          await updateOption(
+            optionDialog.poolId,
+            optionDialog.option.id,
+            data
           );
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || "Failed to update option");
-          }
-          const { option } = await res.json();
-          setPools((prev) =>
-            prev.map((pool) =>
-              pool.id === optionDialog.poolId
-                ? {
-                    ...pool,
-                    options: pool.options.map((o) =>
-                      o.id === option.id ? option : o
-                    ),
-                  }
-                : pool
-            )
-          );
-          toast.success("Option updated");
         }
         setOptionDialog(null);
         router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Error handling is performed in useChoicePools
       }
     },
-    [optionDialog, router]
+    [createOption, optionDialog, router, updateOption]
   );
 
   const handleDeleteOption = useCallback(
     async (poolId: string, optionId: string) => {
-      setIsSubmitting(true);
       try {
-        const res = await fetch(
-          `/api/admin/menu/pools/${poolId}/options/${optionId}`,
-          { method: "DELETE" }
-        );
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to delete option");
-        }
-        setPools((prev) =>
-          prev.map((pool) =>
-            pool.id === poolId
-              ? { ...pool, options: pool.options.filter((o) => o.id !== optionId) }
-              : pool
-          )
-        );
-        toast.success("Option deleted");
+        await deleteOption(poolId, optionId);
         setDeleteConfirm(null);
         router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setIsSubmitting(false);
+      } catch {
+        // Error handling is performed in useChoicePools
       }
     },
-    [router]
+    [deleteOption, router]
   );
 
   return (

@@ -24,8 +24,12 @@ import {
   MenuChoiceOption,
   MenuItemRecord,
   MenuItemStatus,
-  SetMenuPoolRole,
 } from "@/lib/menu/types";
+import {
+  SET_MENU_POOL_ROLES,
+  type ChoicePool,
+  type SetMenuPoolRole,
+} from "@/lib/menu/pool-types";
 import { defaultHeaders, fetchJSON } from "./api-client";
 import { useAdminMenuStore } from "./store";
 import { Button } from "@/components/ui/button";
@@ -162,12 +166,6 @@ const STATUS_BADGE_STYLES: Record<MenuItemStatus, string> = {
 
 const NO_POOL_VALUE = "__none__";
 
-const SET_MENU_ROLES: SetMenuPoolRole[] = [
-  "base_curry",
-  "addon_curry",
-  "addon_veggie",
-];
-
 const SET_MENU_ROLE_LABELS: Record<SetMenuPoolRole, string> = {
   base_curry: "Base selection",
   addon_curry: "Add-on group 1",
@@ -239,6 +237,11 @@ type NormalizedPoolLinkForPayload = {
   displayOrder: number;
 };
 
+type ChoicePoolSummary = Pick<
+  ChoicePool,
+  "id" | "nameEn" | "nameMm" | "isActive"
+>;
+
 function buildDefaultPoolLink(role: SetMenuPoolRole, displayOrder: number): SetMenuPoolLinkFormValue {
   if (role === "base_curry") {
     return {
@@ -270,7 +273,7 @@ function buildDefaultPoolLink(role: SetMenuPoolRole, displayOrder: number): SetM
 function buildPoolLinksFromItem(
   item: MenuItemRecord | null | undefined
 ): SetMenuPoolLinkFormValue[] {
-  const base = SET_MENU_ROLES.map((role, index) =>
+  const base = SET_MENU_POOL_ROLES.map((role, index) =>
     buildDefaultPoolLink(role, index)
   );
 
@@ -2479,13 +2482,6 @@ function ChoiceGroupCard({
   );
 }
 
-type ChoicePoolSummary = {
-  id: string;
-  nameEn: string;
-  nameMm: string | null;
-  isActive: boolean;
-};
-
 type SetMenuPoolsPanelProps = {
   form: UseFormReturn<MenuEditorFormValues>;
 };
@@ -2554,7 +2550,7 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
     const currentLinks =
       poolLinks.length > 0
         ? poolLinks
-        : SET_MENU_ROLES.map((r, index) => buildDefaultPoolLink(r, index));
+        : SET_MENU_POOL_ROLES.map((r, index) => buildDefaultPoolLink(r, index));
 
     const nextLinks = currentLinks.map((link) =>
       link.role === role ? updater(link) : link
@@ -2595,10 +2591,13 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
         </p>
       ) : (
         <div className="space-y-3">
-          {SET_MENU_ROLES.map((role) => {
+          {SET_MENU_POOL_ROLES.map((role) => {
             const link =
               linksByRole.get(role) ??
-              buildDefaultPoolLink(role, SET_MENU_ROLES.indexOf(role));
+              buildDefaultPoolLink(
+                role,
+                SET_MENU_POOL_ROLES.indexOf(role)
+              );
 
             return (
               <div

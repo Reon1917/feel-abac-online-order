@@ -1,4 +1,4 @@
-export type SetMenuPoolRole = "base_curry" | "addon_curry" | "addon_veggie";
+import type { SetMenuPoolRole } from "@/lib/menu/pool-types";
 
 export type CartItemChoice = {
   id: string;

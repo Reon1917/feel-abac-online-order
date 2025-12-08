@@ -1,3 +1,5 @@
+import type { SetMenuPoolRole } from "./pool-types";
+
 export type MenuChoiceOption = {
   id: string;
   choiceGroupId: string;
@@ -33,8 +35,6 @@ export type MenuChoiceGroup = {
 };
 
 export type MenuItemStatus = "draft" | "published";
-
-export type SetMenuPoolRole = "base_curry" | "addon_curry" | "addon_veggie";
 
 export type SetMenuPoolLinkRecord = {
   id: string;
