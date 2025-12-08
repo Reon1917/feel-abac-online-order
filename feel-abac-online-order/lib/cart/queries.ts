@@ -751,12 +751,10 @@ export async function addSetMenuToCart(
       : "addon";
     hashSelections.push({ kind: selectionKind, optionId: option.id });
 
-    const isFlatAddon =
-      !link.isPriceDetermining &&
-      !link.usesOptionPrice &&
-      link.flatPrice !== null;
+    const isFlatPricing =
+      !link.usesOptionPrice && link.flatPrice !== null;
 
-    const unitPrice = isFlatAddon ? link.flatPrice : option.price;
+    const unitPrice = isFlatPricing ? link.flatPrice : option.price;
     const extraPrice = link.isPriceDetermining ? 0 : unitPrice;
 
     normalizedSelections.push({
