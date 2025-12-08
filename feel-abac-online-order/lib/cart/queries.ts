@@ -675,12 +675,12 @@ export async function removeCartItem(input: RemoveCartItemInput) {
 
 function generateSetMenuHash(
   menuItemId: string,
-  selections: { role: string; optionId: string }[],
+  selections: { kind: "base" | "addon"; optionId: string }[],
   note?: string | null
 ): string {
   const sortedSelections = [...selections]
     .sort((a, b) => a.optionId.localeCompare(b.optionId))
-    .map((s) => `${s.role}:${s.optionId}`);
+    .map((s) => `${s.kind}:${s.optionId}`);
 
   const parts = [
     `item:${menuItemId}`,
@@ -725,8 +725,8 @@ export async function addSetMenuToCart(
   };
 
   const normalizedSelections: NormalizedSetMenuSelection[] = [];
-  const selectedRoles = new Set<string>();
-  const hashSelections: { role: string; optionId: string }[] = [];
+  const selectedLinkIds = new Set<string>();
+  const hashSelections: { kind: "base" | "addon"; optionId: string }[] = [];
 
   // Normalize selections against pool links and options from the DB.
   for (const selection of selections) {
@@ -745,8 +745,11 @@ export async function addSetMenuToCart(
       throw new Error("Selected option is not available.");
     }
 
-    selectedRoles.add(link.role);
-    hashSelections.push({ role: link.role, optionId: option.id });
+    selectedLinkIds.add(link.id);
+    const selectionKind: "base" | "addon" = link.isPriceDetermining
+      ? "base"
+      : "addon";
+    hashSelections.push({ kind: selectionKind, optionId: option.id });
 
     const isFlatAddon =
       !link.isPriceDetermining &&
@@ -765,13 +768,12 @@ export async function addSetMenuToCart(
   }
 
   // Validate required selections using server-derived roles
-  const requiredRoles = poolLinks
-    .filter((link) => link.isRequired)
-    .map((link) => link.role);
-
-  for (const requiredRole of requiredRoles) {
-    if (!selectedRoles.has(requiredRole)) {
-      throw new Error(`Required selection missing: ${requiredRole}`);
+  const requiredLinks = poolLinks.filter((link) => link.isRequired);
+  for (const requiredLink of requiredLinks) {
+    if (!selectedLinkIds.has(requiredLink.id)) {
+      throw new Error(
+        `Required selection missing: ${requiredLink.labelEn ?? requiredLink.id}`
+      );
     }
   }
 
@@ -849,12 +851,12 @@ export async function addSetMenuToCart(
       const choiceValues = normalizedSelections.map(
         ({ link, option, extraPrice }) => ({
           cartItemId: newCartItem.id,
-          groupName: link.labelEn ?? link.role,
-          groupNameMm: link.labelMm ?? null,
+          groupName: link.labelEn ?? link.pool.nameEn,
+          groupNameMm: link.labelMm ?? link.pool.nameMm ?? null,
           optionName: option.nameEn,
           optionNameMm: option.nameMm,
           extraPrice: toNumericString(extraPrice),
-          selectionRole: link.role as CartItemChoice["selectionRole"],
+          selectionRole: link.isPriceDetermining ? "base" : "addon",
           menuCode: option.menuCode,
         })
       );

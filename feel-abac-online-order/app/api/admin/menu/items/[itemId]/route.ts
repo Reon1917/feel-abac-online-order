@@ -165,7 +165,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       poolLinks.map((link) => ({
         menuItemId: itemId,
         poolId: link.poolId,
-        role: link.role,
         isPriceDetermining: link.isPriceDetermining,
         usesOptionPrice: link.usesOptionPrice,
         flatPrice: link.flatPrice,

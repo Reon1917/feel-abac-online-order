@@ -327,7 +327,6 @@ export const setMenuPoolLinks = pgTable(
     poolId: uuid("pool_id")
       .notNull()
       .references(() => choicePools.id, { onDelete: "cascade" }),
-    role: text("role").notNull(), // 'base_curry' | 'addon_curry' | 'addon_veggie'
     isPriceDetermining: boolean("is_price_determining").default(false).notNull(),
     usesOptionPrice: boolean("uses_option_price").default(true).notNull(),
     flatPrice: numeric("flat_price", { precision: 10, scale: 0 }),
@@ -340,10 +339,9 @@ export const setMenuPoolLinks = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
-    menuPoolRoleUnique: uniqueIndex("set_menu_pool_links_unique").on(
+    menuPoolUnique: uniqueIndex("set_menu_pool_links_unique").on(
       table.menuItemId,
-      table.poolId,
-      table.role
+      table.poolId
     ),
     menuItemIdx: index("set_menu_pool_links_menu_item_idx").on(table.menuItemId),
   })

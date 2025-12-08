@@ -1,11 +1,3 @@
-export const SET_MENU_POOL_ROLES = [
-  "base_curry",
-  "addon_curry",
-  "addon_veggie",
-] as const;
-
-export type SetMenuPoolRole = (typeof SET_MENU_POOL_ROLES)[number];
-
 export type ChoicePoolOption = {
   id: string;
   poolId: string;
@@ -37,7 +29,6 @@ export type SetMenuPoolLink = {
   id: string;
   menuItemId: string;
   poolId: string;
-  role: string;
   isPriceDetermining: boolean;
   usesOptionPrice: boolean;
   flatPrice: number | null;

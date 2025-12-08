@@ -40,7 +40,6 @@ export type UpdatePoolOptionInput = Partial<CreatePoolOptionInput>;
 export type CreatePoolLinkInput = {
   menuItemId: string;
   poolId: string;
-  role: string;
   isPriceDetermining?: boolean;
   usesOptionPrice?: boolean;
   flatPrice?: number | null;
@@ -91,7 +90,6 @@ function mapPoolLink(
     id: record.id,
     menuItemId: record.menuItemId,
     poolId: record.poolId,
-    role: record.role,
     isPriceDetermining: record.isPriceDetermining,
     usesOptionPrice: record.usesOptionPrice,
     flatPrice: record.flatPrice ? numericToNumber(record.flatPrice) : null,
@@ -363,7 +361,6 @@ export async function createPoolLink(
     .values({
       menuItemId: data.menuItemId,
       poolId: data.poolId,
-      role: data.role,
       isPriceDetermining: data.isPriceDetermining ?? false,
       usesOptionPrice: data.usesOptionPrice ?? true,
       flatPrice: data.flatPrice != null ? String(data.flatPrice) : null,
@@ -449,7 +446,6 @@ export async function syncPoolLinksForMenuItem(
       links.map((link, index) => ({
         menuItemId,
         poolId: link.poolId,
-        role: link.role,
         isPriceDetermining: link.isPriceDetermining ?? false,
         usesOptionPrice: link.usesOptionPrice ?? true,
         flatPrice: link.flatPrice != null ? String(link.flatPrice) : null,

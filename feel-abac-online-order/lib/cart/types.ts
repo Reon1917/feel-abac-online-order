@@ -1,5 +1,3 @@
-import type { SetMenuPoolRole } from "@/lib/menu/pool-types";
-
 export type CartItemChoice = {
   id: string;
   cartItemId: string;
@@ -9,7 +7,7 @@ export type CartItemChoice = {
   optionNameMm: string | null;
   extraPrice: number;
   // Set menu specific fields
-  selectionRole: SetMenuPoolRole | null;
+  selectionRole: "base" | "addon" | null;
   menuCode: string | null;
 };
 

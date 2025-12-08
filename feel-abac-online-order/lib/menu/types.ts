@@ -1,5 +1,3 @@
-import type { SetMenuPoolRole } from "./pool-types";
-
 export type MenuChoiceOption = {
   id: string;
   choiceGroupId: string;
@@ -40,7 +38,6 @@ export type SetMenuPoolLinkRecord = {
   id: string;
   menuItemId: string;
   poolId: string;
-  role: SetMenuPoolRole;
   isPriceDetermining: boolean;
   usesOptionPrice: boolean;
   flatPrice: number | null;
@@ -163,7 +160,6 @@ export type PublicSetMenuPoolOption = {
 
 export type PublicSetMenuPoolLink = {
   id: string;
-  role: SetMenuPoolRole;
   isPriceDetermining: boolean;
   usesOptionPrice: boolean;
   flatPrice: number | null;

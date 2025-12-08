@@ -21,7 +21,6 @@ import {
   PublicMenuItem,
   PublicMenuOption,
   PublicSetMenuPoolLink,
-  SetMenuPoolRole,
 } from "@/lib/menu/types";
 import { numericToNumber } from "./math";
 import { getPoolLinksForMenuItem } from "./pool-queries";
@@ -377,7 +376,6 @@ export async function getPublicMenuItemById(
     const links = await getPoolLinksForMenuItem(item.id);
     poolLinks = links.map((link) => ({
       id: link.id,
-      role: link.role as SetMenuPoolRole,
       isPriceDetermining: link.isPriceDetermining,
       usesOptionPrice: link.usesOptionPrice,
       flatPrice: link.flatPrice,

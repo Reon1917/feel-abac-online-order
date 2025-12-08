@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { SET_MENU_POOL_ROLES } from "./pool-types";
 
 export const MAX_MENU_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB upper limit
 export const ALLOWED_IMAGE_MIME_TYPES = [
@@ -135,7 +134,6 @@ export const menuItemUpdateSchema = z.object({
   // Pool links for set menus (optional, synced separately)
   poolLinks: z.array(z.object({
     poolId: z.uuid("Pool ID is required"),
-    role: z.enum(["base_curry", "addon_curry", "addon_veggie"]),
     isPriceDetermining: z.coerce.boolean().optional(),
     usesOptionPrice: z.coerce.boolean().optional(),
     flatPrice: z.coerce.number().min(0).optional().nullable(),
@@ -366,11 +364,8 @@ export const choicePoolOptionUpdateSchema = z.object({
   displayOrder: z.coerce.number().int().gte(0).optional(),
 });
 
-const setMenuPoolRoleEnum = z.enum(SET_MENU_POOL_ROLES);
-
 export const setMenuPoolLinkSchema = z.object({
   poolId: z.uuid("Pool ID is required"),
-  role: setMenuPoolRoleEnum,
   isPriceDetermining: z.coerce.boolean().optional(),
   usesOptionPrice: z.coerce.boolean().optional(),
   flatPrice: z.coerce
@@ -397,7 +392,55 @@ export const setMenuPoolLinkSchema = z.object({
   displayOrder: z.coerce.number().int().gte(0).optional(),
 });
 
-export const setMenuPoolLinksArraySchema = z.array(setMenuPoolLinkSchema);
+export const setMenuPoolLinksArraySchema = z
+  .array(setMenuPoolLinkSchema)
+  .superRefine((links, ctx) => {
+    const priceDeterminers = links
+      .map((link, index) => ({ link, index }))
+      .filter(({ link }) => link.isPriceDetermining);
+
+    if (priceDeterminers.length > 1) {
+      priceDeterminers.forEach(({ index }) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Only one pool can set the base price",
+          path: [index, "isPriceDetermining"],
+        });
+      });
+    }
+
+    links.forEach((link, index) => {
+      if (link.isPriceDetermining) {
+        if (link.isRequired === false) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Base pool must be required",
+            path: [index, "isRequired"],
+          });
+        }
+        const minSelect = link.minSelect ?? 1;
+        if (minSelect < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Base pool must require at least one selection",
+            path: [index, "minSelect"],
+          });
+        }
+      }
+
+      if (
+        link.minSelect !== undefined &&
+        link.maxSelect !== undefined &&
+        link.minSelect > link.maxSelect
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Minimum selections cannot exceed maximum selections",
+          path: [index, "minSelect"],
+        });
+      }
+    });
+  });
 
 export const poolReorderSchema = z.object({
   orderedIds: z.array(z.uuid()).min(1, "At least one ID is required"),
