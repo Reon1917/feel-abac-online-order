@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   await reorderPools(parsed.data.orderedIds);
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ success: true });
 }

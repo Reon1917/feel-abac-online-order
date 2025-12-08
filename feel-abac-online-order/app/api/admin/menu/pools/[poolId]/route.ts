@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Pool not found" }, { status: 404 });
   }
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ pool });
 }
@@ -71,7 +71,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Pool not found" }, { status: 404 });
   }
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ success: true });
 }

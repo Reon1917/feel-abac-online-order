@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   await reorderPoolOptions(poolId.trim(), parsed.data.orderedIds);
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ success: true });
 }

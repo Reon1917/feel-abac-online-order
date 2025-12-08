@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     displayOrder: parsed.data.displayOrder ?? 0,
   });
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ pool }, { status: 201 });
 }

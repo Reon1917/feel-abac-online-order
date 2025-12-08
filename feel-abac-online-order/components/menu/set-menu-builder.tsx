@@ -231,7 +231,7 @@ export function SetMenuBuilder({
             !link.usesOptionPrice &&
             link.flatPrice !== null;
 
-          const unitPrice = isFlatAddon ? link.flatPrice : option.price;
+          const unitPrice = isFlatAddon ? (link.flatPrice ?? 0) : option.price;
 
           if (link.isPriceDetermining) {
             base = unitPrice;

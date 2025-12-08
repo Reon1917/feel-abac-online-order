@@ -382,7 +382,6 @@ export async function updatePoolLink(
 ): Promise<SetMenuPoolLink | null> {
   const updateData: Record<string, unknown> = {};
 
-  if (data.role !== undefined) updateData.role = data.role;
   if (data.isPriceDetermining !== undefined) updateData.isPriceDetermining = data.isPriceDetermining;
   if (data.usesOptionPrice !== undefined) updateData.usesOptionPrice = data.usesOptionPrice;
   if (data.flatPrice !== undefined) updateData.flatPrice = data.flatPrice != null ? String(data.flatPrice) : null;

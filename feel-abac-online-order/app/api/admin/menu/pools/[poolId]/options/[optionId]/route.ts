@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Option not found" }, { status: 404 });
   }
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ option });
 }
@@ -54,7 +54,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     return Response.json({ error: "Option not found" }, { status: 404 });
   }
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ success: true });
 }

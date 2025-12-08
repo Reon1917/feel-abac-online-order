@@ -754,7 +754,7 @@ export async function addSetMenuToCart(
     const isFlatPricing =
       !link.usesOptionPrice && link.flatPrice !== null;
 
-    const unitPrice = isFlatPricing ? link.flatPrice : option.price;
+    const unitPrice = isFlatPricing ? (link.flatPrice ?? 0) : option.price;
     const extraPrice = link.isPriceDetermining ? 0 : unitPrice;
 
     normalizedSelections.push({

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     displayOrder: parsed.data.displayOrder ?? 0,
   });
 
-  revalidateTag("public-menu");
+  revalidateTag("public-menu", "default");
 
   return Response.json({ option }, { status: 201 });
 }
