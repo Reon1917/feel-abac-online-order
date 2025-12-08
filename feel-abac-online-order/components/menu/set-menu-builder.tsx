@@ -54,10 +54,10 @@ function PoolSection({
   const isBase = link.isPriceDetermining;
 
   const helperText = isBase
-    ? "Required · Sets base price"
+    ? "Base · Required · Sets base price"
     : link.isRequired
-      ? `Required · Up to ${link.maxSelect}`
-      : `Optional${link.maxSelect > 1 ? ` · Up to ${link.maxSelect}` : ""}`;
+      ? `Required add-on${isMultiSelect ? ` · Up to ${link.maxSelect}` : ""}`
+      : `Optional add-on${isMultiSelect ? ` · Up to ${link.maxSelect}` : ""}`;
 
   // Calculate price display
   const getPriceDisplay = (option: PublicSetMenuPoolOption): string => {
@@ -82,14 +82,6 @@ function PoolSection({
           </h3>
           <p className="text-xs text-slate-500">{helperText}</p>
         </div>
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide",
-            isBase ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"
-          )}
-        >
-          {isBase ? "Base" : "Add-on"}
-        </span>
         {isMultiSelect && selectedCount > 0 && (
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
             {selectedCount} selected
