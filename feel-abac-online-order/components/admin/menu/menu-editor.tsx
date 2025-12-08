@@ -1533,21 +1533,23 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
             Bundle sides, toppings, and upsells into tidy sections. Drag cards to reorder and keep the menu clear.
             For set menus, attach choice pools in the “Set menu pools” screen, then link them here.
           </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <SetMenuPoolsPanel form={form} />
-          <ChoiceGroupPanel
-            form={form}
-            groupFields={groupFields}
-            onCreateGroup={createGroup}
-            onUpdateGroup={updateGroup}
-            onDeleteGroup={deleteGroup}
-            onReorderGroup={reorderGroups}
-            onCreateOption={createOption}
-            onUpdateOption={updateOption}
-            onDeleteOption={deleteOption}
-            onReorderOption={reorderOptions}
-          />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <SetMenuPoolsPanel form={form} />
+          {!watchedValues.isSetMenu && (
+            <ChoiceGroupPanel
+              form={form}
+              groupFields={groupFields}
+              onCreateGroup={createGroup}
+              onUpdateGroup={updateGroup}
+              onDeleteGroup={deleteGroup}
+              onReorderGroup={reorderGroups}
+              onCreateOption={createOption}
+              onUpdateOption={updateOption}
+              onDeleteOption={deleteOption}
+              onReorderOption={reorderOptions}
+            />
+          )}
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap gap-3">
                 <Button
