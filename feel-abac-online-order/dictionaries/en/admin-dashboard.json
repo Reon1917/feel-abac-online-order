@@ -1,10 +1,10 @@
 {
   "header": {
-    "title": "Menu studio",
-    "subtitle": "Keep the kitchen, counter, and diners in sync from a single control center."
+    "title": "Order control center",
+    "subtitle": "Keep the kitchen, counter, and diners in sync from a single place."
   },
   "workspace": {
-    "badge": "Admin workspace"
+    "badge": "Order management"
   },
   "cards": {
     "menuBuilder": {

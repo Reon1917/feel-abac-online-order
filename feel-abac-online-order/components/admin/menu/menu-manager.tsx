@@ -338,7 +338,7 @@ export function AdminMenuManager({
   const switchToneClasses =
     "data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200";
 
-  const headerBadgeLabel = variant === "standalone" ? "Menu studio" : "Workspace controls";
+  const headerBadgeLabel = variant === "standalone" ? "Menu tools" : "Workspace controls";
   const headerTitle = variant === "standalone" ? "Craft your digital lineup" : "Menu workspace";
   const headerSubtitle =
     variant === "standalone"
