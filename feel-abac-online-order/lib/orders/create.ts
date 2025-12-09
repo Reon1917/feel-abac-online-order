@@ -10,6 +10,7 @@ import {
   carts,
   deliveryBuildings,
   deliveryLocations,
+  menuItems,
   orderEvents,
   orderItemChoices,
   orderItems,
@@ -171,6 +172,30 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     throw new Error("Cart is empty");
   }
 
+  // Preload menu codes for all referenced menu items so we can persist them on order items
+  const uniqueMenuItemIds = Array.from(
+    new Set(
+      cart.items
+        .map((item) => item.menuItemId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+    )
+  );
+
+  const menuCodesByItemId = new Map<string, string | null>();
+  if (uniqueMenuItemIds.length > 0) {
+    const menuRows = await db
+      .select({
+        id: menuItems.id,
+        menuCode: menuItems.menuCode,
+      })
+      .from(menuItems)
+      .where(inArray(menuItems.id, uniqueMenuItemIds));
+
+    for (const row of menuRows) {
+      menuCodesByItemId.set(row.id, row.menuCode ?? null);
+    }
+  }
+
   const bangkokNow = nowUtc();
   const displayDay = bangkokDateString(bangkokNow);
   // Use UTC midnight so PostgreSQL stores the correct date
@@ -306,7 +331,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         menuItemId: item.menuItemId,
         menuItemName: item.menuItemName,
         menuItemNameMm: item.menuItemNameMm,
-        menuCode: null,
+        menuCode: menuCodesByItemId.get(item.menuItemId) ?? null,
         basePrice: toNumericString(item.basePrice),
         addonsTotal: toNumericString(item.addonsTotal),
         quantity: item.quantity,
@@ -331,6 +356,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         optionName: string;
         optionNameMm: string | null;
         extraPrice: string;
+        selectionRole: string | null;
+        menuCode: string | null;
       }> = [];
       insertedItems.forEach((row, idx) => {
         const source = cart.items[idx];
@@ -343,6 +370,8 @@ export async function createOrderFromCart(input: CreateOrderInput) {
               optionName: choice.optionName,
               optionNameMm: choice.optionNameMm,
               extraPrice: toNumericString(choice.extraPrice),
+              selectionRole: choice.selectionRole,
+              menuCode: choice.menuCode,
             });
           }
         }

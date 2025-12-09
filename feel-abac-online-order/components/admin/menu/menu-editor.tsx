@@ -220,8 +220,8 @@ type NormalizedPoolLinkForPayload = {
   isRequired: boolean;
   minSelect: number;
   maxSelect: number;
-  labelEn: string | null;
-  labelMm: string | null;
+  labelEn?: string;
+  labelMm?: string;
   displayOrder: number;
 };
 
@@ -290,8 +290,8 @@ function normalizePoolLinksFromItem(
       isRequired: link.isRequired ?? true,
       minSelect: link.minSelect ?? 1,
       maxSelect: link.maxSelect ?? 99,
-      labelEn: link.labelEn ?? null,
-      labelMm: link.labelMm ?? null,
+      labelEn: link.labelEn ?? undefined,
+      labelMm: link.labelMm ?? undefined,
       displayOrder: link.displayOrder ?? 0,
     }))
     .sort((a, b) => a.displayOrder - b.displayOrder);
@@ -324,8 +324,8 @@ function buildPoolLinksPayloadFromForm(
         isRequired: link.isRequired,
         minSelect: link.minSelect,
         maxSelect: link.maxSelect,
-        labelEn: link.labelEn?.trim() ? link.labelEn.trim() : null,
-        labelMm: link.labelMm?.trim() ? link.labelMm.trim() : null,
+        labelEn: link.labelEn?.trim() ? link.labelEn.trim() : undefined,
+        labelMm: link.labelMm?.trim() ? link.labelMm.trim() : undefined,
         displayOrder:
           typeof link.displayOrder === "number"
             ? link.displayOrder

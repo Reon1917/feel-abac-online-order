@@ -38,6 +38,31 @@ function formatCurrency(amount: number | null | undefined) {
   return currencyFormatter.format(safe);
 }
 
+function formatOrderItemCode(item: OrderRecord["items"][number]): string {
+  const codedChoices = item.choices.filter(
+    (choice) => choice.menuCode && choice.menuCode.trim().length > 0
+  );
+
+  // If no per-choice codes, fall back to the line-level menu code
+  if (codedChoices.length === 0) {
+    return item.menuCode ?? "—";
+  }
+
+  const baseCodes = codedChoices
+    .filter((choice) => choice.selectionRole === "base")
+    .map((choice) => choice.menuCode as string);
+  const addonCodes = codedChoices
+    .filter((choice) => choice.selectionRole !== "base")
+    .map((choice) => choice.menuCode as string);
+
+  const parts = [...baseCodes, ...addonCodes];
+  if (parts.length === 0) {
+    return item.menuCode ?? "—";
+  }
+
+  return parts.join(" + ");
+}
+
 export function OrderDetailModal({
   order,
   open,
@@ -375,10 +400,16 @@ export function OrderDetailModal({
           </h3>
           <div className="rounded-2xl border border-slate-200 bg-white">
             {/* Table Header */}
-            <div className="grid grid-cols-[2.5rem_3.5rem_1fr] gap-3 border-b-2 border-slate-300 bg-slate-100 px-4 py-2 sm:grid-cols-[3rem_4rem_1fr] sm:gap-4 sm:px-5 sm:py-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Qty</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Code</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Item</span>
+            <div className="grid grid-cols-[3.5rem_1fr_2.5rem] gap-3 border-b-2 border-slate-300 bg-slate-100 px-4 py-2 sm:grid-cols-[4rem_1fr_3rem] sm:gap-4 sm:px-5 sm:py-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Code
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Item
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Qty
+              </span>
             </div>
             
             {/* Table Body */}
@@ -391,20 +422,15 @@ export function OrderDetailModal({
                 return (
                   <div
                     key={item.id}
-                    className="grid grid-cols-[2.5rem_3.5rem_1fr] gap-3 px-4 py-3 sm:grid-cols-[3rem_4rem_1fr] sm:gap-4 sm:px-5 sm:py-4"
+                    className="grid grid-cols-[3.5rem_1fr_2.5rem] gap-3 px-4 py-3 sm:grid-cols-[4rem_1fr_3rem] sm:gap-4 sm:px-5 sm:py-4"
                   >
-                    {/* Quantity - FIRST, large and bold */}
-                    <span className="text-lg font-bold text-slate-900 sm:text-xl">
-                      {item.quantity}
-                    </span>
-                    
                     {/* Menu Code */}
                     <span className="font-mono text-xs font-semibold text-slate-500 sm:text-sm">
-                      {item.menuCode || "—"}
+                      {formatOrderItemCode(item)}
                     </span>
                     
                     {/* Item Name + Choices/Notes */}
-                    <div className="space-y-0.5 min-w-0">
+                    <div className="min-w-0 space-y-0.5">
                       <p className="text-sm font-semibold text-slate-900 wrap-break-word sm:text-base">
                         {item.menuItemName}
                       </p>
@@ -419,6 +445,11 @@ export function OrderDetailModal({
                         </p>
                       )}
                     </div>
+
+                    {/* Quantity - last column */}
+                    <span className="text-right text-lg font-bold text-slate-900 sm:text-xl">
+                      {item.quantity}
+                    </span>
                   </div>
                 );
               })}
