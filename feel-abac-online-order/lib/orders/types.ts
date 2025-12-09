@@ -49,6 +49,8 @@ export type OrderItemChoice = {
   optionName: string;
   optionNameMm: string | null;
   extraPrice: number;
+  selectionRole: "base" | "addon" | null;
+  menuCode: string | null;
 };
 
 export type OrderItemRecord = {

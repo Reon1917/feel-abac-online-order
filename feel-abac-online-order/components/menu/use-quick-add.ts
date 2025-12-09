@@ -27,6 +27,9 @@ type UseQuickAddOptions = {
 };
 
 export function canQuickAddItem(item: PublicMenuItem) {
+  if (item.isSetMenu) {
+    return false;
+  }
   return (item.choiceGroups?.length ?? 0) === 0;
 }
 

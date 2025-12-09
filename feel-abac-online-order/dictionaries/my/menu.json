@@ -14,7 +14,7 @@
     "viewCards": "ကဒ်မြင်ကွင်း",
     "viewList": "စာရင်းမြင်ကွင်း",
     "viewDetails": "အသေးစိတ်ကြည့်ရှုရန်",
-    "loadingMore": "ဟင်းပွဲများကို ထည့်ဆဲ...",
+    "loadingMore": "ဟင်းပွဲများကို ထည့်ဆဲ...",
     "outOfStock": "လက်ရှိ မရရှိနိုင်ပါ",
     "itemCount": {
       "one": "{{count}} ဟင်းပွဲ",
@@ -39,7 +39,7 @@
     "chooseBetween": "{{min}} မှ {{max}} ထိ ရွေးပါ",
     "chooseAtLeast": "အနည်းဆုံး {{min}} ခု ရွေးပါ",
     "noteLabel": "အထူးညွှန်ကြားချက်များ",
-  "notePlaceholder": "မီးဖိုချုပ်အတွက် မှတ်ချက်ရေးသားပါ...",
+    "notePlaceholder": "မီးဖိုချုပ်အတွက် မှတ်ချက်ရေးသားပါ...",
     "totalLabel": "စုစုပေါင်း",
     "addonsLabel": "အထူးထည့်စရာများ",
     "included": "အပါအဝင်",
@@ -51,7 +51,18 @@
     "missingRequired": "လိုအပ်သော ရွေးချယ်စရာများကို ဖြည့်စွက်ပြီးမှ တင်ပို့ပါ။",
     "addedToCart": "အော်ဒါထဲ ထည့်ပြီးပါပြီ",
     "addingToCart": "ထည့်နေပါသည်...",
-    "addToCartError": "ဤဟင်းပွဲကို ယခုမထည့်ရသေးပါ။ ပြန်လည်ကြိုးစားပေးပါ။"
+    "addToCartError": "ဤဟင်းပွဲကို ယခုမထည့်ရသေးပါ။ ပြန်လည်ကြိုးစားပေးပါ။",
+    "setMenu": {
+      "buildYourSet": "သင့်စက်မီနူးကို ဖန်တီးပါ",
+      "selectOptionsBelow": "အောက်ပါရွေးချယ်စရာများမှ ရွေးပါ",
+      "fromPrice": "အစ",
+      "buildButton": "ဖန်တီးရန်",
+      "setsBasePrice": "အခြေခံစျေးနှုန်းသတ်မှတ်သည်",
+      "upToMax": "အများဆုံး {{max}} ခုအထိ",
+      "selected": "{{count}} ခုရွေးပြီး",
+      "maxSelectionsReached": "အများဆုံး {{max}} ခုသာ ရွေးချယ်ခွင့်ရှိသည်",
+      "requiredSelectionMissing": "လိုအပ်သော ရွေးချယ်မှုအားလုံးကို ဖြည့်ပါ"
+    }
   },
   "emptyState": {
     "heading": "မီနူးအချက်အလက် မရှိသေးပါ",

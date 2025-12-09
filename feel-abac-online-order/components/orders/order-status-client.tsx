@@ -333,18 +333,6 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   }, [order.displayId]);
 
   useEffect(() => {
-    try {
-      if (isClosed) {
-        localStorage.removeItem("lastOrderDisplayId");
-      } else {
-        localStorage.setItem("lastOrderDisplayId", order.displayId);
-      }
-    } catch {
-      // ignore storage failures
-    }
-  }, [order.displayId, isClosed]);
-
-  useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(false), 1500);
     return () => clearTimeout(timer);
@@ -603,11 +591,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
                   <p className="text-base font-semibold text-slate-900">
                     {item.menuItemName}
                   </p>
-                  {item.menuCode ? (
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      {item.menuCode}
-                    </p>
-                  ) : null}
+                  {/* menuCode is hidden on customer side; admin surfaces handle codes */}
                   {item.note ? (
                     <p className="mt-1 text-sm text-slate-600">{item.note}</p>
                   ) : null}

@@ -610,15 +610,25 @@ function MenuItemCard({
 
         <div className="mt-auto flex items-center justify-between gap-3">
           <span className="text-base font-semibold text-emerald-600 sm:text-lg">
-            ฿{formatPrice(item.price)}
+            {item.isSetMenu ? (
+              <>
+                <span className="text-xs font-normal text-slate-500">from </span>
+                ฿{formatPrice(item.price)}
+              </>
+            ) : (
+              <>฿{formatPrice(item.price)}</>
+            )}
           </span>
           <button
             ref={addButtonRef}
             type="button"
-            aria-label={actionLabel}
+            aria-label={item.isSetMenu ? "Build" : actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
-              "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-lg font-bold text-emerald-600 shadow-md ring-1 ring-emerald-100 transition sm:h-9 sm:w-9 sm:text-xl",
+              "inline-flex items-center justify-center rounded-full bg-white font-bold text-emerald-600 shadow-md ring-1 ring-emerald-100 transition",
+              item.isSetMenu
+                ? "h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+                : "h-8 w-8 text-lg sm:h-9 sm:w-9 sm:text-xl",
               !isOutOfStock && "hover:bg-emerald-600 hover:text-white group-hover:bg-emerald-600 group-hover:text-white",
               buttonDisabled && "cursor-default opacity-60"
             )}
@@ -636,7 +646,7 @@ function MenuItemCard({
               });
             }}
           >
-            +
+            {item.isSetMenu ? "Build" : "+"}
           </button>
         </div>
       </div>
@@ -751,15 +761,25 @@ function MenuItemRow({
 
         <div className="flex flex-col items-end gap-2 text-right">
           <span className="text-base font-semibold text-emerald-600 sm:text-lg">
-            ฿{formatPrice(item.price)}
+            {item.isSetMenu ? (
+              <>
+                <span className="text-xs font-normal text-slate-500">from </span>
+                ฿{formatPrice(item.price)}
+              </>
+            ) : (
+              <>฿{formatPrice(item.price)}</>
+            )}
           </span>
           <button
             ref={addButtonRef}
             type="button"
-            aria-label={actionLabel}
+            aria-label={item.isSetMenu ? "Build" : actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
-              "inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-base font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition sm:h-8 sm:w-8 sm:text-lg",
+              "inline-flex items-center justify-center rounded-full bg-white font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition",
+              item.isSetMenu
+                ? "h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                : "h-7 w-7 text-base sm:h-8 sm:w-8 sm:text-lg",
               !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
               buttonDisabled && "cursor-default opacity-60"
             )}
@@ -777,7 +797,7 @@ function MenuItemRow({
               });
             }}
           >
-            +
+            {item.isSetMenu ? "Build" : "+"}
           </button>
         </div>
       </div>

@@ -25,6 +25,7 @@ import {
   MenuItemRecord,
   MenuItemStatus,
 } from "@/lib/menu/types";
+import { type ChoicePool } from "@/lib/menu/pool-types";
 import { defaultHeaders, fetchJSON } from "./api-client";
 import { useAdminMenuStore } from "./store";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,20 @@ type MenuChoiceGroupFormValue = {
   options: MenuOptionFormValue[];
 };
 
+type SetMenuPoolLinkFormValue = {
+  id?: string;
+  poolId: string | null;
+  isPriceDetermining: boolean;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  usesOptionPrice: boolean;
+  flatPrice: string;
+  labelEn: string;
+  labelMm: string;
+  displayOrder: number;
+};
+
 type MenuEditorFormValues = {
   id?: string;
   categoryId: string | null;
@@ -93,9 +108,11 @@ type MenuEditorFormValues = {
   menuCode?: string;
   price: string;
   isAvailable: boolean;
+  isSetMenu: boolean;
   allowUserNotes: boolean;
   status: MenuItemStatus;
   choiceGroups: MenuChoiceGroupFormValue[];
+  poolLinks: SetMenuPoolLinkFormValue[];
 };
 
 export type MenuEditorPreviewSnapshot = {
@@ -145,6 +162,9 @@ const STATUS_BADGE_STYLES: Record<MenuItemStatus, string> = {
   published: "bg-emerald-100 text-emerald-700",
 };
 
+const NO_POOL_VALUE = "__none__";
+const ADD_POOL_PLACEHOLDER = "__select_pool__";
+
 const PRIMARY_BUTTON_CLASS =
   "border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500";
 const SUBTLE_BUTTON_CLASS =
@@ -191,6 +211,129 @@ type StoredDraftPayload = {
   values: Partial<MenuEditorFormValues>;
   updatedAt: number;
 };
+
+type NormalizedPoolLinkForPayload = {
+  poolId: string;
+  isPriceDetermining: boolean;
+  usesOptionPrice: boolean;
+  flatPrice: number | null;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  labelEn?: string;
+  labelMm?: string;
+  displayOrder: number;
+};
+
+type ChoicePoolSummary = Pick<
+  ChoicePool,
+  "id" | "nameEn" | "nameMm" | "isActive"
+>;
+
+function createPoolLinkFormValue(
+  variant: "base" | "addon",
+  displayOrder: number
+): SetMenuPoolLinkFormValue {
+  const isBase = variant === "base";
+  return {
+    id: undefined,
+    poolId: null,
+    isPriceDetermining: isBase,
+    isRequired: isBase,
+    minSelect: isBase ? 1 : 0,
+    maxSelect: isBase ? 1 : 3,
+    usesOptionPrice: true,
+    flatPrice: "",
+    labelEn: "",
+    labelMm: "",
+    displayOrder,
+  };
+}
+
+function mapPoolLinksFromItem(
+  item: MenuItemRecord | null | undefined
+): SetMenuPoolLinkFormValue[] {
+  if (!item?.poolLinks || item.poolLinks.length === 0) {
+    return [createPoolLinkFormValue("base", 0), createPoolLinkFormValue("addon", 1)];
+  }
+
+  return item.poolLinks
+    .map((link, index) => ({
+      id: link.id,
+      poolId: link.pool.id,
+      isPriceDetermining: link.isPriceDetermining,
+      isRequired: link.isRequired,
+      minSelect: link.minSelect,
+      maxSelect: link.maxSelect,
+      usesOptionPrice: link.usesOptionPrice,
+      flatPrice: link.flatPrice != null ? link.flatPrice.toString() : "",
+      labelEn: link.labelEn ?? "",
+      labelMm: link.labelMm ?? "",
+      displayOrder: link.displayOrder ?? index,
+    }))
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+function normalizePoolLinksFromItem(
+  item: MenuItemRecord | null
+): NormalizedPoolLinkForPayload[] {
+  if (!item?.poolLinks || item.poolLinks.length === 0) {
+    return [];
+  }
+
+  return item.poolLinks
+    .map((link) => ({
+      poolId: link.pool.id,
+      isPriceDetermining: link.isPriceDetermining ?? false,
+      usesOptionPrice: link.usesOptionPrice ?? true,
+      flatPrice: link.flatPrice ?? null,
+      isRequired: link.isRequired ?? true,
+      minSelect: link.minSelect ?? 1,
+      maxSelect: link.maxSelect ?? 99,
+      labelEn: link.labelEn ?? undefined,
+      labelMm: link.labelMm ?? undefined,
+      displayOrder: link.displayOrder ?? 0,
+    }))
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+function buildPoolLinksPayloadFromForm(
+  values: MenuEditorFormValues
+): NormalizedPoolLinkForPayload[] {
+  const links = values.poolLinks ?? [];
+  const activeLinks = links.filter((link) => link.poolId);
+
+  if (activeLinks.length === 0 || !values.isSetMenu) {
+    return [];
+  }
+
+  return activeLinks
+    .map((link, index) => {
+      const flatPriceValue = link.flatPrice?.trim() ?? "";
+      const parsedFlat = Number.parseFloat(flatPriceValue);
+      const flatPrice =
+        flatPriceValue.length > 0 && Number.isFinite(parsedFlat)
+          ? parsedFlat
+          : null;
+
+      return {
+        poolId: link.poolId as string,
+        isPriceDetermining: link.isPriceDetermining,
+        usesOptionPrice: link.usesOptionPrice,
+        flatPrice,
+        isRequired: link.isRequired,
+        minSelect: link.minSelect,
+        maxSelect: link.maxSelect,
+        labelEn: link.labelEn?.trim() ? link.labelEn.trim() : undefined,
+        labelMm: link.labelMm?.trim() ? link.labelMm.trim() : undefined,
+        displayOrder:
+          typeof link.displayOrder === "number"
+            ? link.displayOrder
+            : index,
+      };
+    })
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+}
 
 function getDraftStorageKey(itemId: string) {
   return `${DRAFT_STORAGE_PREFIX}${itemId}`;
@@ -312,9 +455,26 @@ function buildDraftDiff(
     changedFields.add("isAvailable");
   }
 
+  if (values.isSetMenu !== item.isSetMenu) {
+    payload.isSetMenu = values.isSetMenu;
+    changedFields.add("isSetMenu");
+  }
+
   if (values.allowUserNotes !== item.allowUserNotes) {
     payload.allowUserNotes = values.allowUserNotes;
     changedFields.add("allowUserNotes");
+  }
+
+  // Set menu pool links (for set menu items)
+  const existingPoolLinks = normalizePoolLinksFromItem(item);
+  const currentPoolLinks = buildPoolLinksPayloadFromForm(values);
+
+  if (
+    JSON.stringify(existingPoolLinks) !==
+    JSON.stringify(currentPoolLinks)
+  ) {
+    payload.poolLinks = currentPoolLinks;
+    changedFields.add("poolLinks");
   }
 
   const hasChanges = changedFields.size > 0;
@@ -346,9 +506,11 @@ function itemToFormValues(
       menuCode: "",
       price: "",
       isAvailable: true,
+      isSetMenu: false,
       allowUserNotes: false,
       status: "draft",
       choiceGroups: [],
+      poolLinks: mapPoolLinksFromItem(null),
     };
   }
 
@@ -363,6 +525,7 @@ function itemToFormValues(
     menuCode: item.menuCode ?? "",
     price: item.price ? item.price.toString() : "",
     isAvailable: item.isAvailable,
+    isSetMenu: item.isSetMenu,
     allowUserNotes: item.allowUserNotes,
     status: item.status,
     choiceGroups: (item.choiceGroups ?? []).map((group) => ({
@@ -381,6 +544,7 @@ function itemToFormValues(
         isAvailable: option.isAvailable,
       })),
     })),
+    poolLinks: mapPoolLinksFromItem(item),
   };
 }
 
@@ -1300,6 +1464,23 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
                   )}
                 />
               </ToggleBlock>
+              <ToggleBlock
+                label="Set Menu item"
+                description="Enable to make this a configurable set menu with choice pools."
+                changed={changedFields.has("isSetMenu")}
+              >
+                <Controller
+                  control={form.control}
+                  name="isSetMenu"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked)}
+                      className={SWITCH_TONE_CLASS}
+                    />
+                  )}
+                />
+              </ToggleBlock>
             </div>
           </FormSection>
         </CardContent>
@@ -1312,21 +1493,25 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
           </CardTitle>
           <CardDescription className="text-sm text-slate-600">
             Bundle sides, toppings, and upsells into tidy sections. Drag cards to reorder and keep the menu clear.
+            For set menus, attach choice pools in the “Set menu pools” screen, then link them here.
           </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <ChoiceGroupPanel
-            form={form}
-            groupFields={groupFields}
-            onCreateGroup={createGroup}
-            onUpdateGroup={updateGroup}
-            onDeleteGroup={deleteGroup}
-            onReorderGroup={reorderGroups}
-            onCreateOption={createOption}
-            onUpdateOption={updateOption}
-            onDeleteOption={deleteOption}
-            onReorderOption={reorderOptions}
-          />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <SetMenuPoolsPanel form={form} />
+          {!watchedValues.isSetMenu && (
+            <ChoiceGroupPanel
+              form={form}
+              groupFields={groupFields}
+              onCreateGroup={createGroup}
+              onUpdateGroup={updateGroup}
+              onDeleteGroup={deleteGroup}
+              onReorderGroup={reorderGroups}
+              onCreateOption={createOption}
+              onUpdateOption={updateOption}
+              onDeleteOption={deleteOption}
+              onReorderOption={reorderOptions}
+            />
+          )}
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -2257,6 +2442,393 @@ function ChoiceGroupCard({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+type SetMenuPoolsPanelProps = {
+  form: UseFormReturn<MenuEditorFormValues>;
+};
+
+function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
+  const isSetMenu = useWatch({
+    control: form.control,
+    name: "isSetMenu",
+  });
+
+  const {
+    fields,
+    append,
+    remove,
+    update,
+  } = useFieldArray({
+    control: form.control,
+    name: "poolLinks",
+    keyName: "fieldId",
+  });
+
+  const [pools, setPools] = useState<ChoicePoolSummary[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pendingPoolId, setPendingPoolId] = useState<string | null>(null);
+  const [pendingIsBase, setPendingIsBase] = useState(false);
+
+  useEffect(() => {
+    if (!isSetMenu) return;
+
+    let cancelled = false;
+
+    fetchJSON<{ pools: ChoicePoolSummary[] }>("/api/admin/menu/pools", {
+      method: "GET",
+      cache: "no-store",
+    })
+      .then((data) => {
+        if (cancelled) return;
+        setPools(data.pools);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        if (process.env.NODE_ENV !== "production") {
+          console.error(error);
+        }
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load choice pools."
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSetMenu]);
+
+  if (!isSetMenu) {
+    return null;
+  }
+
+  const linkedPoolIds = new Set(
+    (form.getValues("poolLinks") ?? [])
+      .map((link) => link.poolId)
+      .filter((id): id is string => Boolean(id))
+  );
+  const availablePools = pools.filter((pool) => !linkedPoolIds.has(pool.id));
+
+  const handleUpdateLink = (
+    index: number,
+    updater: (current: SetMenuPoolLinkFormValue) => SetMenuPoolLinkFormValue
+  ) => {
+    const current = form.getValues("poolLinks") ?? [];
+    const target = current[index];
+    if (!target) return;
+    const nextLink = updater(target);
+    const nextLinks = current.slice();
+    nextLinks[index] = nextLink;
+    form.setValue("poolLinks", nextLinks, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+    update(index, nextLink);
+  };
+
+  const handleToggleBase = (index: number, checked: boolean) => {
+    const current = form.getValues("poolLinks") ?? [];
+    const next = current.map((link, idx) => {
+      if (idx === index) {
+        const minSelect = checked ? Math.max(1, link.minSelect ?? 1) : link.minSelect ?? 0;
+        const maxSelect = Math.max(minSelect, link.maxSelect ?? 1);
+        return {
+          ...link,
+          isPriceDetermining: checked,
+          isRequired: checked ? true : link.isRequired,
+          minSelect,
+          maxSelect,
+        };
+      }
+      if (checked) {
+        return { ...link, isPriceDetermining: false };
+      }
+      return link;
+    });
+    form.setValue("poolLinks", next, { shouldDirty: true, shouldTouch: true });
+    next.forEach((link, idx) => update(idx, link));
+  };
+
+  const isLoading = isSetMenu && pools.length === 0 && !loadError;
+
+  const handleAddPoolLink = () => {
+    if (!pendingPoolId) return;
+    const pool = pools.find((p) => p.id === pendingPoolId);
+    const link = createPoolLinkFormValue(
+      pendingIsBase ? "base" : "addon",
+      fields.length
+    );
+    link.poolId = pendingPoolId;
+    link.labelEn = pool?.nameEn ?? "";
+    link.labelMm = pool?.nameMm ?? "";
+    append(link);
+    setPendingPoolId(null);
+    setPendingIsBase(false);
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Set menu pools
+          </p>
+          <p className="text-sm text-slate-700">
+            Attach pools, pick one base (sets price), and add optional add-ons.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={pendingPoolId ?? ADD_POOL_PLACEHOLDER}
+            onValueChange={(value) =>
+              setPendingPoolId(
+                value === ADD_POOL_PLACEHOLDER ? null : value
+              )
+            }
+          >
+            <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
+              <SelectValue placeholder="Select pool to add" />
+            </SelectTrigger>
+            <SelectContent>
+              {availablePools.length === 0 ? (
+                <SelectItem value="__no_pools__" disabled>
+                  <span className="text-slate-500">No pools available</span>
+                </SelectItem>
+              ) : (
+                availablePools.map((pool) => (
+                  <SelectItem key={pool.id} value={pool.id}>
+                    <span className="font-medium text-slate-900">{pool.nameEn}</span>
+                    {pool.nameMm ? (
+                      <span className="ml-1 text-xs text-slate-500">
+                        ({pool.nameMm})
+                      </span>
+                    ) : null}
+                    {!pool.isActive && (
+                      <span className="ml-2 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                        Inactive
+                      </span>
+                    )}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={pendingIsBase}
+              onCheckedChange={setPendingIsBase}
+              className={SWITCH_TONE_CLASS}
+            />
+            <span className="text-xs text-slate-700">Base (sets price)</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className={PRIMARY_BUTTON_CLASS}
+            disabled={!pendingPoolId}
+            onClick={handleAddPoolLink}
+          >
+            Add pool link
+          </Button>
+        </div>
+      </div>
+      {isLoading ? (
+        <span className="text-xs text-slate-500">Loading pools…</span>
+      ) : null}
+      {loadError ? (
+        <p className="text-xs text-rose-600">{loadError}</p>
+      ) : null}
+      {pools.length === 0 ? (
+        <p className="text-xs text-slate-600">
+          No choice pools found. Create pools under{" "}
+          <span className="font-semibold">Admin → Menu → Choice pools</span>{" "}
+          first, then attach them here.
+        </p>
+      ) : null}
+
+      <div className="space-y-3">
+        {fields.map((field, index) => {
+          const link = field as SetMenuPoolLinkFormValue;
+          const isBase = link.isPriceDetermining;
+
+          return (
+            <div
+              key={field.id ?? index}
+              className="space-y-3 rounded-lg border border-emerald-200 bg-white p-4"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {isBase ? "Base (sets price)" : "Add-on"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {isBase
+                      ? "Required · sets base price"
+                      : link.isRequired
+                        ? `Required · Up to ${link.maxSelect}`
+                        : `Optional · Up to ${link.maxSelect}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={isBase}
+                    onCheckedChange={(checked) => handleToggleBase(index, checked)}
+                    className={SWITCH_TONE_CLASS}
+                  />
+                  <span className="text-xs text-slate-600">Base</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-rose-600 hover:text-rose-700"
+                    type="button"
+                    onClick={() => remove(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-600">Attached pool</p>
+                  <Select
+                    value={link.poolId ?? NO_POOL_VALUE}
+                    onValueChange={(value) => {
+                      const nextPoolId = value === NO_POOL_VALUE ? null : value;
+                      handleUpdateLink(index, (current) => ({
+                        ...current,
+                        poolId: nextPoolId,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="No pool attached" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_POOL_VALUE}>
+                        <span className="text-slate-500">No pool attached</span>
+                      </SelectItem>
+                      {pools.map((pool) => (
+                        <SelectItem key={pool.id} value={pool.id}>
+                          <span className="font-medium text-slate-900">
+                            {pool.nameEn}
+                          </span>
+                          {pool.nameMm ? (
+                            <span className="ml-1 text-xs text-slate-500">
+                              ({pool.nameMm})
+                            </span>
+                          ) : null}
+                          {!pool.isActive && (
+                            <span className="ml-2 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                              Inactive
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <FieldBlock label="Label (EN)">
+                      <Input
+                        className={COMPACT_INPUT_CLASS}
+                        value={link.labelEn}
+                        onChange={(event) =>
+                          handleUpdateLink(index, (current) => ({
+                            ...current,
+                            labelEn: event.target.value,
+                          }))
+                        }
+                      />
+                    </FieldBlock>
+                    <FieldBlock label="Label (MM)">
+                      <Input
+                        className={COMPACT_INPUT_CLASS}
+                        value={link.labelMm}
+                        onChange={(event) =>
+                          handleUpdateLink(index, (current) => ({
+                            ...current,
+                            labelMm: event.target.value,
+                          }))
+                        }
+                      />
+                    </FieldBlock>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="text-xs font-medium text-slate-700">
+                      Required selection
+                    </span>
+                    <Switch
+                      checked={link.isRequired}
+                      onCheckedChange={(checked) =>
+                        handleUpdateLink(index, (current) => ({
+                          ...current,
+                          isRequired: checked,
+                          minSelect: checked
+                            ? Math.max(1, current.minSelect ?? 1)
+                            : current.minSelect,
+                          maxSelect: Math.max(
+                            checked ? Math.max(1, current.minSelect ?? 1) : 0,
+                            current.maxSelect ?? 1
+                          ),
+                        }))
+                      }
+                      className={SWITCH_TONE_CLASS}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-slate-600">
+                        Min selects
+                      </p>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={link.minSelect}
+                        onChange={(event) => {
+                          const value = Number.parseInt(event.target.value, 10);
+                          const nextMin = Number.isFinite(value) ? value : 0;
+                          handleUpdateLink(index, (current) => ({
+                            ...current,
+                            minSelect: nextMin,
+                          }));
+                        }}
+                        className={COMPACT_INPUT_CLASS}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-slate-600">
+                        Max selects
+                      </p>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={link.maxSelect}
+                        onChange={(event) => {
+                          const value = Number.parseInt(event.target.value, 10);
+                          const nextMax = Number.isFinite(value) ? value : 1;
+                          handleUpdateLink(index, (current) => ({
+                            ...current,
+                            maxSelect: nextMax,
+                          }));
+                        }}
+                        className={COMPACT_INPUT_CLASS}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

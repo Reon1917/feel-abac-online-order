@@ -44,6 +44,86 @@ const menuCodeField = z
   ])
   .optional();
 
+// ===== SET MENU POOL LINK SHARED SCHEMA =====
+
+export const setMenuPoolLinkSchema = z.object({
+  poolId: z.uuid("Pool ID is required"),
+  isPriceDetermining: z.coerce.boolean().optional(),
+  usesOptionPrice: z.coerce.boolean().optional(),
+  flatPrice: z.coerce
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Flat price must be a number",
+    })
+    .min(0, "Flat price cannot be negative")
+    .optional()
+    .nullable(),
+  isRequired: z.coerce.boolean().optional(),
+  minSelect: z.coerce.number().int().min(0).optional(),
+  maxSelect: z.coerce.number().int().min(1).optional(),
+  labelEn: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  labelMm: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  displayOrder: z.coerce.number().int().gte(0).optional(),
+});
+
+export const setMenuPoolLinksArraySchema = z
+  .array(setMenuPoolLinkSchema)
+  .superRefine((links, ctx) => {
+    const priceDeterminers = links
+      .map((link, index) => ({ link, index }))
+      .filter(({ link }) => link.isPriceDetermining);
+
+    if (priceDeterminers.length > 1) {
+      priceDeterminers.forEach(({ index }) => {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Only one pool can set the base price",
+          path: [index, "isPriceDetermining"],
+        });
+      });
+    }
+
+    links.forEach((link, index) => {
+      if (link.isPriceDetermining) {
+        if (link.isRequired === false) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Base pool must be required",
+            path: [index, "isRequired"],
+          });
+        }
+        const minSelect = link.minSelect ?? 1;
+        if (minSelect < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Base pool must require at least one selection",
+            path: [index, "minSelect"],
+          });
+        }
+      }
+
+      if (
+        link.minSelect !== undefined &&
+        link.maxSelect !== undefined &&
+        link.minSelect > link.maxSelect
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Minimum selections cannot exceed maximum selections",
+          path: [index, "minSelect"],
+        });
+      }
+    });
+  });
+
 export const menuItemSchema = z.object({
   categoryId: z.uuid("Category ID must be a valid UUID"),
   nameEn: z.string().trim().min(1, "English name is required"),
@@ -81,6 +161,7 @@ export const menuItemSchema = z.object({
     })
     .min(0, "Price cannot be negative"),
   isAvailable: z.coerce.boolean().optional(),
+  isSetMenu: z.coerce.boolean().optional(),
   allowUserNotes: z.coerce.boolean().optional(),
   hasImage: z.coerce.boolean().optional(),
   displayOrder: z.coerce.number().int().gte(0).optional(),
@@ -125,10 +206,13 @@ export const menuItemUpdateSchema = z.object({
     .min(0, "Price cannot be negative")
     .optional(),
   isAvailable: z.coerce.boolean().optional(),
+  isSetMenu: z.coerce.boolean().optional(),
   allowUserNotes: z.coerce.boolean().optional(),
   hasImage: z.coerce.boolean().optional(),
   displayOrder: z.coerce.number().int().gte(0).optional(),
   status: menuItemStatusEnum.optional(),
+  // Pool links for set menus (optional, synced separately)
+  poolLinks: setMenuPoolLinksArraySchema.optional(),
 });
 
 export const menuChoiceGroupSchema = z
@@ -281,3 +365,76 @@ export type RecommendedMenuReorderPayload = z.infer<
 export function toDecimalString(value: number) {
   return value.toFixed(2);
 }
+
+// ===== CHOICE POOL VALIDATORS =====
+
+export const choicePoolSchema = z.object({
+  nameEn: z.string().trim().min(1, "English name is required"),
+  nameMm: z
+    .string()
+    .trim()
+    .min(1, "Burmese name cannot be empty")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  isActive: z.coerce.boolean().optional(),
+  displayOrder: z.coerce.number().int().gte(0).optional(),
+});
+
+export const choicePoolUpdateSchema = choicePoolSchema.partial();
+
+export const choicePoolOptionSchema = z.object({
+  poolId: z.uuid("Pool ID is required"),
+  menuCode: z
+    .string()
+    .trim()
+    .max(32, "Menu code must be 32 characters or fewer")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  nameEn: z.string().trim().min(1, "English name is required"),
+  nameMm: z
+    .string()
+    .trim()
+    .min(1, "Burmese name cannot be empty")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  price: z.coerce
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Price must be a number",
+    })
+    .min(0, "Price cannot be negative")
+    .default(0),
+  isAvailable: z.coerce.boolean().optional(),
+  displayOrder: z.coerce.number().int().gte(0).optional(),
+});
+
+export const choicePoolOptionUpdateSchema = z.object({
+  menuCode: z
+    .string()
+    .trim()
+    .max(32, "Menu code must be 32 characters or fewer")
+    .optional()
+    .or(z.literal("").transform(() => null)),
+  nameEn: z.string().trim().min(1, "English name is required").optional(),
+  nameMm: z
+    .string()
+    .trim()
+    .min(1, "Burmese name cannot be empty")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  price: z.coerce
+    .number()
+    .refine((value) => Number.isFinite(value), {
+      message: "Price must be a number",
+    })
+    .min(0, "Price cannot be negative")
+    .optional(),
+  isAvailable: z.coerce.boolean().optional(),
+  displayOrder: z.coerce.number().int().gte(0).optional(),
+});
+
+export const poolReorderSchema = z.object({
+  orderedIds: z.array(z.uuid()).min(1, "At least one ID is required"),
+});
+
+export type SetMenuPoolLinkPayload = z.infer<typeof setMenuPoolLinkSchema>;

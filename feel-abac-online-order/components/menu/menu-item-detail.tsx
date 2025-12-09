@@ -15,6 +15,7 @@ import {
   markMenuNeedsRefresh,
 } from "./menu-scroll";
 import { emitCartChange } from "@/lib/cart/events";
+import { SetMenuBuilder, type SetMenuBuilderSelection } from "./set-menu-builder";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -83,6 +84,12 @@ export function MenuItemDetail({
     return Object.fromEntries(initialEntries);
   });
   const [quantity, setQuantity] = useState(1);
+  const [setMenuTotals, setSetMenuTotals] = useState<{
+    basePrice: number;
+    addonsTotal: number;
+    totalPrice: number;
+    quantity: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [queuedRequest, setQueuedRequest] = useState(false);
 
@@ -120,11 +127,25 @@ export function MenuItemDetail({
     return total;
   }, [optionPriceLookup, selections]);
 
-  const unitPrice = basePrice + extrasPerUnit;
-  const baseSubtotal = basePrice * quantity;
-  const extrasSubtotal = extrasPerUnit * quantity;
-  const totalPrice = unitPrice * quantity;
-  const formattedBasePrice = formatPrice(basePrice);
+  const isSetMenu = item.isSetMenu;
+  const effectiveQuantity = isSetMenu
+    ? setMenuTotals?.quantity ?? 1
+    : quantity;
+  const effectiveBasePrice = isSetMenu
+    ? setMenuTotals?.basePrice ?? basePrice
+    : basePrice;
+  const effectiveExtrasPerUnit = isSetMenu
+    ? setMenuTotals?.addonsTotal ?? 0
+    : extrasPerUnit;
+
+  const baseSubtotal = effectiveBasePrice * effectiveQuantity;
+  const extrasSubtotal = effectiveExtrasPerUnit * effectiveQuantity;
+  const totalPrice =
+    isSetMenu && setMenuTotals
+      ? setMenuTotals.totalPrice
+      : (effectiveBasePrice + effectiveExtrasPerUnit) * effectiveQuantity;
+
+  const formattedBasePrice = formatPrice(effectiveBasePrice);
   const formattedBaseSubtotal = formatPrice(baseSubtotal);
   const formattedExtrasSubtotal = formatPrice(extrasSubtotal);
   const formattedTotalPrice = formatPrice(totalPrice);
@@ -236,6 +257,74 @@ export function MenuItemDetail({
     }
   };
 
+  // Handler for set menu add to cart
+  const handleSetMenuAddToCart = async (
+    setMenuSelections: SetMenuBuilderSelection[],
+    qty: number
+  ) => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/cart/set-menu", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          menuItemId: item.id,
+          quantity: qty,
+          note: notes.trim() || null,
+          selections: setMenuSelections,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const errorMessage =
+          (data && typeof data.error === "string" && data.error) ||
+          detail.addToCartError;
+        throw new Error(errorMessage);
+      }
+
+      router.refresh();
+      emitCartChange();
+
+      toast.success(detail.addedToCart);
+      const destination = withLocalePath(locale, "/menu");
+      const shouldReturnToMenu = consumeMenuReturnFlag(locale);
+      let isSafeSameOriginReferrer = false;
+
+      if (shouldReturnToMenu) {
+        try {
+          const referrer = document.referrer;
+          if (referrer) {
+            const referrerUrl = new URL(referrer);
+            isSafeSameOriginReferrer =
+              referrerUrl.origin === window.location.origin;
+          }
+        } catch {
+          isSafeSameOriginReferrer = false;
+        }
+      }
+
+      if (shouldReturnToMenu && isSafeSameOriginReferrer) {
+        markMenuNeedsRefresh(locale);
+        router.back();
+      } else {
+        router.push(destination, { scroll: false });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : detail.addToCartError;
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderAddButton = (variant: "desktop" | "mobile") => {
     const isMobileVariant = variant === "mobile";
     const label = isMobileVariant ? mobileButtonLabel : detail.button;
@@ -344,16 +433,38 @@ export function MenuItemDetail({
                 ) : null}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-4">
-                <strong className="font-semibold text-slate-900">
-                  {detail.basePrice}:
-                </strong>{" "}
-                ฿{formattedBasePrice}
-              </div>
+              {!item.isSetMenu && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-4">
+                  <strong className="font-semibold text-slate-900">
+                    {detail.basePrice}:
+                  </strong>{" "}
+                  ฿{formattedBasePrice}
+                </div>
+              )}
+              {item.isSetMenu && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700 sm:px-4">
+                  <strong className="font-semibold text-emerald-900">
+                    Build Your Set:
+                  </strong>{" "}
+                  Choose your options below
+                </div>
+              )}
             </div>
           </div>
 
-          {enhancedGroups.length > 0 ? (
+          {/* Set Menu Builder */}
+          {item.isSetMenu && item.poolLinks && item.poolLinks.length > 0 ? (
+            <SetMenuBuilder
+              poolLinks={item.poolLinks}
+              menuLocale={menuLocale}
+              onAddToCart={handleSetMenuAddToCart}
+              isSubmitting={isSubmitting}
+              onTotalsChange={setSetMenuTotals}
+            />
+          ) : null}
+
+          {/* Regular Choice Groups (only for non-set menus) */}
+          {!item.isSetMenu && enhancedGroups.length > 0 ? (
             <section className="space-y-6">
               <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
                 {detail.choicesHeading}
@@ -464,7 +575,7 @@ export function MenuItemDetail({
               <span className="block text-sm font-medium text-slate-700">
                 ฿{formattedBaseSubtotal}
               </span>
-              <span className="text-xs text-slate-400">× {quantity}</span>
+              <span className="text-xs text-slate-400">× {effectiveQuantity}</span>
             </div>
           </div>
           <div className="flex items-baseline justify-between">
@@ -473,7 +584,7 @@ export function MenuItemDetail({
               <span className="block text-sm font-medium text-slate-700">
                 ฿{formattedExtrasSubtotal}
               </span>
-              <span className="text-xs text-slate-400">× {quantity}</span>
+              <span className="text-xs text-slate-400">× {effectiveQuantity}</span>
             </div>
           </div>
           <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3">
@@ -486,46 +597,48 @@ export function MenuItemDetail({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">
-              {detail.quantityLabel}
-            </span>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={decreaseQuantity}
-                disabled={!canDecrease}
-                aria-label={detail.quantityDecrease}
-                className={clsx(
-                  "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
-                  canDecrease
-                    ? "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-600"
-                    : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
-                )}
-              >
-                -
-              </button>
-              <span className="w-10 text-center text-lg font-semibold text-slate-900">
-                {quantity}
+        {!item.isSetMenu && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-700">
+                {detail.quantityLabel}
               </span>
-              <button
-                type="button"
-                onClick={increaseQuantity}
-                disabled={!canIncrease}
-                aria-label={detail.quantityIncrease}
-                className={clsx(
-                  "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
-                  canIncrease
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100"
-                    : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
-                )}
-              >
-                +
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={decreaseQuantity}
+                  disabled={!canDecrease}
+                  aria-label={detail.quantityDecrease}
+                  className={clsx(
+                    "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
+                    canDecrease
+                      ? "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-600"
+                      : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
+                  )}
+                >
+                  -
+                </button>
+                <span className="w-10 text-center text-lg font-semibold text-slate-900">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={increaseQuantity}
+                  disabled={!canIncrease}
+                  aria-label={detail.quantityIncrease}
+                  className={clsx(
+                    "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
+                    canIncrease
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100"
+                      : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
+                  )}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {item.allowUserNotes ? (
           <div className="space-y-2">
@@ -542,13 +655,17 @@ export function MenuItemDetail({
           </div>
         ) : null}
 
-        <div className="hidden lg:block">{renderAddButton("desktop")}</div>
+        {!item.isSetMenu && (
+          <div className="hidden lg:block">{renderAddButton("desktop")}</div>
+        )}
         </aside>
       </div>
 
-      <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
-        <div className="flex justify-center">{renderAddButton("mobile")}</div>
-      </div>
+      {!item.isSetMenu && (
+        <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
+          <div className="flex justify-center">{renderAddButton("mobile")}</div>
+        </div>
+      )}
     </>
   );
 }

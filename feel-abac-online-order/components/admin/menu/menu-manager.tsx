@@ -338,12 +338,12 @@ export function AdminMenuManager({
   const switchToneClasses =
     "data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200";
 
-  const headerBadgeLabel = variant === "standalone" ? "Menu studio" : "Workspace controls";
+  const headerBadgeLabel = variant === "standalone" ? "Menu tools" : "Workspace controls";
   const headerTitle = variant === "standalone" ? "Craft your digital lineup" : "Menu workspace";
   const headerSubtitle =
     variant === "standalone"
       ? "Everything autosaves as you go—no more lost work. Preview changes instantly and publish when you’re ready."
-      : "Organize categories, curate dishes, and adjust availability without leaving this workspace. Autosave keeps drafts safe while you experiment.";
+      : "Organize categories, curate dishes, attach choice groups and set-menu pools, and adjust availability from one workspace. Autosave keeps drafts safe while you experiment.";
 
   const builderTabs = useMemo<BuilderTabOption[]>(
     () => [
@@ -908,4 +908,3 @@ function ItemsCard({
     </Card>
   );
 }
-

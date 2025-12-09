@@ -821,7 +821,7 @@ function groupChoices(
 ) {
   const map = new Map<
     string,
-    { id: string; label: string; options: Array<{ id: string; label: string; extraPrice: number }> }
+    { id: string; label: string; isSetMenu: boolean; options: Array<{ id: string; label: string; extraPrice: number; menuCode: string | null }> }
   >();
 
   for (const choice of choices) {
@@ -840,6 +840,7 @@ function groupChoices(
       {
         id: groupKey,
         label: groupLabel,
+        isSetMenu: !!choice.selectionRole,
         options: [],
       };
 
@@ -847,6 +848,7 @@ function groupChoices(
       id: `${choice.id}-${choice.optionName}`,
       label: optionLabel,
       extraPrice: choice.extraPrice,
+      menuCode: choice.menuCode,
     });
 
     map.set(groupKey, group);

@@ -175,6 +175,7 @@ async function loadPublicRecommendedMenuItems(): Promise<
       menuCode: row.item.menuCode,
       allowUserNotes: row.item.allowUserNotes,
       isAvailable: row.item.isAvailable,
+      isSetMenu: row.item.isSetMenu,
       choiceGroups: groupsByItem.get(row.item.id) ?? [],
       displayOrder: row.item.displayOrder,
     };

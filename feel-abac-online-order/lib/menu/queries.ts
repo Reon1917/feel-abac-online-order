@@ -20,8 +20,10 @@ import {
   PublicMenuChoiceGroup,
   PublicMenuItem,
   PublicMenuOption,
+  PublicSetMenuPoolLink,
 } from "@/lib/menu/types";
 import { numericToNumber } from "./math";
+import { getPoolLinksForMenuItem } from "./pool-queries";
 
 export type PublicMenuItemWithCategory = {
   item: PublicMenuItem;
@@ -139,6 +141,7 @@ export async function getAdminMenuHierarchy(): Promise<MenuCategoryRecord[]> {
       descriptionEn: item.descriptionEn,
       descriptionMm: item.descriptionMm,
       isAvailable: item.isAvailable,
+      isSetMenu: item.isSetMenu,
       allowUserNotes: item.allowUserNotes,
       status: item.status as MenuItemStatus,
       displayOrder: item.displayOrder,
@@ -259,6 +262,7 @@ async function loadPublicMenuHierarchy(): Promise<PublicMenuCategory[]> {
       menuCode: item.menuCode,
       allowUserNotes: item.allowUserNotes,
       isAvailable: item.isAvailable,
+      isSetMenu: item.isSetMenu,
       choiceGroups: groupsByItem.get(item.id) ?? [],
       displayOrder: item.displayOrder,
     };
@@ -366,6 +370,40 @@ export async function getPublicMenuItemById(
     options: optionsByGroup.get(group.id) ?? [],
   }));
 
+  // Fetch pool links if it's a set menu
+  let poolLinks: PublicSetMenuPoolLink[] | undefined;
+  if (item.isSetMenu) {
+    const links = await getPoolLinksForMenuItem(item.id);
+    poolLinks = links.map((link) => ({
+      id: link.id,
+      isPriceDetermining: link.isPriceDetermining,
+      usesOptionPrice: link.usesOptionPrice,
+      flatPrice: link.flatPrice,
+      isRequired: link.isRequired,
+      minSelect: link.minSelect,
+      maxSelect: link.maxSelect,
+      label: link.labelEn,
+      labelMm: link.labelMm,
+      displayOrder: link.displayOrder,
+      pool: {
+        id: link.pool.id,
+        name: link.pool.nameEn,
+        nameMm: link.pool.nameMm,
+        options: link.pool.options
+          .filter((opt) => opt.isAvailable)
+          .map((opt) => ({
+            id: opt.id,
+            menuCode: opt.menuCode,
+            name: opt.nameEn,
+            nameMm: opt.nameMm,
+            price: opt.price,
+            isAvailable: opt.isAvailable,
+            displayOrder: opt.displayOrder,
+          })),
+      },
+    }));
+  }
+
   const mappedItem: PublicMenuItem = {
     id: item.id,
     name: item.nameEn,
@@ -378,7 +416,9 @@ export async function getPublicMenuItemById(
     menuCode: item.menuCode,
     allowUserNotes: item.allowUserNotes,
     isAvailable: item.isAvailable,
+    isSetMenu: item.isSetMenu,
     choiceGroups: mappedGroups,
+    poolLinks,
     displayOrder: item.displayOrder,
   };
 

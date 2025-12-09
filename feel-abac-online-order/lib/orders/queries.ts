@@ -41,6 +41,8 @@ function mapOrderItemChoice(choice: typeof orderItemChoices.$inferSelect): Order
     optionName: choice.optionName,
     optionNameMm: choice.optionNameMm,
     extraPrice: numericToNumber(choice.extraPrice),
+    selectionRole: (choice.selectionRole as OrderItemChoice["selectionRole"]) ?? null,
+    menuCode: choice.menuCode,
   };
 }
 

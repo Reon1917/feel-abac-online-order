@@ -9,6 +9,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getArchivedOrdersForAdmin } from "@/lib/orders/queries";
 import { getSession } from "@/lib/session";
+import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 
 type PageProps = {
   params: Promise<{
@@ -50,6 +51,14 @@ export default async function ArchivedOrdersPage({ params }: PageProps) {
                 {dictionary.archivedListTitle ?? "Orders from previous days"}
               </p>
             </div>
+            <MenuLanguageToggle
+              labels={{
+                label: dictionary.menuLanguageLabel ?? "Menu language",
+                english: dictionary.menuLanguageEnglish ?? "English names",
+                burmese: dictionary.menuLanguageBurmese ?? "Burmese names",
+              }}
+              hideLabel
+            />
           </div>
           <ArchivedOrdersClient
             initialOrders={orders}
@@ -60,4 +69,3 @@ export default async function ArchivedOrdersPage({ params }: PageProps) {
     </>
   );
 }
-

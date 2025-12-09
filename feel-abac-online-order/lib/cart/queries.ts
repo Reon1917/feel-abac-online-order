@@ -11,6 +11,8 @@ import { generateCartItemHash } from "./hash";
 import {
   AddToCartInput,
   AddToCartSelection,
+  AddSetMenuToCartInput,
+  SetMenuSelection,
   CartItemChoice,
   CartItemRecord,
   CartRecord,
@@ -19,6 +21,7 @@ import {
   RemoveCartItemInput,
   UpdateCartItemInput,
 } from "./types";
+import { getPoolLinksForMenuItem } from "@/lib/menu/pool-queries";
 
 function toNumericString(value: number) {
   return value.toFixed(2);
@@ -52,6 +55,8 @@ async function loadCartItems(cartId: string): Promise<CartItemRecord[]> {
       optionName: choice.optionName,
       optionNameMm: choice.optionNameMm,
       extraPrice: numericToNumber(choice.extraPrice),
+      selectionRole: choice.selectionRole as CartItemChoice["selectionRole"],
+      menuCode: choice.menuCode,
     };
     const current = choicesByItem.get(choice.cartItemId) ?? [];
     current.push(normalized);
@@ -664,4 +669,208 @@ export async function removeCartItem(input: RemoveCartItemInput) {
     throw new Error("Unable to refresh cart.");
   }
   return refreshed;
+}
+
+// ===== SET MENU CART FUNCTIONS =====
+
+function generateSetMenuHash(
+  menuItemId: string,
+  selections: { kind: "base" | "addon"; optionId: string }[],
+  note?: string | null
+): string {
+  const sortedSelections = [...selections]
+    .sort((a, b) => a.optionId.localeCompare(b.optionId))
+    .map((s) => `${s.kind}:${s.optionId}`);
+
+  const parts = [
+    `item:${menuItemId}`,
+    `selections:${sortedSelections.join("|")}`,
+    `note:${note ?? ""}`,
+  ];
+
+  return crypto.createHash("md5").update(parts.join("::")).digest("hex");
+}
+
+export async function addSetMenuToCart(
+  input: AddSetMenuToCartInput
+): Promise<CartRecord> {
+  const { userId, menuItemId, quantity, note, selections } = input;
+
+  if (quantity < 1 || quantity > MAX_QUANTITY_PER_LINE) {
+    throw new Error(`Quantity must be between 1 and ${MAX_QUANTITY_PER_LINE}.`);
+  }
+
+  // Get the menu item to verify it's a set menu
+  const itemData = await getPublicMenuItemById(menuItemId);
+  if (!itemData) {
+    throw new Error("Set menu item not found.");
+  }
+  if (!itemData.item.isSetMenu) {
+    throw new Error("This item is not a set menu.");
+  }
+
+  // Get pool links to validate selections
+  const poolLinks = await getPoolLinksForMenuItem(menuItemId);
+  if (poolLinks.length === 0) {
+    throw new Error("Set menu configuration is invalid.");
+  }
+
+  const poolLinksById = new Map(poolLinks.map((link) => [link.id, link]));
+
+  type NormalizedSetMenuSelection = {
+    link: (typeof poolLinks)[number];
+    option: (typeof poolLinks)[number]["pool"]["options"][number];
+    unitPrice: number;
+    extraPrice: number;
+  };
+
+  const normalizedSelections: NormalizedSetMenuSelection[] = [];
+  const selectedLinkIds = new Set<string>();
+  const hashSelections: { kind: "base" | "addon"; optionId: string }[] = [];
+
+  // Normalize selections against pool links and options from the DB.
+  for (const selection of selections) {
+    const link = poolLinksById.get(selection.poolLinkId);
+    if (!link) {
+      throw new Error("Invalid set menu selection.");
+    }
+
+    const option = link.pool.options.find(
+      (opt) => opt.id === selection.optionId
+    );
+    if (!option) {
+      throw new Error("Invalid option for set menu selection.");
+    }
+    if (!option.isAvailable) {
+      throw new Error("Selected option is not available.");
+    }
+
+    selectedLinkIds.add(link.id);
+    const selectionKind: "base" | "addon" = link.isPriceDetermining
+      ? "base"
+      : "addon";
+    hashSelections.push({ kind: selectionKind, optionId: option.id });
+
+    const isFlatPricing =
+      !link.usesOptionPrice && link.flatPrice !== null;
+
+    const unitPrice = isFlatPricing ? (link.flatPrice ?? 0) : option.price;
+    const extraPrice = link.isPriceDetermining ? 0 : unitPrice;
+
+    normalizedSelections.push({
+      link,
+      option,
+      unitPrice,
+      extraPrice,
+    });
+  }
+
+  // Validate required selections using server-derived roles
+  const requiredLinks = poolLinks.filter((link) => link.isRequired);
+  for (const requiredLink of requiredLinks) {
+    if (!selectedLinkIds.has(requiredLink.id)) {
+      throw new Error(
+        `Required selection missing: ${requiredLink.labelEn ?? requiredLink.id}`
+      );
+    }
+  }
+
+  // Calculate pricing
+  let basePrice = 0;
+  let addonsTotal = 0;
+
+  for (const selection of normalizedSelections) {
+    if (selection.link.isPriceDetermining) {
+      // This is the base price (from base_curry)
+      basePrice = selection.unitPrice;
+    } else {
+      // This is an addon
+      addonsTotal += selection.unitPrice;
+    }
+  }
+
+  const totalPrice = (basePrice + addonsTotal) * quantity;
+
+  // Generate hash for deduplication
+  const hashKey = generateSetMenuHash(
+    menuItemId,
+    hashSelections,
+    note
+  );
+
+  // Ensure active cart
+  const cart = await ensureActiveCart(userId);
+
+  // Check for existing item with same hash
+  const [existingItem] = await db
+    .select()
+    .from(cartItems)
+    .where(
+      and(
+        eq(cartItems.cartId, cart.id),
+        eq(cartItems.hashKey, hashKey)
+      )
+    )
+    .limit(1);
+
+  if (existingItem) {
+    // Atomically update quantity/total to avoid race conditions
+    const unitTotal = basePrice + addonsTotal;
+    const unitTotalString = toNumericString(unitTotal);
+
+    await db
+      .update(cartItems)
+      .set({
+        quantity: sql`LEAST(${cartItems.quantity} + ${quantity}, ${MAX_QUANTITY_PER_LINE})`,
+        totalPrice: sql`${unitTotalString} * LEAST(${cartItems.quantity} + ${quantity}, ${MAX_QUANTITY_PER_LINE})`,
+        updatedAt: new Date(),
+      })
+      .where(eq(cartItems.id, existingItem.id));
+  } else {
+    // Insert new cart item
+    const [newCartItem] = await db
+      .insert(cartItems)
+      .values({
+        cartId: cart.id,
+        menuItemId,
+        menuItemName: itemData.item.name,
+        menuItemNameMm: itemData.item.nameMm,
+        basePrice: toNumericString(basePrice),
+        addonsTotal: toNumericString(addonsTotal),
+        quantity,
+        note: note ?? null,
+        hashKey,
+        totalPrice: toNumericString(totalPrice),
+      })
+      .returning();
+
+    // Insert choices with set menu fields
+    if (normalizedSelections.length > 0) {
+      const choiceValues = normalizedSelections.map(
+        ({ link, option, extraPrice }) => ({
+          cartItemId: newCartItem.id,
+          groupName: link.labelEn ?? link.pool.nameEn,
+          groupNameMm: link.labelMm ?? link.pool.nameMm ?? null,
+          optionName: option.nameEn,
+          optionNameMm: option.nameMm,
+          extraPrice: toNumericString(extraPrice),
+          selectionRole: link.isPriceDetermining ? "base" : "addon",
+          menuCode: option.menuCode,
+        })
+      );
+
+      await db.insert(cartItemChoices).values(choiceValues);
+    }
+  }
+
+  // Recalculate totals
+  await recalculateCartTotals(cart.id);
+
+  // Return updated cart
+  const refreshedCart = await getActiveCartForUser(userId);
+  if (!refreshedCart) {
+    throw new Error("Unable to refresh cart.");
+  }
+
+  return refreshedCart;
 }

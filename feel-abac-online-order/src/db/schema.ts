@@ -209,6 +209,7 @@ export const menuItems = pgTable("menu_items", {
   descriptionEn: text("description_en"),
   descriptionMm: text("description_mm"),
   isAvailable: boolean("is_available").default(true).notNull(),
+  isSetMenu: boolean("is_set_menu").default(false).notNull(),
   allowUserNotes: boolean("allow_user_notes").default(false).notNull(),
   status: text("status").default("draft").notNull(),
   displayOrder: integer("display_order").default(0).notNull(),
@@ -282,6 +283,70 @@ export const menuChoiceOptions = pgTable("menu_choice_options", {
     .notNull(),
 });
 
+// Set Menu Choice Pools - reusable option pools for set menus
+export const choicePools = pgTable("choice_pools", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  nameEn: text("name_en").notNull(),
+  nameMm: text("name_mm"),
+  isActive: boolean("is_active").default(true).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+// Options within a choice pool
+export const choicePoolOptions = pgTable("choice_pool_options", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  poolId: uuid("pool_id")
+    .notNull()
+    .references(() => choicePools.id, { onDelete: "cascade" }),
+  menuCode: text("menu_code"), // RS1, AD5, AV3 - for kitchen/POS
+  nameEn: text("name_en").notNull(),
+  nameMm: text("name_mm"),
+  price: numeric("price", { precision: 10, scale: 0 }).default("0").notNull(),
+  isAvailable: boolean("is_available").default(true).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+// Links pools to set menu items with role configuration
+export const setMenuPoolLinks = pgTable(
+  "set_menu_pool_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    menuItemId: uuid("menu_item_id")
+      .notNull()
+      .references(() => menuItems.id, { onDelete: "cascade" }),
+    poolId: uuid("pool_id")
+      .notNull()
+      .references(() => choicePools.id, { onDelete: "cascade" }),
+    isPriceDetermining: boolean("is_price_determining").default(false).notNull(),
+    usesOptionPrice: boolean("uses_option_price").default(true).notNull(),
+    flatPrice: numeric("flat_price", { precision: 10, scale: 0 }),
+    isRequired: boolean("is_required").default(true).notNull(),
+    minSelect: integer("min_select").default(1).notNull(),
+    maxSelect: integer("max_select").default(99).notNull(),
+    labelEn: text("label_en"),
+    labelMm: text("label_mm"),
+    displayOrder: integer("display_order").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    menuPoolUnique: uniqueIndex("set_menu_pool_links_unique").on(
+      table.menuItemId,
+      table.poolId
+    ),
+    menuItemIdx: index("set_menu_pool_links_menu_item_idx").on(table.menuItemId),
+  })
+);
+
 export const carts = pgTable(
   "carts",
   {
@@ -352,6 +417,9 @@ export const cartItemChoices = pgTable("cart_item_choices", {
   extraPrice: numeric("extra_price", { precision: 10, scale: 0 })
     .default("0")
     .notNull(),
+  // Set menu specific fields
+  selectionRole: text("selection_role"), // 'base_curry' | 'addon_curry' | 'addon_veggie' | null for regular items
+  menuCode: text("menu_code"), // RS1, AD5, AV3 - copied from pool option at cart time
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -479,6 +547,9 @@ export const orderItemChoices = pgTable(
     extraPrice: numeric("extra_price", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
+    // Set menu specific fields
+    selectionRole: text("selection_role"), // 'base_curry' | 'addon_curry' | 'addon_veggie' | null for regular items
+    menuCode: text("menu_code"), // RS1, AD5, AV3 - copied from pool option for kitchen/POS
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
