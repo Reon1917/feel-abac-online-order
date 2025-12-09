@@ -814,15 +814,15 @@ export async function addSetMenuToCart(
     .limit(1);
 
   if (existingItem) {
-    // Update quantity
-    const newQuantity = Math.min(existingItem.quantity + quantity, MAX_QUANTITY_PER_LINE);
-    const newTotal = (basePrice + addonsTotal) * newQuantity;
+    // Atomically update quantity/total to avoid race conditions
+    const unitTotal = basePrice + addonsTotal;
+    const unitTotalString = toNumericString(unitTotal);
 
     await db
       .update(cartItems)
       .set({
-        quantity: newQuantity,
-        totalPrice: toNumericString(newTotal),
+        quantity: sql`LEAST(${cartItems.quantity} + ${quantity}, ${MAX_QUANTITY_PER_LINE})`,
+        totalPrice: sql`${unitTotalString} * LEAST(${cartItems.quantity} + ${quantity}, ${MAX_QUANTITY_PER_LINE})`,
         updatedAt: new Date(),
       })
       .where(eq(cartItems.id, existingItem.id));

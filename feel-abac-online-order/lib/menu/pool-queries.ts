@@ -2,6 +2,7 @@ import "server-only";
 
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/src/db/client";
+import { dbTx } from "@/src/db/tx-client";
 import {
   choicePools,
   choicePoolOptions,
@@ -431,34 +432,38 @@ export async function syncPoolLinksForMenuItem(
   menuItemId: string,
   links: CreatePoolLinkInput[]
 ): Promise<SetMenuPoolLink[]> {
-  // Delete existing links
-  await deleteAllPoolLinksForMenuItem(menuItemId);
+  return dbTx.transaction(async (tx) => {
+    // Delete existing links inside the transaction
+    await tx
+      .delete(setMenuPoolLinks)
+      .where(eq(setMenuPoolLinks.menuItemId, menuItemId));
 
-  if (links.length === 0) {
-    return [];
-  }
+    if (links.length === 0) {
+      return [] as SetMenuPoolLink[];
+    }
 
-  // Insert new links
-  const insertedLinks = await db
-    .insert(setMenuPoolLinks)
-    .values(
-      links.map((link, index) => ({
-        menuItemId,
-        poolId: link.poolId,
-        isPriceDetermining: link.isPriceDetermining ?? false,
-        usesOptionPrice: link.usesOptionPrice ?? true,
-        flatPrice: link.flatPrice != null ? String(link.flatPrice) : null,
-        isRequired: link.isRequired ?? true,
-        minSelect: link.minSelect ?? 1,
-        maxSelect: link.maxSelect ?? 99,
-        labelEn: link.labelEn ?? null,
-        labelMm: link.labelMm ?? null,
-        displayOrder: link.displayOrder ?? index,
-      }))
-    )
-    .returning();
+    // Insert new links
+    const insertedLinks = await tx
+      .insert(setMenuPoolLinks)
+      .values(
+        links.map((link, index) => ({
+          menuItemId,
+          poolId: link.poolId,
+          isPriceDetermining: link.isPriceDetermining ?? false,
+          usesOptionPrice: link.usesOptionPrice ?? true,
+          flatPrice: link.flatPrice != null ? String(link.flatPrice) : null,
+          isRequired: link.isRequired ?? true,
+          minSelect: link.minSelect ?? 1,
+          maxSelect: link.maxSelect ?? 99,
+          labelEn: link.labelEn ?? null,
+          labelMm: link.labelMm ?? null,
+          displayOrder: link.displayOrder ?? index,
+        }))
+      )
+      .returning();
 
-  return insertedLinks.map(mapPoolLink);
+    return insertedLinks.map(mapPoolLink);
+  });
 }
 
 // ===== UTILITY FUNCTIONS =====

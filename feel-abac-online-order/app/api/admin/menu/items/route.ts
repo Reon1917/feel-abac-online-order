@@ -38,8 +38,19 @@ export async function GET(request: NextRequest) {
         if (!item.isSetMenu) {
           return { ...item, poolLinks: [] };
         }
-        const poolLinks = await getPoolLinksForMenuItem(item.id);
-        return { ...item, poolLinks };
+        try {
+          const poolLinks = await getPoolLinksForMenuItem(item.id);
+          return { ...item, poolLinks };
+        } catch (error) {
+          if (process.env.NODE_ENV !== "production") {
+            // Log and continue so one bad item doesn't break the whole response
+            console.error(
+              "[GET /api/admin/menu/items] Failed to load pool links for item",
+              { itemId: item.id, error }
+            );
+          }
+          return { ...item, poolLinks: [], poolLinksError: true as const };
+        }
       })
     );
     return Response.json({ items: itemsWithLinks });

@@ -38,7 +38,7 @@ export default async function AdminPoolsPage({ params }: PageProps) {
         </Suspense>
       </nav>
       <main className="min-h-screen bg-slate-100 text-slate-900">
-        <section className="border-b border-slate-200 bg-linear-to-r from-white via-emerald-50 to-white">
+        <section className="border-b border-slate-200 bg-gradient-to-r from-white via-emerald-50 to-white">
           <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-6 py-12 lg:px-12">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
