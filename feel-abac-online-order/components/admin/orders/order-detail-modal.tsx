@@ -16,6 +16,7 @@ import { formatBangkokTimestamp } from "@/lib/timezone";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
 import { ReceiptReviewSection } from "@/components/payments/admin/receipt-review";
 import { PaymentBadge } from "@/components/payments/admin/payment-badge";
+import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -75,6 +76,7 @@ export function OrderDetailModal({
   const [deliveryFeeInput, setDeliveryFeeInput] = useState("");
   const [handoffSaving, setHandoffSaving] = useState(false);
   const [deliverSaving, setDeliverSaving] = useState(false);
+  const { menuLocale } = useMenuLocale();
 
   const foodPayment = useMemo(
     () => order?.payments?.find((p) => p.type === "food") ?? null,
@@ -415,9 +417,26 @@ export function OrderDetailModal({
             {/* Table Body */}
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-200 scrollbar-thin scrollbar-thumb-slate-200">
               {order.items.map((item) => {
-                const choicesStr = item.choices.length > 0
-                  ? item.choices.map((c) => c.optionName).join(", ")
-                  : null;
+                const choicesStr =
+                  item.choices.length > 0
+                    ? item.choices
+                        .map((choice) =>
+                          menuLocale === "my"
+                            ? choice.optionNameMm ?? choice.optionName
+                            : choice.optionName
+                        )
+                        .join(", ")
+                    : null;
+
+                const primaryName =
+                  menuLocale === "my"
+                    ? item.menuItemNameMm ?? item.menuItemName
+                    : item.menuItemName;
+
+                const secondaryName =
+                  menuLocale === "my"
+                    ? item.menuItemName
+                    : item.menuItemNameMm ?? null;
 
                 return (
                   <div
@@ -432,8 +451,13 @@ export function OrderDetailModal({
                     {/* Item Name + Choices/Notes */}
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-sm font-semibold text-slate-900 wrap-break-word sm:text-base">
-                        {item.menuItemName}
+                        {primaryName}
                       </p>
+                      {secondaryName && (
+                        <p className="text-xs text-slate-500 wrap-break-word sm:text-sm">
+                          {secondaryName}
+                        </p>
+                      )}
                       {choicesStr && (
                         <p className="text-xs text-slate-600 wrap-break-word sm:text-sm">
                           {choicesStr}

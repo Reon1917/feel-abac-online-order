@@ -9,6 +9,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
 import { getSession } from "@/lib/session";
+import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 
 type PageProps = {
   params: Promise<{
@@ -43,20 +44,30 @@ export default async function AdminOrdersPage({ params }: PageProps) {
                 {dictionary.todayListTitle ?? dictionary.listTitle}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href={withLocalePath(locale, "/admin/settings/promptpay")}
-                className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-100"
-              >
-                {dictionary.promptpaySettings ?? "PromptPay Settings"}
-              </Link>
-              <Link
-                href={withLocalePath(locale, "/admin/orders/archived")}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                {dictionary.viewPastOrders ?? "Past Orders"}
-                <span aria-hidden="true">→</span>
-              </Link>
+            <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <MenuLanguageToggle
+                labels={{
+                  label: dictionary.menuLanguageLabel ?? "Menu language",
+                  english: dictionary.menuLanguageEnglish ?? "English names",
+                  burmese: dictionary.menuLanguageBurmese ?? "Burmese names",
+                }}
+                hideLabel
+              />
+              <div className="flex items-center gap-2">
+                <Link
+                  href={withLocalePath(locale, "/admin/settings/promptpay")}
+                  className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-100"
+                >
+                  {dictionary.promptpaySettings ?? "PromptPay Settings"}
+                </Link>
+                <Link
+                  href={withLocalePath(locale, "/admin/orders/archived")}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  {dictionary.viewPastOrders ?? "Past Orders"}
+                  <span aria-hidden="true">→</span>
+                </Link>
+              </div>
             </div>
           </div>
           <OrderListClient

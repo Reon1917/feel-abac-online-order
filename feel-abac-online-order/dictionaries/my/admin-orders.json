@@ -61,5 +61,8 @@
   "handoffSubmitting": "Handing off...",
   "handoffSummarySubtitle": "Delivery is now handled by the courier. You can still mark this order as delivered once it is completed.",
   "markDelivered": "Mark as delivered",
-  "markDeliveredSubmitting": "Marking delivered..."
+  "markDeliveredSubmitting": "Marking delivered...",
+  "menuLanguageLabel": "Menu language",
+  "menuLanguageEnglish": "English names",
+  "menuLanguageBurmese": "Burmese names"
 }
