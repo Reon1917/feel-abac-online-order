@@ -1,15 +1,16 @@
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
-import { AdminBar } from "@/components/admin/admin-bar";
+import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
+import { AdminHeader } from "@/components/admin/admin-header";
 import { ArchivedOrdersClient } from "@/components/admin/orders/archived-orders-client";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getArchivedOrdersForAdmin } from "@/lib/orders/queries";
-import { getSession } from "@/lib/session";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
+import { Button } from "@/components/ui/button";
 
 type PageProps = {
   params: Promise<{
@@ -22,35 +23,19 @@ export default async function ArchivedOrdersPage({ params }: PageProps) {
   const { lang } = await params;
   const locale = lang as Locale;
 
-  const session = await getSession();
-  if (!session?.isAdmin) {
-    redirect(withLocalePath(locale, "/"));
-  }
-
   const dictionary = getDictionary(locale, "adminOrders");
+  const common = getDictionary(locale, "common");
   const orders = await getArchivedOrdersForAdmin();
 
   return (
-    <>
-      <AdminBar />
-      <main className="min-h-screen bg-slate-50">
-        <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8 lg:px-10">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <Link
-                href={withLocalePath(locale, "/admin/orders")}
-                className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
-              >
-                <span aria-hidden="true">←</span>
-                {dictionary.backToToday ?? "Back to Today's Orders"}
-              </Link>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                {dictionary.archivedPageTitle ?? "Past Orders"}
-              </h1>
-              <p className="text-sm text-slate-600">
-                {dictionary.archivedListTitle ?? "Orders from previous days"}
-              </p>
-            </div>
+    <AdminLayoutShell locale={locale}>
+      <AdminHeader
+        locale={locale}
+        title={dictionary.archivedPageTitle ?? "Past Orders"}
+        subtitle={dictionary.archivedListTitle ?? "Orders from previous days"}
+        languageLabels={common.languageSwitcher}
+        actions={
+          <div className="flex items-center gap-2">
             <MenuLanguageToggle
               labels={{
                 label: dictionary.menuLanguageLabel ?? "Menu language",
@@ -59,13 +44,19 @@ export default async function ArchivedOrdersPage({ params }: PageProps) {
               }}
               hideLabel
             />
+            <Button asChild variant="outline" size="sm">
+              <Link href={withLocalePath(locale, "/admin/orders")}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {dictionary.backToToday ?? "Back to Today"}
+              </Link>
+            </Button>
           </div>
-          <ArchivedOrdersClient
-            initialOrders={orders}
-            dictionary={dictionary}
-          />
-        </div>
-      </main>
-    </>
+        }
+      />
+
+      <div className="p-4 md:p-6 lg:p-8">
+        <ArchivedOrdersClient initialOrders={orders} dictionary={dictionary} />
+      </div>
+    </AdminLayoutShell>
   );
 }

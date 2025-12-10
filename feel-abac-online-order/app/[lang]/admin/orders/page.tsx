@@ -1,15 +1,17 @@
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { Archive, CreditCard } from "lucide-react";
 
-import { AdminBar } from "@/components/admin/admin-bar";
+import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
+import { AdminHeader } from "@/components/admin/admin-header";
+import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 import { OrderListClient } from "@/components/admin/orders/order-list-client";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
-import { getSession } from "@/lib/session";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
+import { Button } from "@/components/ui/button";
 
 type PageProps = {
   params: Promise<{
@@ -22,60 +24,89 @@ export default async function AdminOrdersPage({ params }: PageProps) {
   const { lang } = await params;
   const locale = lang as Locale;
 
-  const session = await getSession();
-  if (!session?.isAdmin) {
-    redirect(withLocalePath(locale, "/"));
-  }
-
   const dictionary = getDictionary(locale, "adminOrders");
+  const common = getDictionary(locale, "common");
   const orders = await getTodayOrdersForAdmin();
 
+  // Calculate stats
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((o) => o.status === "order_processing").length;
+  const confirmedOrders = orders.filter((o) =>
+    [
+      "awaiting_food_payment",
+      "food_payment_review",
+      "order_in_kitchen",
+      "awaiting_delivery_fee_payment",
+      "delivery_payment_review",
+      "order_out_for_delivery",
+    ].includes(o.status)
+  ).length;
+  const completedOrders = orders.filter((o) => o.status === "delivered").length;
+
   return (
-    <>
-      <AdminBar />
-      <main className="min-h-screen bg-slate-50">
-        <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8 lg:px-10">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                {dictionary.pageTitle}
-              </h1>
-              <p className="text-sm text-slate-600">
-                {dictionary.todayListTitle ?? dictionary.listTitle}
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <MenuLanguageToggle
-                labels={{
-                  label: dictionary.menuLanguageLabel ?? "Menu language",
-                  english: dictionary.menuLanguageEnglish ?? "English names",
-                  burmese: dictionary.menuLanguageBurmese ?? "Burmese names",
-                }}
-                hideLabel
-              />
-              <div className="flex items-center gap-2">
-                <Link
-                  href={withLocalePath(locale, "/admin/settings/promptpay")}
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-100"
-                >
-                  {dictionary.promptpaySettings ?? "PromptPay Settings"}
-                </Link>
-                <Link
-                  href={withLocalePath(locale, "/admin/orders/archived")}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                >
-                  {dictionary.viewPastOrders ?? "Past Orders"}
-                  <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            </div>
+    <AdminLayoutShell locale={locale}>
+      <AdminHeader
+        locale={locale}
+        title={dictionary.pageTitle}
+        subtitle={dictionary.todayListTitle ?? dictionary.listTitle}
+        languageLabels={common.languageSwitcher}
+        actions={
+          <div className="flex items-center gap-2">
+            <MenuLanguageToggle
+              labels={{
+                label: dictionary.menuLanguageLabel ?? "Menu language",
+                english: dictionary.menuLanguageEnglish ?? "English names",
+                burmese: dictionary.menuLanguageBurmese ?? "Burmese names",
+              }}
+              hideLabel
+            />
+            <Button asChild variant="outline" size="sm">
+              <Link href={withLocalePath(locale, "/admin/settings/promptpay")}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                {dictionary.promptpaySettings ?? "PromptPay"}
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href={withLocalePath(locale, "/admin/orders/archived")}>
+                <Archive className="mr-2 h-4 w-4" />
+                {dictionary.viewPastOrders ?? "Past Orders"}
+              </Link>
+            </Button>
           </div>
-          <OrderListClient
-            initialOrders={orders}
-            dictionary={dictionary}
+        }
+      />
+
+      <div className="p-4 md:p-6 lg:p-8">
+        <StatsGrid columns={4}>
+          <StatsCard
+            title="Total Today"
+            value={totalOrders}
+            subtitle="Orders received"
           />
+          <StatsCard
+            title="Pending"
+            value={pendingOrders}
+            subtitle="Awaiting confirmation"
+            variant="warning"
+          />
+          <StatsCard
+            title="Confirmed"
+            value={confirmedOrders}
+            subtitle="Being prepared"
+            variant="info"
+          />
+          <StatsCard
+            title="Completed"
+            value={completedOrders}
+            subtitle="Fulfilled today"
+            variant="success"
+          />
+        </StatsGrid>
+
+        <div className="mt-4 md:mt-6">
+          <OrderListClient initialOrders={orders} dictionary={dictionary} />
         </div>
-      </main>
-    </>
+      </div>
+    </AdminLayoutShell>
   );
 }

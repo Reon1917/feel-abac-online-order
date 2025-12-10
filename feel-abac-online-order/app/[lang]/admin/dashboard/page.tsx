@@ -1,19 +1,19 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, ExternalLink } from "lucide-react";
 import { getSession } from "@/lib/session";
-import { getAdminByUserId } from "@/lib/admin";
 import { Button } from "@/components/ui/button";
-import { SignOutButton } from "@/components/auth/sign-out-button";
-import { AdminWorkspace } from "@/components/admin/admin-workspace";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 import { withLocalePath } from "@/lib/i18n/path";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
-import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
 import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
+import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
+import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
+import { AdminHeader } from "@/components/admin/admin-header";
+import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,14 +26,12 @@ type PageProps = {
 
 export default async function AdminDashboard({ params }: PageProps) {
   const { lang } = await params;
-  
-  // Validate locale and redirect to default if invalid
+
   if (!SUPPORTED_LOCALES.includes(lang as Locale)) {
     redirect(withLocalePath(DEFAULT_LOCALE, "/admin/dashboard"));
   }
-  
+
   const locale = lang as Locale;
-  const dict = getDictionary(locale, "adminDashboard");
   const common = getDictionary(locale, "common");
 
   const sessionData = await getSession();
@@ -42,103 +40,127 @@ export default async function AdminDashboard({ params }: PageProps) {
     redirect(withLocalePath(locale, "/"));
   }
 
-  // Get current admin info
-  const currentAdmin = await getAdminByUserId(sessionData.session.user.id);
-  const isSuperAdmin = currentAdmin?.role === "super_admin";
-
   const activePromptPay = await getActivePromptPayAccount();
+  const orders = await getTodayOrdersForAdmin();
 
-  // Fetch admin list
-  const adminList = await db
-    .select({
-      id: admins.id,
-      userId: admins.userId,
-      email: admins.email,
-      name: admins.name,
-      role: admins.role,
-      isActive: admins.isActive,
-      createdAt: admins.createdAt,
-    })
-    .from(admins)
-    .orderBy(admins.createdAt);
+  // Calculate stats
+  const adminCount = await db.select({ id: admins.id }).from(admins);
+  const liveOrders = orders.filter(
+    (o) => !["delivered", "cancelled"].includes(o.status)
+  ).length;
+  const completedToday = orders.filter((o) => o.status === "delivered").length;
+
+  // Quick action cards data
+  const quickActions = [
+    {
+      icon: Bell,
+      label: "Live Orders",
+      description: "Monitor incoming orders and update statuses in real-time.",
+      href: "/admin/orders",
+      badge: liveOrders > 0 ? liveOrders : undefined,
+      variant: "primary" as const,
+    },
+    {
+      icon: UtensilsCrossed,
+      label: "Menu Tools",
+      description: "Edit categories, dishes, layout, and set menu configurations.",
+      href: "/admin/menu",
+      variant: "default" as const,
+    },
+    {
+      icon: MapPin,
+      label: "Delivery Locations",
+      description: "Manage delivery zones, fees, and condo building lists.",
+      href: "/admin/delivery",
+      variant: "default" as const,
+    },
+    {
+      icon: Users,
+      label: "Team Access",
+      description: "Add or remove admin users and manage permissions.",
+      href: "/admin/settings/team",
+      variant: "default" as const,
+    },
+    {
+      icon: CreditCard,
+      label: "Payment Settings",
+      description: activePromptPay
+        ? `Active: ${activePromptPay.name} · ${formatPromptPayPhoneForDisplay(activePromptPay.phoneNumber)}`
+        : "Configure PromptPay accounts for receiving payments.",
+      href: "/admin/settings/promptpay",
+      variant: "default" as const,
+    },
+  ];
 
   return (
-    <>
-      <nav className="flex items-center justify-end bg-white px-6 py-4 text-slate-900 sm:px-10 lg:px-12">
-        <Suspense fallback={<div className="w-40" />}>
-          <UiLanguageSwitcher
-            locale={locale}
-            labels={common.languageSwitcher}
-          />
-        </Suspense>
-      </nav>
-      <div className="admin-light-surface min-h-screen bg-white px-6 py-10 text-slate-900">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-          <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                {dict.workspace.badge}
-              </span>
-              <h1 className="text-3xl font-semibold">{dict.header.title}</h1>
-              <p className="text-sm text-slate-600">{dict.header.subtitle}</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button asChild variant="outline">
-                <Link href={withLocalePath(locale, "/menu")}>View customer side</Link>
-              </Button>
-              <SignOutButton variant="ghost" />
-            </div>
-          </header>
+    <AdminLayoutShell locale={locale}>
+      <AdminHeader
+        locale={locale}
+        title="Dashboard"
+        subtitle="Welcome back! Here's an overview of your restaurant."
+        languageLabels={common.languageSwitcher}
+        actions={
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href={withLocalePath(locale, "/menu")}>
+              <ExternalLink className="h-4 w-4" />
+              View Customer Side
+            </Link>
+          </Button>
+        }
+      />
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                  Orders
-                </p>
-                <p className="text-sm text-slate-600">
-                  Jump to order management and live updates.
-                </p>
-              </div>
-              <Button asChild>
-                <Link href={withLocalePath(locale, "/admin/orders")}>
-                  Go to orders
+      <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8">
+        {/* Stats Overview */}
+        <StatsGrid columns={4}>
+          <StatsCard label="Live Orders" value={liveOrders} variant="success" />
+          <StatsCard label="Completed Today" value={completedToday} />
+          <StatsCard label="Total Orders Today" value={orders.length} />
+          <StatsCard label="Team Members" value={adminCount.length} />
+        </StatsGrid>
+
+        {/* Quick Actions */}
+        <div className="mt-8">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+            Quick Actions
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.href}
+                  href={withLocalePath(locale, action.href)}
+                  className="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-5 transition hover:border-emerald-200 hover:shadow-md"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-100">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    {action.badge && (
+                      <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-500 px-2 text-xs font-bold text-white">
+                        {action.badge}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-slate-900">{action.label}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{action.description}</p>
                 </Link>
-              </Button>
-            </div>
-          </section>
+              );
+            })}
+          </div>
+        </div>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                  {dict.cards.promptpay.activeLabel}
-                </p>
-                <p className="text-lg font-semibold text-slate-900">
-                  {activePromptPay
-                    ? `${activePromptPay.name} · ${formatPromptPayPhoneForDisplay(activePromptPay.phoneNumber)}`
-                    : dict.cards.promptpay.none}
-                </p>
-                <p className="text-sm text-slate-600">
-                  {dict.cards.promptpay.body}
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href={withLocalePath(locale, "/admin/settings/promptpay")}>
-                  {dict.cards.promptpay.cta}
-                </Link>
-              </Button>
-            </div>
-          </section>
-
-          <AdminWorkspace
-            adminList={adminList}
-            currentUserId={sessionData.session.user.id}
-            isSuperAdmin={isSuperAdmin ?? false}
-            locale={locale}
-          />
+        {/* Recent Activity or Tips */}
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6">
+          <h2 className="mb-2 text-lg font-semibold text-slate-900">
+            Getting Started
+          </h2>
+          <p className="text-sm text-slate-500">
+            Use the sidebar to navigate between different sections of the admin panel. 
+            The Live Orders section will show real-time updates when customers place orders.
+          </p>
         </div>
       </div>
-    </>
+    </AdminLayoutShell>
   );
 }
