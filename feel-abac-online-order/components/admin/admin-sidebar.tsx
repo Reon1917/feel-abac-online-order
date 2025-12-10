@@ -86,6 +86,11 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
           label: "Team Access",
         },
         {
+          href: "/admin/settings/shop",
+          icon: Store,
+          label: "Shop Status",
+        },
+        {
           href: "/admin/settings/promptpay",
           icon: CreditCard,
           label: "Payments",

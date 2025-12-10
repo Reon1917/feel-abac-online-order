@@ -632,3 +632,16 @@ export const orderEvents = pgTable(
     createdIdx: index("order_events_created_at_idx").on(table.createdAt),
   })
 );
+
+// Singleton shop settings row to control open/closed state and messages
+export const shopSettings = pgTable("shop_settings", {
+  id: text("id").primaryKey().default("default"),
+  isOpen: boolean("is_open").default(true).notNull(),
+  closedMessageEn: text("closed_message_en"),
+  closedMessageMm: text("closed_message_mm"),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedByAdminId: text("updated_by_admin_id").references(() => admins.id),
+});

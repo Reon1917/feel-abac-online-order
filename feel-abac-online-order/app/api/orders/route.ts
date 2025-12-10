@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createOrderFromCart } from "@/lib/orders/create";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { resolveUserId } from "@/lib/api/require-user";
+import { getShopStatus } from "@/lib/shop/queries";
 
 type CreateOrderBody = {
   deliverySelection?: DeliverySelection | null;
@@ -30,6 +31,14 @@ export async function POST(req: NextRequest) {
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const shopStatus = await getShopStatus();
+  if (!shopStatus.isOpen) {
+    return NextResponse.json(
+      { error: shopStatus.closedMessageEn ?? "Shop is currently closed" },
+      { status: 403 }
+    );
   }
 
   const body = (await req.json().catch(() => null)) as CreateOrderBody | null;
