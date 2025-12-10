@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 type NavItem = {
   href: string;
@@ -216,13 +217,14 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
             </div>
           )}
           {!isCollapsed && (
-            <Link
-              href="/api/sign-out"
-              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              title="Sign out"
+            <SignOutButton
+              variant="ghost"
+              size="icon-sm"
+              className="text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              ariaLabel="Sign out"
             >
               <LogOut className="h-4 w-4" />
-            </Link>
+            </SignOutButton>
           )}
         </div>
       </div>
