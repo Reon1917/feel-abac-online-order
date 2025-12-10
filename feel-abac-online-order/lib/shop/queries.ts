@@ -57,5 +57,6 @@ export async function setShopStatus(
       },
     });
 
-  revalidateTag(SHOP_STATUS_TAG);
+  // Mark cached status stale; next reads refetch while serving stale
+  revalidateTag(SHOP_STATUS_TAG, "max");
 }

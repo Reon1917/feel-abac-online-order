@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { addSetMenuToCart, summarizeCartRecord } from "@/lib/cart/queries";
 import { resolveUserId } from "@/lib/api/require-user";
+import { getShopStatus } from "@/lib/shop/queries";
 
 const setMenuSelectionSchema = z.object({
   poolLinkId: z.string().uuid(),
@@ -19,6 +20,14 @@ export async function POST(request: NextRequest) {
   const userId = await resolveUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const shopStatus = await getShopStatus();
+  if (!shopStatus.isOpen) {
+    return NextResponse.json(
+      { error: shopStatus.closedMessageEn ?? "Shop is currently closed" },
+      { status: 403 }
+    );
   }
 
   const payload = await request.json().catch(() => null);
