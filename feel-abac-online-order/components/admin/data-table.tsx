@@ -111,8 +111,9 @@ export function DataTablePagination({
   itemsPerPage,
   onPageChange,
 }: DataTablePaginationProps) {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const hasItems = totalItems > 0;
+  const startItem = hasItems ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const endItem = hasItems ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
 
   return (
     <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
@@ -121,6 +122,7 @@ export function DataTablePagination({
       </p>
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -128,6 +130,7 @@ export function DataTablePagination({
           Previous
         </button>
         <button
+          type="button"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
