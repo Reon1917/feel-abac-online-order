@@ -65,16 +65,32 @@ export function ShopSettingsClient({ initialStatus, fallbackMessages }: ShopSett
 
   return (
     <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-900">Shop status</p>
-          <p className="text-sm text-slate-600">Toggle to open/close ordering</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Shop status
+          </p>
+          <p className="text-base font-medium text-slate-900">
+            Open or close the shop for customers
+          </p>
+          <p className="text-sm text-slate-600">
+            Changes apply immediately and are cached for active users within ~60s.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={cn("text-sm font-semibold", isOpen ? "text-emerald-600" : "text-rose-600")}>{
-            isOpen ? "Open" : "Closed"
-          }</span>
-          <Switch checked={isOpen} onCheckedChange={(checked) => setIsOpen(checked)} />
+        <div className="flex items-center gap-4 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 shadow-sm">
+          <span
+            className={cn(
+              "text-sm font-semibold",
+              isOpen ? "text-emerald-700" : "text-rose-700"
+            )}
+          >
+            {isOpen ? "Open" : "Closed"}
+          </span>
+          <Switch
+            className="scale-125"
+            checked={isOpen}
+            onCheckedChange={(checked) => setIsOpen(checked)}
+          />
         </div>
       </div>
 
@@ -113,8 +129,8 @@ export function ShopSettingsClient({ initialStatus, fallbackMessages }: ShopSett
       </div>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save"}
+        <Button onClick={handleSave} disabled={saving} size="lg" className="min-w-[180px]">
+          {saving ? "Saving..." : "Save & apply status"}
         </Button>
         {success && <span className="text-sm text-emerald-600">{success}</span>}
         {error && <span className="text-sm text-rose-600">{error}</span>}
