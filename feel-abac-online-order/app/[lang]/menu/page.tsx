@@ -12,6 +12,8 @@ import type { Locale } from "@/lib/i18n/config";
 import { getActiveCartSummary } from "@/lib/cart/queries";
 import { ResumeOrderBanner } from "@/components/orders/resume-order-banner";
 import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
+import { getShopStatus } from "@/lib/shop/queries";
+import { ShopClosedOverlay } from "@/components/shop/shop-closed-overlay";
 
 type PageProps = {
   params: Promise<{
@@ -33,6 +35,19 @@ export default async function MenuPage({ params }: PageProps) {
   }
 
   const userId = sessionData.session.user.id;
+
+  const shopStatus = await getShopStatus();
+  if (!shopStatus.isOpen) {
+    return (
+      <>
+        {sessionData.isAdmin && <AdminBar />}
+        <ShopClosedOverlay
+          messageEn={shopStatus.closedMessageEn}
+          messageMm={shopStatus.closedMessageMm}
+        />
+      </>
+    );
+  }
 
   const [profile, menuCategories, recommendedItems, cartSummary] = await Promise.all([
     getUserProfile(userId),

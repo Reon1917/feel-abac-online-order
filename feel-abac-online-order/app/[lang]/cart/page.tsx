@@ -16,6 +16,8 @@ import { getActiveCartForUser } from "@/lib/cart/queries";
 import { getActiveDeliveryLocations } from "@/lib/delivery/queries";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
+import { getShopStatus } from "@/lib/shop/queries";
+import { ShopClosedOverlay } from "@/components/shop/shop-closed-overlay";
 
 type PageProps = {
   params: Promise<{
@@ -39,6 +41,19 @@ export default async function CartPage({ params }: PageProps) {
   const profile = await getUserProfile(sessionData.session.user.id);
   if (!profile) {
     redirect(withLocalePath(locale, "/onboarding"));
+  }
+
+  const shopStatus = await getShopStatus();
+  if (!shopStatus.isOpen) {
+    return (
+      <>
+        {sessionData.isAdmin && <AdminBar />}
+        <ShopClosedOverlay
+          messageEn={shopStatus.closedMessageEn}
+          messageMm={shopStatus.closedMessageMm}
+        />
+      </>
+    );
   }
 
   const cart = await getActiveCartForUser(sessionData.session.user.id);

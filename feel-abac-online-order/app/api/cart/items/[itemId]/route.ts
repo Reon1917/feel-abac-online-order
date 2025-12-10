@@ -6,6 +6,7 @@ import {
 } from "@/lib/cart/queries";
 import { updateCartItemSchema } from "@/lib/cart/validation";
 import { resolveUserId } from "@/lib/api/require-user";
+import { getShopStatus } from "@/lib/shop/queries";
 
 type RouteContext = {
   params: Promise<{
@@ -20,6 +21,14 @@ export async function PATCH(
   const userId = await resolveUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const shopStatus = await getShopStatus();
+  if (!shopStatus.isOpen) {
+    return NextResponse.json(
+      { error: shopStatus.closedMessageEn ?? "Shop is currently closed" },
+      { status: 403 }
+    );
   }
 
   const { itemId } = await context.params;
@@ -61,6 +70,14 @@ export async function DELETE(
   const userId = await resolveUserId(request);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const shopStatus = await getShopStatus();
+  if (!shopStatus.isOpen) {
+    return NextResponse.json(
+      { error: shopStatus.closedMessageEn ?? "Shop is currently closed" },
+      { status: 403 }
+    );
   }
 
   const { itemId } = await context.params;
