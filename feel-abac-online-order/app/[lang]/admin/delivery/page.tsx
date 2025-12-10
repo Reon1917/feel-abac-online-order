@@ -1,16 +1,14 @@
-import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
+import { AdminHeader } from "@/components/admin/admin-header";
+import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 import { getDeliveryLocationsForAdmin } from "@/lib/delivery/queries";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
-import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { DeliveryLocationForm } from "@/components/admin/delivery/location-form";
 import { DeliveryLocationEditDialog } from "@/components/admin/delivery/location-edit-dialog";
 import { DeleteLocationButton } from "@/components/admin/delivery/delete-location-button";
@@ -33,44 +31,47 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
     redirect(withLocalePath(locale, "/admin/delivery"));
   }
 
-  const session = await requireActiveAdmin();
-  if (!session) {
-    redirect(withLocalePath(locale, "/"));
-  }
-
   const dict = getDictionary(locale, "adminDelivery");
   const common = getDictionary(locale, "common");
   const locations = await getDeliveryLocationsForAdmin();
   const activeLocations = locations.filter((location) => location.isActive);
 
   return (
-    <>
-      <nav className="flex items-center justify-end bg-white px-6 py-4 text-slate-900 sm:px-10 lg:px-12">
-        <Suspense fallback={<div className="w-40" />}>
-          <UiLanguageSwitcher locale={locale} labels={common.languageSwitcher} />
-        </Suspense>
-      </nav>
-      <main className="min-h-screen bg-slate-50 text-slate-900">
-        <section className="border-b border-slate-200 bg-white/80">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-10 lg:px-10">
-            <Link
-              href={withLocalePath(locale, "/admin/dashboard")}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-600"
-            >
-              <ArrowLeft className="size-4" />
-              {dict.header.backToDashboard}
-            </Link>
-            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-              {dict.header.badge}
-            </span>
-            <h1 className="text-3xl font-semibold">{dict.header.title}</h1>
-            <p className="text-sm text-slate-600">{dict.header.subtitle}</p>
-          </div>
-        </section>
+    <AdminLayoutShell locale={locale}>
+      <AdminHeader
+        locale={locale}
+        title={dict.header.title}
+        subtitle={dict.header.subtitle}
+        languageLabels={common.languageSwitcher}
+      />
 
-        <section className="mx-auto grid w-full max-w-5xl gap-6 px-6 pb-16 pt-8 lg:grid-cols-[2fr_3fr] lg:px-10">
+      <div className="p-4 md:p-6 lg:p-8">
+        <StatsGrid columns={3}>
+          <StatsCard
+            title="Active Locations"
+            value={activeLocations.length}
+            subtitle="Delivery zones available"
+            variant="success"
+          />
+          <StatsCard
+            title="Total Locations"
+            value={locations.length}
+            subtitle="All configured locations"
+          />
+          <StatsCard
+            title="Buildings"
+            value={activeLocations.reduce(
+              (sum, loc) => sum + loc.buildings.length,
+              0
+            )}
+            subtitle="Total building options"
+          />
+        </StatsGrid>
+
+        <div className="mt-4 grid gap-4 md:mt-6 md:gap-6 lg:grid-cols-[1fr_2fr]">
           <DeliveryLocationForm dictionary={dict.form} />
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+          
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-slate-900">
                 {dict.list.title}
@@ -126,8 +127,8 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
               </ul>
             )}
           </div>
-        </section>
-      </main>
-    </>
+        </div>
+      </div>
+    </AdminLayoutShell>
   );
 }

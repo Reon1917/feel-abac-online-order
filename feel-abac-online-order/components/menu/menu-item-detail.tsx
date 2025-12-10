@@ -352,9 +352,9 @@ export function MenuItemDetail({
               className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
             />
           ) : null}
-          <span>{displayedLabel}</span>
+          <span className="italic">{displayedLabel}</span>
         </span>
-        <span>· ฿{formattedTotalPrice}</span>
+        <span>- ฿{formattedTotalPrice}</span>
       </button>
     );
   };
@@ -662,7 +662,7 @@ export function MenuItemDetail({
       </div>
 
       {!item.isSetMenu && (
-        <div className="sticky bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] lg:hidden">
+        <div className="sticky bottom-16 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] sm:bottom-0 lg:hidden">
           <div className="flex justify-center">{renderAddButton("mobile")}</div>
         </div>
       )}

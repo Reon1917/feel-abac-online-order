@@ -1,12 +1,14 @@
-import { Suspense } from "react";
-import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+
+import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
+import { AdminHeader } from "@/components/admin/admin-header";
+import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 import { getAdminMenuHierarchy } from "@/lib/menu/queries";
 import { getAdminRecommendedMenuItems } from "@/lib/menu/recommendations";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
-import { UiLanguageSwitcher } from "@/components/i18n/ui-language-switcher";
 import { withLocalePath } from "@/lib/i18n/path";
 import { Button } from "@/components/ui/button";
 import { RecommendedItemsCard } from "@/components/admin/menu/recommended-items-card";
@@ -27,93 +29,64 @@ export default async function AdminRecommendedMenuPage({
   const dict = getDictionary(locale, "adminMenu");
   const common = getDictionary(locale, "common");
 
-  await requireActiveAdmin();
-
   const [menu, recommended] = await Promise.all([
     getAdminMenuHierarchy(),
     getAdminRecommendedMenuItems(),
   ]);
 
   const featuredCount = recommended.length;
+  const totalItems = menu.reduce((sum, cat) => sum + cat.items.length, 0);
 
   return (
-    <>
-      <nav className="flex items-center justify-end bg-white px-6 py-4 text-slate-900 sm:px-10 lg:px-12">
-        <Suspense fallback={<div className="w-40" />}>
-          <UiLanguageSwitcher
-            locale={locale}
-            labels={common.languageSwitcher}
-          />
-        </Suspense>
-      </nav>
-      <main className="min-h-screen bg-slate-100 text-slate-900">
-        <section className="border-b border-slate-200 bg-linear-to-r from-white via-emerald-50 to-white">
-          <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-6 py-12 lg:px-12">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                  {dict.recommendationsPage?.badge ??
-                    "Recommended spotlight"}
-                </span>
-                <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
-                  {dict.recommendationsPage?.title ??
-                    "Curate recommended dishes"}
-                </h1>
-                <p className="max-w-3xl text-sm text-slate-600">
-                  {dict.recommendationsPage?.subtitle ??
-                    "Pick a handful of dishes to pin above the diner menu. Updates are live as soon as you save."}
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                >
-                  <Link href={withLocalePath(locale, "/admin/dashboard")}>
-                    {dict.recommendationsPage?.buttons?.dashboard ??
-                      "Back to dashboard"}
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-slate-700 hover:bg-white/80"
-                >
-                  <Link href={withLocalePath(locale, "/admin/menu")}>
-                    {dict.recommendationsPage?.buttons?.builder ??
-                      "Open builder"}
-                  </Link>
-                </Button>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-100 bg-white/80 p-4 text-sm text-slate-600 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                  {dict.recommendationsPage?.stats?.label ??
-                    "Featured items"}
-                </p>
-                <p className="mt-2 text-3xl font-semibold text-slate-900">
-                  {featuredCount}
-                </p>
-                <p>
-                  {dict.recommendationsPage?.stats?.description ??
-                    "Pinned cards appear at the very top of the diner experience."}
-                </p>
-              </div>
-            </div>
+    <AdminLayoutShell locale={locale}>
+      <AdminHeader
+        locale={locale}
+        title={dict.recommendationsPage?.title ?? "Featured Items"}
+        subtitle={
+          dict.recommendationsPage?.subtitle ??
+          "Pin dishes to highlight at the top of the diner menu"
+        }
+        languageLabels={common.languageSwitcher}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={withLocalePath(locale, "/admin/menu")}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {dict.recommendationsPage?.buttons?.builder ?? "Menu Builder"}
+              </Link>
+            </Button>
           </div>
-        </section>
-        <section className="mx-auto -mt-8 w-full max-w-[1200px] px-6 pb-16 lg:px-12">
+        }
+      />
+
+      <div className="p-4 md:p-6 lg:p-8">
+        <StatsGrid columns={3}>
+          <StatsCard
+            title={dict.recommendationsPage?.stats?.label ?? "Featured Items"}
+            value={featuredCount}
+            subtitle="Pinned at the top of diner menu"
+            variant="success"
+          />
+          <StatsCard
+            title="Total Menu Items"
+            value={totalItems}
+            subtitle="Available items to feature"
+          />
+          <StatsCard
+            title="Categories"
+            value={menu.length}
+            subtitle="Active menu categories"
+          />
+        </StatsGrid>
+
+        <div className="mt-4 md:mt-6">
           <RecommendedItemsCard
             menu={menu}
             initialRecommendations={recommended}
             dictionary={dict.recommendationsManager}
           />
-        </section>
-      </main>
-    </>
+        </div>
+      </div>
+    </AdminLayoutShell>
   );
 }

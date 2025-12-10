@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { CheckIcon, MinusIcon, PlusIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type {
   PublicSetMenuPoolLink,
@@ -294,8 +293,8 @@ export function SetMenuBuilder({
         ))}
       </div>
 
-      {/* Sticky footer */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-white px-4 py-4 shadow-lg sm:px-6">
+      {/* Sticky footer - account for mobile bottom nav */}
+      <div className="fixed inset-x-0 bottom-16 z-20 border-t bg-white px-4 py-4 shadow-lg sm:bottom-0 sm:px-6">
         <div className="mx-auto flex max-w-lg items-center gap-4">
           {/* Quantity */}
           <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
@@ -321,19 +320,27 @@ export function SetMenuBuilder({
           </div>
 
           {/* Add to cart button */}
-          <Button
+          <button
+            type="button"
             onClick={handleAddToCart}
             disabled={!isValid || isSubmitting}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white shadow-xl shadow-emerald-500/35 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:opacity-50"
           >
             {isSubmitting ? (
-              "Adding..."
+              <>
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
+                />
+                <span>Adding...</span>
+              </>
             ) : (
               <>
-                Add to Cart · ฿{formatPrice(totalPrice)}
+                <span className="italic">Add to cart</span>
+                <span>- ฿{formatPrice(totalPrice)}</span>
               </>
             )}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
