@@ -86,11 +86,25 @@ export function TeamAccessClient({
     setRefreshing(true);
     try {
       const response = await fetch("/api/admin/list");
-      const data = await response.json();
-      setAdmins(data);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message =
+          (payload && typeof payload.error === "string" && payload.error) ||
+          "Failed to refresh admin list";
+        toast.error(message);
+        return;
+      }
+
+      const payload = await response.json().catch(() => null);
+      if (!Array.isArray(payload)) {
+        toast.error("Failed to refresh admin list");
+        return;
+      }
+
+      setAdmins(payload);
       toast.success("Admin list refreshed");
     } catch {
-      toast.error("Failed to refresh admin list");
+      toast.error("Network error while refreshing admin list");
     } finally {
       setRefreshing(false);
     }

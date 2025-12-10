@@ -148,7 +148,7 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
                     key={item.href}
                     href={withLocalePath(locale, item.href)}
                     className={clsx(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                       active
                         ? "bg-emerald-50 text-emerald-700"
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
