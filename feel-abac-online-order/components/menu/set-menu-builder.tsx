@@ -2,13 +2,14 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { CheckIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   PublicSetMenuPoolLink,
   PublicSetMenuPoolOption,
 } from "@/lib/menu/types";
 import type { SetMenuSelection } from "@/lib/cart/types";
+import { AddToCartFooter } from "./add-to-cart-footer";
 
 type SetMenuBuilderProps = {
   poolLinks: PublicSetMenuPoolLink[];
@@ -294,55 +295,19 @@ export function SetMenuBuilder({
       </div>
 
       {/* Sticky footer - account for mobile bottom nav */}
-      <div className="fixed inset-x-0 bottom-16 z-20 border-t bg-white px-4 py-4 shadow-lg sm:bottom-0 sm:px-6">
-        <div className="mx-auto flex max-w-lg items-center gap-4">
-          {/* Quantity */}
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              disabled={quantity <= 1}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition hover:bg-white disabled:opacity-40"
-            >
-              <MinusIcon className="h-4 w-4" />
-            </button>
-            <span className="w-8 text-center font-medium text-slate-900">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-              disabled={quantity >= 20}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-600 transition hover:bg-white disabled:opacity-40"
-            >
-              <PlusIcon className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Add to cart button */}
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={!isValid || isSubmitting}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 py-3 font-semibold text-white shadow-xl shadow-emerald-500/35 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <span
-                  aria-hidden="true"
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
-                />
-                <span>Adding...</span>
-              </>
-            ) : (
-              <>
-                <span className="italic">Add to cart</span>
-                <span>- ฿{formatPrice(totalPrice)}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      <AddToCartFooter
+        quantity={quantity}
+        canDecrease={quantity > 1}
+        canIncrease={quantity < 20}
+        onDecrease={() => setQuantity((q) => Math.max(1, q - 1))}
+        onIncrease={() => setQuantity((q) => Math.min(20, q + 1))}
+        onAddToCart={handleAddToCart}
+        isSubmitting={isSubmitting}
+        isDisabled={!isValid}
+        label="Add to cart"
+        busyLabel="Adding..."
+        priceLabel={`฿${formatPrice(totalPrice)}`}
+      />
     </div>
   );
 }

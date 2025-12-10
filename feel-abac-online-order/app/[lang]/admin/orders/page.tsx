@@ -30,9 +30,18 @@ export default async function AdminOrdersPage({ params }: PageProps) {
 
   // Calculate stats
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter((o) => o.status === "pending").length;
-  const confirmedOrders = orders.filter((o) => o.status === "confirmed").length;
-  const completedOrders = orders.filter((o) => o.status === "completed").length;
+  const pendingOrders = orders.filter((o) => o.status === "order_processing").length;
+  const confirmedOrders = orders.filter((o) =>
+    [
+      "awaiting_food_payment",
+      "food_payment_review",
+      "order_in_kitchen",
+      "awaiting_delivery_fee_payment",
+      "delivery_payment_review",
+      "order_out_for_delivery",
+    ].includes(o.status)
+  ).length;
+  const completedOrders = orders.filter((o) => o.status === "delivered").length;
 
   return (
     <AdminLayoutShell locale={locale}>

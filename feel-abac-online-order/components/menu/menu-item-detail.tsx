@@ -16,6 +16,7 @@ import {
 } from "./menu-scroll";
 import { emitCartChange } from "@/lib/cart/events";
 import { SetMenuBuilder, type SetMenuBuilderSelection } from "./set-menu-builder";
+import { AddToCartFooter } from "./add-to-cart-footer";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -325,40 +326,6 @@ export function MenuItemDetail({
     }
   };
 
-  const renderAddButton = (variant: "desktop" | "mobile") => {
-    const isMobileVariant = variant === "mobile";
-    const label = isMobileVariant ? mobileButtonLabel : detail.button;
-    const busyLabel = detail.addingToCart ?? label;
-    const displayedLabel = isSubmitting ? busyLabel : label;
-
-    return (
-      <button
-        type="button"
-        onClick={handleAddToCart}
-        disabled={isSubmitting}
-        aria-busy={isSubmitting}
-        className={clsx(
-          "flex w-full items-center justify-center gap-2 rounded-full font-semibold text-white shadow-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
-          isMobileVariant
-            ? "max-w-sm bg-emerald-600 px-6 py-3 text-base shadow-xl shadow-emerald-500/35 hover:bg-emerald-500"
-            : "bg-emerald-600 py-3 text-sm shadow-md hover:bg-emerald-500 lg:py-3.5 lg:text-base",
-          isSubmitting && "opacity-70"
-        )}
-      >
-        <span className="flex items-center gap-2">
-          {isSubmitting ? (
-            <span
-              aria-hidden="true"
-              className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
-            />
-          ) : null}
-          <span className="italic">{displayedLabel}</span>
-        </span>
-        <span>- ฿{formattedTotalPrice}</span>
-      </button>
-    );
-  };
-
   const handleSelect = (group: ChoiceGroupWithState, optionId: string) => {
     setSelections((prev) => {
       const current = prev[group.id] ?? [];
@@ -597,49 +564,6 @@ export function MenuItemDetail({
           </div>
         </div>
 
-        {!item.isSetMenu && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700">
-                {detail.quantityLabel}
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={decreaseQuantity}
-                  disabled={!canDecrease}
-                  aria-label={detail.quantityDecrease}
-                  className={clsx(
-                    "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
-                    canDecrease
-                      ? "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-600"
-                      : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
-                  )}
-                >
-                  -
-                </button>
-                <span className="w-10 text-center text-lg font-semibold text-slate-900">
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={increaseQuantity}
-                  disabled={!canIncrease}
-                  aria-label={detail.quantityIncrease}
-                  className={clsx(
-                    "flex h-10 w-10 items-center justify-center rounded-full border text-lg font-semibold transition",
-                    canIncrease
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100"
-                      : "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300"
-                  )}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {item.allowUserNotes ? (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700" htmlFor="menu-item-notes">
@@ -655,16 +579,23 @@ export function MenuItemDetail({
           </div>
         ) : null}
 
-        {!item.isSetMenu && (
-          <div className="hidden lg:block">{renderAddButton("desktop")}</div>
-        )}
         </aside>
       </div>
 
       {!item.isSetMenu && (
-        <div className="sticky bottom-16 left-0 right-0 z-30 border-t border-slate-200 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] sm:bottom-0 lg:hidden">
-          <div className="flex justify-center">{renderAddButton("mobile")}</div>
-        </div>
+        <AddToCartFooter
+          quantity={quantity}
+          canDecrease={canDecrease}
+          canIncrease={canIncrease}
+          onDecrease={decreaseQuantity}
+          onIncrease={increaseQuantity}
+          onAddToCart={handleAddToCart}
+          isSubmitting={isSubmitting}
+          isDisabled={false}
+          label={mobileButtonLabel}
+          busyLabel={detail.addingToCart ?? mobileButtonLabel}
+          priceLabel={`฿${formattedTotalPrice}`}
+        />
       )}
     </>
   );

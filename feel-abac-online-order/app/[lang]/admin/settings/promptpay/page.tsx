@@ -25,7 +25,7 @@ export default async function PromptPaySettingsPage({ params }: PageProps) {
   const accounts = await listPromptPayAccounts();
 
   const activeAccounts = accounts.filter((a) => a.isActive);
-  const primaryAccount = accounts.find((a) => a.isPrimary);
+  const primaryAccount = activeAccounts[0] ?? null;
 
   return (
     <AdminLayoutShell locale={locale}>
@@ -52,7 +52,7 @@ export default async function PromptPaySettingsPage({ params }: PageProps) {
           <StatsCard
             title="Primary"
             value={primaryAccount ? 1 : 0}
-            subtitle={primaryAccount?.displayName ?? "Not set"}
+            subtitle={primaryAccount?.name ?? "Not set"}
             variant={primaryAccount ? "info" : "warning"}
           />
         </StatsGrid>
