@@ -33,6 +33,10 @@ export const signUpSchema = z.object({
   name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
+  confirmPassword: passwordSchema,
+}).refine((data) => data.password === data.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "Passwords do not match",
 });
 
 // Sign in schema
@@ -49,4 +53,3 @@ export const onboardingSchema = z.object({
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
-

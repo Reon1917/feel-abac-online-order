@@ -4,9 +4,10 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
+  import { Button } from "@/components/ui/button";
 import { signInSchema, signUpSchema } from "@/lib/validations";
 import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
 
 type AuthView = "sign-in" | "sign-up";
 
@@ -187,7 +188,22 @@ export function LoginModal({ locale }: LoginModalProps) {
               </label>
 
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-emerald-900">Password</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-emerald-900">Password</span>
+                  {view === "sign-in" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setValidationErrors({});
+                        router.push(withLocalePath(locale, "/auth/forgot-password"));
+                      }}
+                      className="text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  ) : null}
+                </div>
                 <input
                   name="password"
                   type="password"
@@ -202,6 +218,29 @@ export function LoginModal({ locale }: LoginModalProps) {
                   <span className="text-xs text-red-600">{validationErrors.password}</span>
                 )}
               </label>
+
+              {view === "sign-up" ? (
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-medium text-emerald-900">
+                    Confirm password
+                  </span>
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    className={`rounded-md border px-3 py-2 text-emerald-950 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 ${
+                      validationErrors.confirmPassword
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                        : "border-emerald-200"
+                    }`}
+                  />
+                  {validationErrors.confirmPassword && (
+                    <span className="text-xs text-red-600">
+                      {validationErrors.confirmPassword}
+                    </span>
+                  )}
+                </label>
+              ) : null}
 
               <Button
                 type="submit"

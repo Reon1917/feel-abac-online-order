@@ -13,6 +13,8 @@ import {
   X,
   ChevronRight,
   ShoppingBag,
+  Shield,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -46,6 +48,9 @@ export function ProfileClient({
 }: ProfileClientProps) {
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneValue, setPhoneValue] = useState(phone);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [state, formAction] = useActionState(updatePhoneAction, null);
 
   const { sections, toast: toastMessages } = dictionary;
@@ -63,6 +68,58 @@ export function ProfileClient({
   const handleCancelEdit = () => {
     setPhoneValue(phone);
     setIsEditingPhone(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== "DELETE") {
+      toast.error(toastMessages.deleteConfirmMismatch);
+      return;
+    }
+
+    setIsDeletingAccount(true);
+
+    try {
+      const response = await fetch("/api/user/delete-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password: deletePassword,
+        }),
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | {
+            success?: boolean;
+            message?: string;
+          }
+        | null;
+
+      if (!response.ok) {
+        const message =
+          data?.message ?? toastMessages.accountDeleteError;
+        toast.error(message);
+        return;
+      }
+
+      if (data?.message === "Verification email sent") {
+        toast.success(toastMessages.accountDeleteVerificationSent);
+      } else {
+        toast.success(toastMessages.accountDeleted);
+      }
+
+      setDeletePassword("");
+      setDeleteConfirm("");
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("[profile] delete account failed", error);
+      }
+      toast.error(toastMessages.accountDeleteError);
+    } finally {
+      setIsDeletingAccount(false);
+    }
   };
 
   return (
@@ -206,6 +263,24 @@ export function ProfileClient({
         </div>
       </section>
 
+      {/* Security Card */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-slate-800">
+            <Shield className="h-4 w-4 text-emerald-600" />
+            {sections.security.title}
+          </h2>
+        </div>
+        <div className="px-5 py-4 text-sm text-slate-700">
+          <p className="text-xs text-slate-500">
+            {sections.security.description}
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            {sections.security.passwordResetHint}
+          </p>
+        </div>
+      </section>
+
       {/* Order History Link */}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <Link
@@ -248,6 +323,62 @@ export function ProfileClient({
               </p>
             </div>
             <SignOutButton variant="outline" />
+          </div>
+        </div>
+      </section>
+
+      {/* Danger Zone */}
+      <section className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
+        <div className="border-b border-red-100 bg-red-50 px-5 py-4">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-red-700">
+            <AlertTriangle className="h-4 w-4" />
+            {sections.dangerZone.title}
+          </h2>
+        </div>
+        <div className="space-y-3 px-5 py-4">
+          <p className="text-xs text-red-700">
+            {sections.dangerZone.description}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr),auto] sm:items-end">
+            <div className="space-y-2">
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-medium text-slate-800">
+                  {sections.dangerZone.passwordLabel}
+                </span>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  placeholder={sections.dangerZone.passwordPlaceholder}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-medium text-slate-800">
+                  {sections.dangerZone.confirmLabel}
+                </span>
+                <input
+                  type="text"
+                  value={deleteConfirm}
+                  onChange={(event) => setDeleteConfirm(event.target.value)}
+                  placeholder={sections.dangerZone.confirmPlaceholder}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+                />
+              </label>
+              <p className="text-[11px] text-slate-500">
+                {sections.dangerZone.subtitle}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleDeleteAccount()}
+              disabled={isDeletingAccount}
+              className="h-9 rounded-full border border-red-300 bg-red-600 px-4 text-xs font-semibold text-white hover:bg-red-700 disabled:bg-red-400 disabled:text-white"
+            >
+              {isDeletingAccount
+                ? sections.dangerZone.deletingLabel
+                : sections.dangerZone.deleteButton}
+            </button>
           </div>
         </div>
       </section>

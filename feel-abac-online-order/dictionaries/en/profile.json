@@ -27,10 +27,30 @@
       "title": "Account Actions",
       "signOut": "Sign Out",
       "signOutDescription": "Sign out of your account on this device"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Keep your account secure. If you think someone else has access, reset your password and review your devices.",
+      "passwordResetHint": "Forgot your password? Use the “Forgot password?” link on the sign-in form to request a reset email."
+    },
+    "dangerZone": {
+      "title": "Danger zone",
+      "description": "Deleting your account is permanent. Your past orders may remain for restaurant records, but you will no longer be able to sign in.",
+      "subtitle": "We will send you a confirmation email before final deletion.",
+      "passwordLabel": "Current password (recommended)",
+      "passwordPlaceholder": "Enter your password",
+      "confirmLabel": "Type DELETE to confirm",
+      "confirmPlaceholder": "DELETE",
+      "deleteButton": "Delete account",
+      "deletingLabel": "Deleting…"
     }
   },
   "toast": {
     "phoneUpdated": "Phone number updated",
-    "phoneError": "Failed to update phone number"
+    "phoneError": "Failed to update phone number",
+    "accountDeleted": "Your account has been deleted.",
+    "accountDeleteVerificationSent": "Check your email to confirm account deletion.",
+    "accountDeleteError": "Failed to delete your account. Please try again.",
+    "deleteConfirmMismatch": "Type DELETE exactly to confirm account deletion."
   }
 }
