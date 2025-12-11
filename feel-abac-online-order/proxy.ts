@@ -49,7 +49,7 @@ async function hasCompletedOnboarding(userId: string) {
     .from(userProfiles)
     .where(eq(userProfiles.id, userId))
     .limit(1);
-  return !!profile?.phoneNumber;
+  return !!profile?.phoneNumber && !!profile?.deliverySelectionMode;
 }
 
 function setLocaleCookie(response: NextResponse, locale: Locale) {
