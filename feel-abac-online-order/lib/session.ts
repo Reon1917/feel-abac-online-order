@@ -4,11 +4,13 @@ import { headers } from "next/headers";
 import { Buffer } from "node:buffer";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
+import type { AdminRole } from "@/lib/admin/types";
 
 export type FeelSession = {
   session: { user: { id: string; email: string; name: string } };
   onboarded: boolean;
   isAdmin?: boolean;
+  adminRole?: AdminRole | null;
 };
 
 export const getSession = cache(async (): Promise<FeelSession | null> => {

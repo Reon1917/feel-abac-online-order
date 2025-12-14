@@ -59,22 +59,43 @@ export function StatusBadge({ variant, label, showDot = true }: StatusBadgeProps
 }
 
 type RoleBadgeProps = {
-  role: "super_admin" | "admin" | string;
+  role: "super_admin" | "admin" | "moderator" | string;
+};
+
+const roleConfig: Record<string, { bg: string; text: string; label: string }> = {
+  super_admin: {
+    bg: "bg-purple-50",
+    text: "text-purple-700",
+    label: "Super Admin",
+  },
+  admin: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    label: "Admin",
+  },
+  moderator: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    label: "Moderator",
+  },
 };
 
 export function RoleBadge({ role }: RoleBadgeProps) {
-  const isSuperAdmin = role === "super_admin";
+  const config = roleConfig[role] ?? {
+    bg: "bg-slate-100",
+    text: "text-slate-600",
+    label: role,
+  };
 
   return (
     <span
       className={clsx(
         "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-        isSuperAdmin
-          ? "bg-purple-50 text-purple-700"
-          : "bg-slate-100 text-slate-600"
+        config.bg,
+        config.text
       )}
     >
-      {isSuperAdmin ? "Super Admin" : "Admin"}
+      {config.label}
     </span>
   );
 }

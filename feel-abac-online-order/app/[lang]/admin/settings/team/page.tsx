@@ -55,25 +55,27 @@ export default async function TeamAccessPage({ params }: PageProps) {
     .orderBy(admins.createdAt);
 
   // Calculate stats
-  const totalAdmins = adminList.length;
+  const totalMembers = adminList.length;
   const superAdmins = adminList.filter((a) => a.role === "super_admin").length;
-  const pendingInvites = 0; // Placeholder for future invite system
+  const adminsCount = adminList.filter((a) => a.role === "admin").length;
+  const moderators = adminList.filter((a) => a.role === "moderator").length;
 
   return (
     <AdminLayoutShell locale={locale}>
       <AdminHeader
         locale={locale}
         title="Team Access"
-        subtitle="Manage admins, assign roles, and control dashboard access."
+        subtitle="Manage team members, assign roles, and control dashboard access."
         languageLabels={common.languageSwitcher}
       />
 
       <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8">
         {/* Stats Cards */}
-        <StatsGrid columns={3}>
-          <StatsCard label="Total Admins" value={totalAdmins} />
-          <StatsCard label="Super Admins" value={superAdmins} variant="success" />
-          <StatsCard label="Pending Invites" value={pendingInvites} />
+        <StatsGrid columns={4}>
+          <StatsCard label="Total Members" value={totalMembers} />
+          <StatsCard label="Super Admins" value={superAdmins} variant="purple" />
+          <StatsCard label="Admins" value={adminsCount} variant="success" />
+          <StatsCard label="Moderators" value={moderators} variant="info" />
         </StatsGrid>
 
         {/* Admin List */}

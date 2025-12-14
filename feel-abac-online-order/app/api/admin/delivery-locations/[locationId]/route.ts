@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireDeliveryLocationsAccess } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { deliveryLocations, deliveryBuildings } from "@/src/db/schema";
 import { createDeliveryLocationSchema } from "@/lib/delivery/validation";
@@ -14,9 +14,9 @@ type RouteParams = {
 };
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const result = await requireDeliveryLocationsAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { locationId } = await params;
@@ -132,9 +132,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const result = await requireDeliveryLocationsAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { locationId } = await params;

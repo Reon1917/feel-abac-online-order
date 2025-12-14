@@ -4,8 +4,8 @@ import { getAdminMenuHierarchy } from "@/lib/menu/queries";
 export const revalidate = 0;
 
 export async function GET() {
-  const session = await requireActiveAdmin();
-  if (!session) {
+  const result = await requireActiveAdmin();
+  if (!result) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 

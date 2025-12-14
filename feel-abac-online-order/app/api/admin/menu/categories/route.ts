@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import crypto from "node:crypto";
 import { asc } from "drizzle-orm";
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireActiveAdmin, requireMenuAccess } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { menuCategories } from "@/src/db/schema";
 import { menuCategorySchema } from "@/lib/menu/validators";
@@ -10,8 +10,8 @@ import { menuCategorySchema } from "@/lib/menu/validators";
 export const revalidate = 0;
 
 export async function GET() {
-  const session = await requireActiveAdmin();
-  if (!session) {
+  const result = await requireActiveAdmin();
+  if (!result) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -24,9 +24,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireMenuAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const payload = await request.json();

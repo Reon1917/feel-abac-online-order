@@ -1,12 +1,14 @@
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireSuperAdmin } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 
 export async function GET() {
-  const sessionData = await requireActiveAdmin();
-
-  if (!sessionData?.session?.user?.id) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireSuperAdmin();
+  if (!result) {
+    return Response.json(
+      { error: "Only super admins can view the admin list" },
+      { status: 403 }
+    );
   }
 
   const adminList = await db
@@ -24,4 +26,3 @@ export async function GET() {
 
   return Response.json(adminList);
 }
-

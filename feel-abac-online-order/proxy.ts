@@ -118,6 +118,7 @@ export async function proxy(request: NextRequest) {
 
   let onboarded = false;
   let isAdmin = false;
+  let adminRole: string | null = null;
 
   if (isAuthenticated) {
     const [hasOnboarded, admin] = await Promise.all([
@@ -126,6 +127,7 @@ export async function proxy(request: NextRequest) {
     ]);
     onboarded = hasOnboarded;
     isAdmin = !!admin?.isActive;
+    adminRole = admin?.isActive ? admin.role : null;
   }
 
   if (!isApiRoute) {
@@ -173,6 +175,7 @@ export async function proxy(request: NextRequest) {
         session,
         onboarded,
         isAdmin,
+        adminRole,
       })
     ).toString("base64url");
     requestHeaders.set("x-feel-session", payload);

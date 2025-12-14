@@ -1,9 +1,10 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PackageX } from "lucide-react";
 import { AdminBar } from "@/components/admin/admin-bar";
 import { MenuItemDetail } from "@/components/menu/menu-item-detail";
 import { BackToMenuLink } from "@/components/menu/back-to-menu-link";
+import { OutOfStockNotice } from "@/components/menu/out-of-stock-notice";
 import { getPublicMenuItemById } from "@/lib/menu/queries";
 import { getSession } from "@/lib/session";
 import { getUserProfile } from "@/lib/user-profile";
@@ -49,6 +50,7 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
   }
 
   const backHref = withLocalePath(locale, "/menu");
+  const isOutOfStock = !result.item.isAvailable;
 
   return (
     <>
@@ -66,12 +68,20 @@ export default async function MenuItemDetailPage({ params }: PageParams) {
             </BackToMenuLink>
           </header>
 
-          <MenuItemDetail
-            item={result.item}
-            category={{ name: result.category.name, nameMm: result.category.nameMm }}
-            detail={dictionary.detail}
-            locale={locale}
-          />
+          {isOutOfStock ? (
+            <OutOfStockNotice
+              item={result.item}
+              locale={locale}
+              backHref={backHref}
+            />
+          ) : (
+            <MenuItemDetail
+              item={result.item}
+              category={{ name: result.category.name, nameMm: result.category.nameMm }}
+              detail={dictionary.detail}
+              locale={locale}
+            />
+          )}
         </div>
       </main>
       <MobileBottomNav locale={locale} labels={common.mobileNav} />

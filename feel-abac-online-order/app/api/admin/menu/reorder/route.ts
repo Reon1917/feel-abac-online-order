@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireMenuAccess } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { menuCategories, menuItems } from "@/src/db/schema";
 import { menuReorderSchema, type MenuReorderPayload } from "@/lib/menu/validators";
@@ -12,9 +12,9 @@ type CategoryReorderPayload = Extract<MenuReorderPayload, { mode: "categories" }
 type ItemReorderPayload = Extract<MenuReorderPayload, { mode: "items" }>;
 
 export async function POST(request: NextRequest) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireMenuAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await request.json();

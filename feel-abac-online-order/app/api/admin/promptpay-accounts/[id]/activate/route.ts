@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveUserId } from "@/lib/api/require-user";
+import { requirePromptPayAccess } from "@/lib/api/admin-guard";
 import { activatePromptPayAccount } from "@/lib/payments/queries";
-import { requireAdmin } from "@/lib/api/require-admin";
 
 type Params = {
   id: string;
@@ -18,13 +17,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Missing account ID" }, { status: 400 });
   }
 
-  const userId = await resolveUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const adminRow = await requireAdmin(userId);
-  if (!adminRow) {
+  const result = await requirePromptPayAccess();
+  if (!result) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

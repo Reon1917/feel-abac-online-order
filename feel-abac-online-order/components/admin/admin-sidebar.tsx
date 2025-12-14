@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -15,21 +15,28 @@ import {
   ChevronRight,
   LogOut,
   Store,
+  Package,
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import type { AdminRole } from "@/lib/admin/types";
+import { isRoleAtLeast } from "@/lib/admin/permissions";
 
 type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   badge?: number;
+  // Required minimum role to see this item
+  minRole?: AdminRole;
 };
 
 type NavSection = {
   title: string;
   items: NavItem[];
+  // Required minimum role to see this section
+  minRole?: AdminRole;
 };
 
 type AdminSidebarProps = {
@@ -39,65 +46,109 @@ type AdminSidebarProps = {
     email: string;
   };
   liveOrderCount?: number;
+  adminRole: AdminRole;
 };
 
-export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSidebarProps) {
+// Helper to check if user has minimum required role (handles optional requirement)
+function meetsRoleRequirement(userRole: AdminRole, requiredRole?: AdminRole): boolean {
+  if (!requiredRole) return true;
+  return isRoleAtLeast(userRole, requiredRole);
+}
+
+export function AdminSidebar({
+  locale,
+  currentUser,
+  liveOrderCount,
+  adminRole,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const navSections: NavSection[] = [
-    {
-      title: "CORE",
-      items: [
-        {
-          href: "/admin/dashboard",
-          icon: LayoutDashboard,
-          label: "Dashboard",
-        },
-        {
-          href: "/admin/orders",
-          icon: Bell,
-          label: "Live Orders",
-          badge: liveOrderCount,
-        },
-      ],
-    },
-    {
-      title: "MANAGEMENT",
-      items: [
-        {
-          href: "/admin/menu",
-          icon: UtensilsCrossed,
-          label: "Menu Tools",
-        },
-        {
-          href: "/admin/delivery",
-          icon: MapPin,
-          label: "Delivery Locations",
-        },
-      ],
-    },
-    {
-      title: "SETTINGS",
-      items: [
-        {
-          href: "/admin/settings/team",
-          icon: Users,
-          label: "Team Access",
-        },
-        {
-          href: "/admin/settings/shop",
-          icon: Store,
-          label: "Shop Status",
-        },
-        {
-          href: "/admin/settings/promptpay",
-          icon: CreditCard,
-          label: "Payments",
-        },
-      ],
-    },
-  ];
+  const navSections: NavSection[] = useMemo(
+    () => [
+      {
+        title: "CORE",
+        items: [
+          {
+            href: "/admin/dashboard",
+            icon: LayoutDashboard,
+            label: "Dashboard",
+          },
+          {
+            href: "/admin/orders",
+            icon: Bell,
+            label: "Live Orders",
+            badge: liveOrderCount,
+          },
+        ],
+      },
+      {
+        title: "OPERATIONS",
+        items: [
+          {
+            href: "/admin/settings/shop",
+            icon: Store,
+            label: "Shop Status",
+          },
+          {
+            href: "/admin/stock",
+            icon: Package,
+            label: "Stock Control",
+          },
+        ],
+      },
+      {
+        title: "MANAGEMENT",
+        minRole: "admin",
+        items: [
+          {
+            href: "/admin/menu",
+            icon: UtensilsCrossed,
+            label: "Menu Tools",
+            minRole: "admin",
+          },
+          {
+            href: "/admin/delivery",
+            icon: MapPin,
+            label: "Delivery Locations",
+            minRole: "admin",
+          },
+        ],
+      },
+      {
+        title: "SETTINGS",
+        minRole: "admin",
+        items: [
+          {
+            href: "/admin/settings/team",
+            icon: Users,
+            label: "Team Access",
+            minRole: "super_admin",
+          },
+          {
+            href: "/admin/settings/promptpay",
+            icon: CreditCard,
+            label: "Payments",
+            minRole: "admin",
+          },
+        ],
+      },
+    ],
+    [liveOrderCount]
+  );
+
+  // Filter sections and items based on role
+  const filteredSections = useMemo(() => {
+    return navSections
+      .filter((section) => meetsRoleRequirement(adminRole, section.minRole))
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          meetsRoleRequirement(adminRole, item.minRole)
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [navSections, adminRole]);
 
   const isActive = (href: string) => {
     const fullPath = withLocalePath(locale, href);
@@ -112,6 +163,21 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const getRoleBadge = (role: AdminRole) => {
+    switch (role) {
+      case "super_admin":
+        return { label: "Super Admin", color: "bg-purple-100 text-purple-700" };
+      case "admin":
+        return { label: "Admin", color: "bg-emerald-100 text-emerald-700" };
+      case "moderator":
+        return { label: "Moderator", color: "bg-blue-100 text-blue-700" };
+      default:
+        return { label: "Unknown", color: "bg-slate-100 text-slate-700" };
+    }
+  };
+
+  const roleBadge = getRoleBadge(adminRole);
 
   return (
     <aside
@@ -137,7 +203,7 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {navSections.map((section) => (
+        {filteredSections.map((section) => (
           <div key={section.title} className="mb-6">
             {!isCollapsed && (
               <p className="mb-2 px-3 text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">
@@ -162,7 +228,9 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
                     <Icon
                       className={clsx(
                         "h-5 w-5 shrink-0",
-                        active ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-600"
+                        active
+                          ? "text-emerald-600"
+                          : "text-slate-400 group-hover:text-slate-600"
                       )}
                     />
                     {!isCollapsed && (
@@ -216,8 +284,13 @@ export function AdminSidebar({ locale, currentUser, liveOrderCount }: AdminSideb
               <p className="truncate text-sm font-medium text-slate-900">
                 {currentUser.name}
               </p>
-              <p className="truncate text-xs text-slate-500">
-                {currentUser.email}
+              <p
+                className={clsx(
+                  "inline-block rounded px-1.5 py-0.5 text-[0.65rem] font-medium",
+                  roleBadge.color
+                )}
+              >
+                {roleBadge.label}
               </p>
             </div>
           )}
