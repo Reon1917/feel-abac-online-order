@@ -3,7 +3,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { getAdminByUserId } from "@/lib/admin";
-import { getSession, type FeelSession } from "@/lib/session";
+import type { FeelSession } from "@/lib/session";
 import { hasPermission, isValidAdminRole } from "@/lib/admin/permissions";
 import { PERMISSIONS, type AdminRole, type Permission } from "@/lib/admin/types";
 
@@ -25,44 +25,48 @@ async function resolveSessionAndAdmin(): Promise<{
   session: FeelSession | null;
   admin: AdminRecord | null;
 }> {
-  let session = await getSession();
-  let userId = session?.session?.user?.id;
+  const headerList = await headers();
+  const authSession = await auth.api.getSession({
+    headers: headerList,
+    asResponse: false,
+    returnHeaders: false,
+  });
 
-  if (!userId) {
-    const headerList = await headers();
-    const authSession = await auth.api.getSession({
-      headers: headerList,
-      asResponse: false,
-      returnHeaders: false,
-    });
-
-    if (!authSession?.user) {
-      return { session: null, admin: null };
-    }
-
-    userId = authSession.user.id;
-    session = {
-      session: {
-        user: {
-          id: authSession.user.id,
-          email: authSession.user.email ?? "",
-          name: authSession.user.name ?? "",
-        },
-      },
-      onboarded: true,
-      isAdmin: true,
-      adminRole: null,
-    };
+  if (!authSession?.user) {
+    return { session: null, admin: null };
   }
+
+  const session: FeelSession = {
+    session: {
+      user: {
+        id: authSession.user.id,
+        email: authSession.user.email ?? "",
+        name: authSession.user.name ?? "",
+      },
+    },
+    onboarded: true,
+    isAdmin: true,
+    adminRole: null,
+  };
+
+  const userId = authSession.user.id;
 
   const adminRecord = await getAdminByUserId(userId);
   if (!adminRecord?.isActive) {
     return { session, admin: null };
   }
 
-  const role = isValidAdminRole(adminRecord.role)
-    ? adminRecord.role
-    : "moderator";
+  if (!isValidAdminRole(adminRecord.role)) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[admin-guard] invalid admin role in DB", {
+        userId: adminRecord.userId,
+        role: adminRecord.role,
+      });
+    }
+    return { session, admin: null };
+  }
+
+  const role: AdminRole = adminRecord.role;
 
   const admin: AdminRecord = {
     id: adminRecord.id,

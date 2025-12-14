@@ -38,6 +38,9 @@ export function isRoleAtLeast(role: AdminRole, minimumRole: AdminRole): boolean 
   const hierarchy: AdminRole[] = ["moderator", "admin", "super_admin"];
   const roleIndex = hierarchy.indexOf(role);
   const minimumIndex = hierarchy.indexOf(minimumRole);
+  if (roleIndex === -1 || minimumIndex === -1) {
+    return false;
+  }
   return roleIndex >= minimumIndex;
 }
 

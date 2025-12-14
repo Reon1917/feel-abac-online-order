@@ -5,8 +5,9 @@ import { X, Shield, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
+import type { AdminRole } from "@/lib/admin/types";
 
-type AdminRole = "super_admin" | "admin" | "moderator";
+type RoleAccentColor = "blue" | "emerald" | "purple";
 
 type Admin = {
   id: string;
@@ -28,7 +29,7 @@ const ROLE_OPTIONS: {
   label: string;
   description: string;
   icon: typeof Shield;
-  color: string;
+  color: RoleAccentColor;
 }[] = [
   {
     value: "moderator",
@@ -120,6 +121,20 @@ export function InviteAdminModal({ onClose, onSuccess }: InviteAdminModalProps) 
     }
   };
 
+  const getIconBgClasses = (color: RoleAccentColor, isSelected: boolean) => {
+    if (!isSelected) return "bg-slate-100";
+    switch (color) {
+      case "blue":
+        return "bg-blue-100";
+      case "emerald":
+        return "bg-emerald-100";
+      case "purple":
+        return "bg-purple-100";
+      default:
+        return "bg-slate-100";
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
@@ -183,7 +198,7 @@ export function InviteAdminModal({ onClose, onSuccess }: InviteAdminModalProps) 
                     <div
                       className={clsx(
                         "mt-0.5 rounded-lg p-1.5",
-                        isSelected ? `bg-${option.color}-100` : "bg-slate-100"
+                        getIconBgClasses(option.color, isSelected)
                       )}
                     >
                       <Icon

@@ -175,6 +175,8 @@ export function AdminSidebar({
         return { label: "Admin", color: "bg-emerald-100 text-emerald-700" };
       case "moderator":
         return { label: "Moderator", color: "bg-blue-100 text-blue-700" };
+      default:
+        return { label: "Unknown", color: "bg-slate-100 text-slate-700" };
     }
   };
 
