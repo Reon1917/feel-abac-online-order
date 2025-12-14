@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import {
-  requireActiveAdmin,
   requirePromptPayAccess,
 } from "@/lib/api/admin-guard";
 import {
@@ -12,9 +11,9 @@ import {
 import { normalizePromptPayPhone } from "@/lib/payments/promptpay";
 
 export async function GET() {
-  const result = await requireActiveAdmin();
+  const result = await requirePromptPayAccess();
   if (!result) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[promptpay-accounts] failed to create account", {
         error,
-        userId,
+        requesterUserId: result.admin.userId,
       });
     }
     return NextResponse.json(
