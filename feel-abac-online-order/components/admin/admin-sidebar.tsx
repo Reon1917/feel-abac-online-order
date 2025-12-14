@@ -21,6 +21,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import type { AdminRole } from "@/lib/admin/types";
+import { isRoleAtLeast } from "@/lib/admin/permissions";
 
 type NavItem = {
   href: string;
@@ -48,14 +49,10 @@ type AdminSidebarProps = {
   adminRole: AdminRole;
 };
 
-// Role hierarchy: moderator < admin < super_admin
-const ROLE_HIERARCHY: AdminRole[] = ["moderator", "admin", "super_admin"];
-
-function hasMinimumRole(userRole: AdminRole, requiredRole?: AdminRole): boolean {
+// Helper to check if user has minimum required role (handles optional requirement)
+function meetsRoleRequirement(userRole: AdminRole, requiredRole?: AdminRole): boolean {
   if (!requiredRole) return true;
-  const userIndex = ROLE_HIERARCHY.indexOf(userRole);
-  const requiredIndex = ROLE_HIERARCHY.indexOf(requiredRole);
-  return userIndex >= requiredIndex;
+  return isRoleAtLeast(userRole, requiredRole);
 }
 
 export function AdminSidebar({
@@ -143,11 +140,11 @@ export function AdminSidebar({
   // Filter sections and items based on role
   const filteredSections = useMemo(() => {
     return navSections
-      .filter((section) => hasMinimumRole(adminRole, section.minRole))
+      .filter((section) => meetsRoleRequirement(adminRole, section.minRole))
       .map((section) => ({
         ...section,
         items: section.items.filter((item) =>
-          hasMinimumRole(adminRole, item.minRole)
+          meetsRoleRequirement(adminRole, item.minRole)
         ),
       }))
       .filter((section) => section.items.length > 0);
