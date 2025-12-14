@@ -5,7 +5,7 @@ type StatsCardProps = {
   label?: string;
   value: string | number;
   subtitle?: string;
-  variant?: "default" | "success" | "warning" | "info";
+  variant?: "default" | "success" | "warning" | "info" | "purple";
 };
 
 export function StatsCard({ 
@@ -24,7 +24,8 @@ export function StatsCard({
         variant === "default" && "border-slate-200 bg-white",
         variant === "success" && "border-emerald-100 bg-emerald-50",
         variant === "warning" && "border-amber-100 bg-amber-50",
-        variant === "info" && "border-blue-100 bg-blue-50"
+        variant === "info" && "border-blue-100 bg-blue-50",
+        variant === "purple" && "border-purple-100 bg-purple-50"
       )}
     >
       <p
@@ -33,7 +34,8 @@ export function StatsCard({
           variant === "default" && "text-slate-500",
           variant === "success" && "text-emerald-600",
           variant === "warning" && "text-amber-600",
-          variant === "info" && "text-blue-600"
+          variant === "info" && "text-blue-600",
+          variant === "purple" && "text-purple-600"
         )}
       >
         {displayLabel}
@@ -44,7 +46,8 @@ export function StatsCard({
           variant === "default" && "text-slate-900",
           variant === "success" && "text-emerald-700",
           variant === "warning" && "text-amber-700",
-          variant === "info" && "text-blue-700"
+          variant === "info" && "text-blue-700",
+          variant === "purple" && "text-purple-700"
         )}
       >
         {value}

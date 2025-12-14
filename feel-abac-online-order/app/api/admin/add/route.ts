@@ -64,8 +64,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Create admin with specified role
+  const adminId = crypto.randomUUID();
+  const now = new Date();
+
   await db.insert(admins).values({
-    id: crypto.randomUUID(),
+    id: adminId,
     userId: user.id,
     email: user.email,
     name: user.name,
@@ -77,5 +80,14 @@ export async function POST(request: NextRequest) {
   return Response.json({
     success: true,
     message: `✅ ${user.name} is now a ${roleLabel}! They can access the admin dashboard.`,
+    admin: {
+      id: adminId,
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role,
+      isActive: true,
+      createdAt: now,
+    },
   });
 }

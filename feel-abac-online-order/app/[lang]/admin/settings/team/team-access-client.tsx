@@ -113,7 +113,13 @@ export function TeamAccessClient({
   const handleInviteSuccess = (newAdmin: Admin) => {
     setAdmins([...admins, newAdmin]);
     setShowInviteModal(false);
-    toast.success(`${newAdmin.name} added as admin`);
+    const roleLabel =
+      newAdmin.role === "moderator"
+        ? "Moderator"
+        : newAdmin.role === "admin"
+          ? "Admin"
+          : "Super Admin";
+    toast.success(`${newAdmin.name} added as ${roleLabel}`);
   };
 
   const getInitials = (name: string) => {
@@ -130,7 +136,7 @@ export function TeamAccessClient({
       {/* Header with actions */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">
-          Current Admins ({admins.length})
+          Team Members ({admins.length})
         </h2>
         <div className="flex items-center gap-2">
           <Button
@@ -150,7 +156,7 @@ export function TeamAccessClient({
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" />
-              Invite New Admin
+              Add Team Member
             </Button>
           )}
         </div>
