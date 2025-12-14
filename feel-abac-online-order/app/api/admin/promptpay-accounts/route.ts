@@ -1,23 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { resolveUserId } from "@/lib/api/require-user";
+import {
+  requireActiveAdmin,
+  requirePromptPayAccess,
+} from "@/lib/api/admin-guard";
 import {
   createPromptPayAccount,
   listPromptPayAccounts,
 } from "@/lib/payments/queries";
 import { normalizePromptPayPhone } from "@/lib/payments/promptpay";
-import { requireAdmin } from "@/lib/api/require-admin";
 
-export async function GET(req: NextRequest) {
-  const userId = await resolveUserId(req);
-  if (!userId) {
+export async function GET() {
+  const result = await requireActiveAdmin();
+  if (!result) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const adminRow = await requireAdmin(userId);
-  if (!adminRow) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
@@ -41,13 +38,8 @@ const createAccountSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const userId = await resolveUserId(req);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const adminRow = await requireAdmin(userId);
-  if (!adminRow) {
+  const result = await requirePromptPayAccess();
+  if (!result) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

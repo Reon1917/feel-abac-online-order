@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireActiveAdmin, requireMenuAccess } from "@/lib/api/admin-guard";
 import {
   getChoicePoolById,
   updateChoicePool,
@@ -15,8 +15,8 @@ type RouteParams = {
 };
 
 export async function GET(_request: NextRequest, { params }: RouteParams) {
-  const session = await requireActiveAdmin();
-  if (!session) {
+  const result = await requireActiveAdmin();
+  if (!result) {
     return Response.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -31,9 +31,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireMenuAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { poolId } = await params;
@@ -59,9 +59,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireMenuAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { poolId } = await params;

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireMenuAccess } from "@/lib/api/admin-guard";
 import { db } from "@/src/db/client";
 import { recommendedMenuItems } from "@/src/db/schema";
 import { recommendedMenuItemUpdateSchema } from "@/lib/menu/validators";
@@ -15,9 +15,9 @@ type RouteParams = {
 export const revalidate = 0;
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireMenuAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { recommendedId } = await params;
@@ -65,9 +65,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: RouteParams
 ) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
+  const result = await requireMenuAccess();
+  if (!result) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { recommendedId } = await params;

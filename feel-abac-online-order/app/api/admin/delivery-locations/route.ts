@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireActiveAdmin } from "@/lib/api/admin-guard";
+import { requireDeliveryLocationsAccess } from "@/lib/api/admin-guard";
 import { createDeliveryLocation } from "@/lib/delivery/mutations";
 import { createDeliveryLocationSchema } from "@/lib/delivery/validation";
 
 export async function POST(request: NextRequest) {
-  const session = await requireActiveAdmin();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const result = await requireDeliveryLocationsAccess();
+  if (!result) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

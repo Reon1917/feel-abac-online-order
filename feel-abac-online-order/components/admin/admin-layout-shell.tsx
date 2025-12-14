@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { AdminSidebar } from "./admin-sidebar";
 import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
+import type { AdminRole } from "@/lib/admin/types";
 
 type AdminLayoutShellProps = {
   children: React.ReactNode;
@@ -31,12 +32,15 @@ export async function AdminLayoutShell({ children, locale }: AdminLayoutShellPro
     email: currentAdmin?.email ?? sessionData.session.user.email ?? "",
   };
 
+  const adminRole = (currentAdmin?.role ?? "moderator") as AdminRole;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AdminSidebar
         locale={locale}
         currentUser={currentUser}
         liveOrderCount={liveOrderCount}
+        adminRole={adminRole}
       />
       
       {/* Main Content Area - offset by sidebar width */}
