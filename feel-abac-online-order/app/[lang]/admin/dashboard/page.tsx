@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, ExternalLink } from "lucide-react";
+import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, ExternalLink, Store, Package } from "lucide-react";
 import { getSession } from "@/lib/session";
+import { getAdminByUserId } from "@/lib/admin";
 import { Button } from "@/components/ui/button";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
@@ -14,6 +15,7 @@ import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
 import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
+import type { AdminRole } from "@/lib/admin/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,6 +42,17 @@ export default async function AdminDashboard({ params }: PageProps) {
     redirect(withLocalePath(locale, "/"));
   }
 
+  const userId = sessionData.session?.user?.id;
+  const currentAdmin = userId ? await getAdminByUserId(userId) : null;
+  const adminRole = (currentAdmin?.role ?? "moderator") as AdminRole;
+
+  // Role hierarchy check
+  const ROLE_HIERARCHY: AdminRole[] = ["moderator", "admin", "super_admin"];
+  const hasMinRole = (required?: AdminRole) => {
+    if (!required) return true;
+    return ROLE_HIERARCHY.indexOf(adminRole) >= ROLE_HIERARCHY.indexOf(required);
+  };
+
   const activePromptPay = await getActivePromptPayAccount();
   const orders = await getTodayOrdersForAdmin();
 
@@ -50,8 +63,8 @@ export default async function AdminDashboard({ params }: PageProps) {
   ).length;
   const completedToday = orders.filter((o) => o.status === "delivered").length;
 
-  // Quick action cards data
-  const quickActions = [
+  // Quick action cards data - filtered by role
+  const allQuickActions = [
     {
       icon: Bell,
       label: "Live Orders",
@@ -61,11 +74,26 @@ export default async function AdminDashboard({ params }: PageProps) {
       variant: "primary" as const,
     },
     {
+      icon: Store,
+      label: "Shop Status",
+      description: "Open or close the shop for accepting orders.",
+      href: "/admin/settings/shop",
+      variant: "default" as const,
+    },
+    {
+      icon: Package,
+      label: "Stock Control",
+      description: "Mark items as in stock or out of stock.",
+      href: "/admin/stock",
+      variant: "default" as const,
+    },
+    {
       icon: UtensilsCrossed,
       label: "Menu Tools",
       description: "Edit categories, dishes, layout, and set menu configurations.",
       href: "/admin/menu",
       variant: "default" as const,
+      minRole: "admin" as AdminRole,
     },
     {
       icon: MapPin,
@@ -73,6 +101,7 @@ export default async function AdminDashboard({ params }: PageProps) {
       description: "Manage delivery zones, fees, and condo building lists.",
       href: "/admin/delivery",
       variant: "default" as const,
+      minRole: "admin" as AdminRole,
     },
     {
       icon: Users,
@@ -80,6 +109,7 @@ export default async function AdminDashboard({ params }: PageProps) {
       description: "Add or remove admin users and manage permissions.",
       href: "/admin/settings/team",
       variant: "default" as const,
+      minRole: "super_admin" as AdminRole,
     },
     {
       icon: CreditCard,
@@ -89,8 +119,11 @@ export default async function AdminDashboard({ params }: PageProps) {
         : "Configure PromptPay accounts for receiving payments.",
       href: "/admin/settings/promptpay",
       variant: "default" as const,
+      minRole: "admin" as AdminRole,
     },
   ];
+
+  const quickActions = allQuickActions.filter((action) => hasMinRole(action.minRole));
 
   return (
     <AdminLayoutShell locale={locale}>

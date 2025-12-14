@@ -305,7 +305,9 @@ export async function getPublicMenuItemById(
     .limit(1);
 
   const item = itemRecord[0];
-  if (!item || !item.isAvailable || item.status !== "published") {
+  // Return null only if item doesn't exist or isn't published
+  // Let the page handle isAvailable=false with a friendly message
+  if (!item || item.status !== "published") {
     return null;
   }
 

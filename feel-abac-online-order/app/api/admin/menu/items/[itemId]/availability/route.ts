@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
   }
 
-  revalidateTag("public-menu", "default");
+  revalidateTag("public-menu", { expire: 0 });
 
   return NextResponse.json({
     item: {
