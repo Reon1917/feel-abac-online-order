@@ -14,7 +14,7 @@ export function OutOfStockNotice({
   locale,
   backHref,
 }: OutOfStockNoticeProps) {
-  const isBurmese = locale === "mm";
+  const isBurmese = locale === "my";
 
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
