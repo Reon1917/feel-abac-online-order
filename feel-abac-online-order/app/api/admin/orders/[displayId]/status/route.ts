@@ -148,7 +148,7 @@ export async function PATCH(
         orderId: order.id,
         promptpayAccountId: activeAccount.id,
         type: "combined",
-        amount: amount.toFixed(2),
+        amount: amount.toFixed(0),
         status: "pending",
         qrPayload: payload,
         promptParseData,
@@ -158,7 +158,7 @@ export async function PATCH(
       .onConflictDoUpdate({
         target: [orderPayments.orderId, orderPayments.type],
         set: {
-          amount: amount.toFixed(2),
+          amount: amount.toFixed(0),
           status: "pending",
           qrPayload: payload,
           promptpayAccountId: activeAccount.id,
