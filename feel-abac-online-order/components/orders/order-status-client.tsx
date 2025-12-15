@@ -39,21 +39,14 @@ const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }>
     { key: "delivered", labelKey: "statusDelivered" },
   ];
 
-const PAYMENT_REVIEW_STATUSES = new Set<OrderStatus>([
-  "food_payment_review",
-  "delivery_payment_review",
-]);
-
 function resolveStep(status: OrderStatus) {
   switch (status) {
     case "order_processing":
-    case "awaiting_food_payment":
-    case "food_payment_review":
+    case "awaiting_payment":
+    case "payment_review":
       return 0;
     case "order_in_kitchen":
       return 1;
-    case "awaiting_delivery_fee_payment":
-    case "delivery_payment_review":
     case "order_out_for_delivery":
       return 2;
     case "delivered":
@@ -102,21 +95,11 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     [order.status]
   );
 
-  const foodPayment = useMemo(
-    () => order.payments?.find((payment) => payment.type === "food") ?? null,
+  // Find combined payment
+  const combinedPayment = useMemo(
+    () => order.payments?.find((payment) => payment.type === "combined") ?? null,
     [order.payments]
   );
-
-  const deliveryPayment = useMemo(
-    () => order.payments?.find((payment) => payment.type === "delivery") ?? null,
-    [order.payments]
-  );
-
-  const isDeliveryPaymentStage =
-    order.status === "awaiting_delivery_fee_payment" ||
-    order.status === "delivery_payment_review";
-
-  const activePayment = isDeliveryPaymentStage ? deliveryPayment : foodPayment;
 
   const canCancel = useMemo(() => {
     // Never allow cancel for closed/terminal states
@@ -125,33 +108,28 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
     }
 
     // Never allow cancel once payment is verified (order_in_kitchen or later)
-    if (
-      order.status === "order_in_kitchen" ||
-      order.status === "awaiting_delivery_fee_payment" ||
-      order.status === "delivery_payment_review" ||
-      order.status === "order_out_for_delivery"
-    ) {
+    if (order.status === "order_in_kitchen" || order.status === "order_out_for_delivery") {
       return false;
     }
 
     // Never allow cancel during payment review (receipt uploaded)
-    if (order.status === "food_payment_review") {
+    if (order.status === "payment_review") {
       return false;
     }
 
     // Allow cancel for order_processing
     if (order.status === "order_processing") return true;
 
-    // Allow cancel for awaiting_food_payment only if receipt NOT uploaded
-    if (order.status === "awaiting_food_payment") {
+    // Allow cancel for awaiting_payment only if receipt NOT uploaded
+    if (order.status === "awaiting_payment") {
       const receiptUploaded =
-        Boolean(foodPayment?.receiptUploadedAt) ||
-        (foodPayment?.status && foodPayment.status !== "pending" && foodPayment.status !== "rejected");
+        Boolean(combinedPayment?.receiptUploadedAt) ||
+        (combinedPayment?.status && combinedPayment.status !== "pending" && combinedPayment.status !== "rejected");
       return !receiptUploaded;
     }
 
     return false;
-  }, [foodPayment?.receiptUploadedAt, foodPayment?.status, order.isClosed, order.status]);
+  }, [combinedPayment?.receiptUploadedAt, combinedPayment?.status, order.isClosed, order.status]);
 
   const refreshOrder = useCallback(async () => {
     setIsRefreshing(true);
@@ -239,11 +217,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       seenEvents.add(payload.eventId);
       if (payload.orderId !== order.id) return;
 
-      const message =
-        payload.paymentType === "delivery"
-          ? "Delivery fee payment confirmed!"
-          : "Food payment confirmed!";
-      toast.success(message);
+      toast.success("Payment confirmed!");
       void refreshOrder();
     };
 
@@ -310,7 +284,7 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
   const cancelled = order.status === "cancelled";
   const delivered = order.status === "delivered";
   const isClosed = cancelled || delivered;
-  const showPaymentReviewWarning = PAYMENT_REVIEW_STATUSES.has(order.status);
+  const showPaymentReviewWarning = order.status === "payment_review";
 
   // Handle cleanup and navigation back to menu
   const handleBackToMenu = useCallback(() => {
@@ -508,41 +482,32 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       <RefundNoticeBanner order={order} />
 
       {/* Payment section - shows for awaiting payment and review statuses */}
-      {(order.status === "awaiting_food_payment" ||
-        order.status === "food_payment_review" ||
+      {(order.status === "awaiting_payment" ||
+        order.status === "payment_review" ||
         order.status === "order_in_kitchen" ||
-        order.status === "awaiting_delivery_fee_payment" ||
-        order.status === "delivery_payment_review" ||
         order.status === "order_out_for_delivery" ||
         order.status === "delivered") && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
-                {isDeliveryPaymentStage
-                  ? dictionary.deliveryPaymentSectionTitle ?? "Delivery fee payment"
-                  : dictionary.paymentSectionTitle}
+                {dictionary.paymentSectionTitle}
               </h2>
               <p className="text-sm text-slate-700">
-                {isDeliveryPaymentStage
-                  ? dictionary.deliveryPaymentSectionSubtitle ??
-                    "Scan the PromptPay QR to pay your delivery fee."
-                  : dictionary.paymentSectionSubtitle}
+                {dictionary.paymentSectionSubtitle}
               </p>
             </div>
-            {activePayment ? (
+            {combinedPayment ? (
               <div className="text-right text-sm font-semibold text-slate-900">
-                {(isDeliveryPaymentStage
-                  ? dictionary.deliveryPaymentAmountLabel
-                  : dictionary.paymentAmountLabel) ?? dictionary.paymentAmountLabel}
-                : {formatCurrency(activePayment.amount)}
+                {dictionary.paymentAmountLabel}
+                : {formatCurrency(combinedPayment.amount)}
               </div>
             ) : null}
           </div>
 
           <PaymentQrSection
             order={order}
-            payment={activePayment}
+            payment={combinedPayment}
             dictionary={{
               howToPay: dictionary.howToPay ?? "How to pay:",
               step1: dictionary.step1 ?? "Screenshot this QR code",
@@ -551,12 +516,8 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
               step4: dictionary.step4 ?? "Upload your receipt below",
               uploadReceipt: dictionary.uploadReceipt ?? "I've Paid – Upload Receipt",
               uploading: dictionary.uploading ?? "Uploading...",
-              underReview: isDeliveryPaymentStage
-                ? dictionary.deliveryUnderReview ?? "Delivery fee under review"
-                : dictionary.underReview ?? "Food Payment Under Review",
-              confirmed: isDeliveryPaymentStage
-                ? dictionary.deliveryConfirmed ?? "Delivery fee confirmed"
-                : dictionary.confirmed ?? "Food Payment Confirmed",
+              underReview: dictionary.underReview ?? "Payment Under Review",
+              confirmed: dictionary.confirmed ?? "Payment Confirmed",
             }}
             onReceiptUploaded={refreshOrder}
           />

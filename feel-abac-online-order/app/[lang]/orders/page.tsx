@@ -43,11 +43,10 @@ export default async function OrdersPage({ params }: PageProps) {
   // Build status labels from order dictionary
   const statusLabels: Record<string, string> = {
     order_processing: dictionary.statusProcessing,
-    awaiting_food_payment: dictionary.statusAwaitingFoodPayment,
-    food_payment_review: dictionary.statusAwaitingFoodPayment,
+    awaiting_payment: dictionary.statusAwaitingPayment,
+    payment_review: dictionary.statusPaymentReview,
     order_in_kitchen: dictionary.statusKitchen,
     order_out_for_delivery: dictionary.statusOutForDelivery,
-    awaiting_delivery_fee_payment: dictionary.statusAwaitingDeliveryFee,
     delivered: dictionary.statusDelivered,
     cancelled: dictionary.statusCancelled,
   };

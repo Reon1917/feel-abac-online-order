@@ -1,4 +1,4 @@
-import type { OrderStatus } from "./types";
+import type { OrderStatus, OrderPaymentType } from "./types";
 
 // Channel names
 export const ADMIN_ORDERS_CHANNEL = "private-admin-orders";
@@ -59,18 +59,18 @@ export type OrderClosedPayload = BaseEventPayload & {
 
 // Payment event payloads
 export type PaymentReceiptUploadedPayload = BaseEventPayload & {
-  paymentType: "food" | "delivery";
+  paymentType: OrderPaymentType;
   receiptUrl: string;
 };
 
 export type PaymentVerifiedPayload = BaseEventPayload & {
-  paymentType: "food" | "delivery";
+  paymentType: OrderPaymentType;
   verifiedByAdminId: string;
   newStatus: OrderStatus;
 };
 
 export type PaymentRejectedPayload = BaseEventPayload & {
-  paymentType: "food" | "delivery";
+  paymentType: OrderPaymentType;
   reason?: string | null;
   rejectionCount: number;
 };

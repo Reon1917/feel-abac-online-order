@@ -27,6 +27,9 @@ type PaymentDictionary = {
   uploading: string;
   underReview: string;
   confirmed: string;
+  foodLabel?: string;
+  deliveryFeeLabel?: string;
+  totalLabel?: string;
 };
 
 type Props = {
@@ -42,14 +45,8 @@ export function PaymentQrSection({
   dictionary,
   onReceiptUploaded,
 }: Props) {
-
   // Show QR when awaiting payment
-  if (
-    order.status === "awaiting_food_payment" ||
-    order.status === "awaiting_delivery_fee_payment"
-  ) {
-    const paymentType =
-      order.status === "awaiting_food_payment" ? "food" : "delivery";
+  if (order.status === "awaiting_payment") {
 
     if (!payment?.qrPayload) {
       return (
@@ -59,6 +56,12 @@ export function PaymentQrSection({
         </div>
       );
     }
+
+    // Calculate breakdown for combined payment display
+    const foodAmount = Number(order.subtotal ?? 0);
+    const deliveryFee = Number(order.deliveryFee ?? 0);
+    const totalAmount = payment.amount;
+    const showBreakdown = deliveryFee > 0;
 
     return (
       <div className="space-y-4">
@@ -77,10 +80,27 @@ export function PaymentQrSection({
           </div>
         </div>
 
-        {/* Amount */}
-        <p className="text-2xl font-bold text-center text-slate-900">
-          ฿{payment.amount.toLocaleString()}
-        </p>
+        {/* Payment Breakdown */}
+        {showBreakdown ? (
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-600">{dictionary.foodLabel ?? "Food"}</span>
+              <span className="text-slate-900">฿{foodAmount.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">{dictionary.deliveryFeeLabel ?? "Delivery Fee"}</span>
+              <span className="text-slate-900">฿{deliveryFee.toLocaleString()}</span>
+            </div>
+            <div className="border-t border-slate-200 pt-2 flex justify-between font-bold">
+              <span className="text-slate-900">{dictionary.totalLabel ?? "Total"}</span>
+              <span className="text-emerald-600 text-lg">฿{totalAmount.toLocaleString()}</span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-2xl font-bold text-center text-slate-900">
+            ฿{totalAmount.toLocaleString()}
+          </p>
+        )}
 
         {/* Step-by-step instructions */}
         <div className="text-xs text-slate-600 space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -95,7 +115,7 @@ export function PaymentQrSection({
         <ReceiptUploadButton
           orderId={order.id}
           displayId={order.displayId}
-          paymentType={paymentType}
+          paymentType="combined"
           rejectionCount={payment.rejectionCount}
           dictionary={{
             uploadReceipt: dictionary.uploadReceipt,
@@ -108,10 +128,7 @@ export function PaymentQrSection({
   }
 
   // Show "under review" when waiting for admin
-  if (
-    order.status === "food_payment_review" ||
-    order.status === "delivery_payment_review"
-  ) {
+  if (order.status === "payment_review") {
     return (
       <div className="flex flex-col items-center justify-center p-6 bg-amber-50 rounded-xl border border-amber-200">
         <div className="mb-3">

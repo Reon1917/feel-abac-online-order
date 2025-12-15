@@ -73,41 +73,28 @@ export function OrderDetailModal({
 }: Props) {
   const [courierVendor, setCourierVendor] = useState("");
   const [courierTrackingUrl, setCourierTrackingUrl] = useState("");
-  const [deliveryFeeInput, setDeliveryFeeInput] = useState("");
   const [handoffSaving, setHandoffSaving] = useState(false);
   const [deliverSaving, setDeliverSaving] = useState(false);
   const { menuLocale } = useMenuLocale();
 
-  const foodPayment = useMemo(
-    () => order?.payments?.find((p) => p.type === "food") ?? null,
-    [order?.payments]
-  );
-
-  const deliveryPayment = useMemo(
-    () => order?.payments?.find((p) => p.type === "delivery") ?? null,
+  // Find combined payment
+  const combinedPayment = useMemo(
+    () => order?.payments?.find((p) => p.type === "combined") ?? null,
     [order?.payments]
   );
 
   const reviewPayment = useMemo(() => {
     if (!order) return null;
-    if (order.status === "food_payment_review") {
-      return foodPayment;
-    }
-    if (order.status === "delivery_payment_review") {
-      return deliveryPayment;
+    if (order.status === "payment_review") {
+      return combinedPayment;
     }
     return null;
-  }, [deliveryPayment, foodPayment, order]);
+  }, [combinedPayment, order]);
 
   useEffect(() => {
     if (!order) return;
     setCourierVendor(order.courierVendor ?? "");
     setCourierTrackingUrl(order.courierTrackingUrl ?? "");
-    setDeliveryFeeInput(
-      typeof order.deliveryFee === "number" && Number.isFinite(order.deliveryFee)
-        ? String(order.deliveryFee)
-        : ""
-    );
   }, [order]);
 
   if (!order) {
@@ -135,13 +122,6 @@ export function OrderDetailModal({
       return;
     }
 
-    const rawFee = deliveryFeeInput.trim();
-    const feeValue = rawFee === "" ? NaN : Number(rawFee);
-    if (!Number.isFinite(feeValue) || feeValue < 0) {
-      toast.error("Delivery fee must be a non-negative number");
-      return;
-    }
-
     setHandoffSaving(true);
     try {
       const response = await fetch(
@@ -153,7 +133,6 @@ export function OrderDetailModal({
             action: "handed_off",
             courierVendor: courierVendor.trim() || undefined,
             courierTrackingUrl: tracking,
-            deliveryFee: feeValue,
           }),
         }
       );
@@ -255,10 +234,10 @@ export function OrderDetailModal({
         </div>
 
         {/* Payment Status */}
-        {foodPayment && (
+        {combinedPayment && (
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-600">Food payment:</span>
-            <PaymentBadge payment={foodPayment} />
+            <span className="text-sm font-medium text-slate-600">Payment:</span>
+            <PaymentBadge payment={combinedPayment} />
           </div>
         )}
 
@@ -269,37 +248,19 @@ export function OrderDetailModal({
               {dictionary.handoffSectionTitle ?? "Hand off to delivery"}
             </h3>
             <p className="text-xs text-slate-600">
-              {dictionary.handoffSectionSubtitle ??
-                "Add the delivery tracking link and fee before handing this order to Bolt/Grab."}
+              Add the delivery tracking link before handing this order to Bolt/Grab.
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">
-                  {dictionary.handoffVendorLabel ??
-                    "Courier vendor (optional)"}
-                </label>
-                <input
-                  type="text"
-                  value={courierVendor}
-                  onChange={(e) => setCourierVendor(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  placeholder="Grab, Bolt, etc."
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">
-                  {dictionary.handoffFeeLabel ?? "Delivery fee (THB)"}
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={deliveryFeeInput}
-                  onChange={(e) => setDeliveryFeeInput(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  placeholder="e.g. 40"
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">
+                {dictionary.handoffVendorLabel ?? "Courier vendor (optional)"}
+              </label>
+              <input
+                type="text"
+                value={courierVendor}
+                onChange={(e) => setCourierVendor(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                placeholder="Grab, Bolt, etc."
+              />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">

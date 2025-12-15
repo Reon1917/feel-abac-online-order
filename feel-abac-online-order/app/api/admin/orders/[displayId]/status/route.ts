@@ -92,6 +92,22 @@ export async function PATCH(
       );
     }
 
+    // Parse delivery fee from request body (required for combined payment flow)
+    const rawDeliveryFee = body?.deliveryFee;
+    const deliveryFee =
+      typeof rawDeliveryFee === "number"
+        ? rawDeliveryFee
+        : typeof rawDeliveryFee === "string"
+          ? Number(rawDeliveryFee)
+          : NaN;
+
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      return NextResponse.json(
+        { error: "Delivery fee is required (can be 0 for pickup)" },
+        { status: 400 }
+      );
+    }
+
     const activeAccount = await getActivePromptPayAccount();
     if (!activeAccount) {
       return NextResponse.json(
@@ -100,10 +116,23 @@ export async function PATCH(
       );
     }
 
-    const amountNumber = Number(order.totalAmount ?? 0);
+    // Calculate combined total (food + delivery fee)
+    const foodTotal = Number(order.subtotal ?? 0);
+    const combinedTotal = foodTotal + Math.round(deliveryFee);
+
+    // Update order with delivery fee and new total amount
+    await db
+      .update(orders)
+      .set({
+        deliveryFee: String(Math.round(deliveryFee)),
+        totalAmount: String(combinedTotal),
+        updatedAt: now,
+      })
+      .where(eq(orders.id, order.id));
+
     const { payload, normalizedPhone, amount } = buildPromptPayPayload({
       phoneNumber: activeAccount.phoneNumber,
-      amount: Number.isFinite(amountNumber) ? amountNumber : 0,
+      amount: combinedTotal,
     });
 
     const promptParseData = JSON.stringify({
@@ -112,13 +141,14 @@ export async function PATCH(
       accountId: activeAccount.id,
     });
 
+    // Create combined payment record
     await db
       .insert(orderPayments)
       .values({
         orderId: order.id,
         promptpayAccountId: activeAccount.id,
-        type: "food",
-        amount: amount.toFixed(2),
+        type: "combined",
+        amount: amount.toFixed(0),
         status: "pending",
         qrPayload: payload,
         promptParseData,
@@ -128,7 +158,7 @@ export async function PATCH(
       .onConflictDoUpdate({
         target: [orderPayments.orderId, orderPayments.type],
         set: {
-          amount: amount.toFixed(2),
+          amount: amount.toFixed(0),
           status: "pending",
           qrPayload: payload,
           promptpayAccountId: activeAccount.id,
@@ -138,8 +168,10 @@ export async function PATCH(
         },
       });
 
-    nextStatus = "awaiting_food_payment";
+    nextStatus = "awaiting_payment";
   } else if (action === "handed_off") {
+    // Simplified hand-off: delivery fee was already set at accept time
+    // Only need tracking URL to hand off to courier
     if (order.status !== "order_in_kitchen") {
       return NextResponse.json(
         { error: "Order is not in kitchen" },
@@ -164,85 +196,18 @@ export async function PATCH(
         ? body.courierVendor.trim()
         : null;
 
-    const rawFee = body?.deliveryFee;
-    const parsedFee =
-      typeof rawFee === "number"
-        ? rawFee
-        : typeof rawFee === "string"
-          ? Number(rawFee)
-          : NaN;
+    nextStatus = "order_out_for_delivery";
 
-    if (!Number.isFinite(parsedFee) || parsedFee < 0) {
-      return NextResponse.json(
-        { error: "Delivery fee must be a non-negative number" },
-        { status: 400 }
-      );
-    }
-
-    // Round to whole THB for storage
-    const deliveryFeeValue = Math.round(parsedFee);
-
-    const activeAccount = await getActivePromptPayAccount();
-    if (!activeAccount) {
-      return NextResponse.json(
-        { error: "Activate a PromptPay account before handing off orders" },
-        { status: 400 }
-      );
-    }
-
-    const { payload, normalizedPhone, amount } = buildPromptPayPayload({
-      phoneNumber: activeAccount.phoneNumber,
-      amount: deliveryFeeValue,
-    });
-
-    const promptParseData = JSON.stringify({
-      phoneNumber: normalizedPhone,
-      amount,
-      accountId: activeAccount.id,
-    });
-
-    // Create or update delivery payment record
-    await db
-      .insert(orderPayments)
-      .values({
-        orderId: order.id,
-        promptpayAccountId: activeAccount.id,
-        type: "delivery",
-        amount: amount.toFixed(2),
-        status: "pending",
-        qrPayload: payload,
-        promptParseData,
-        requestedByAdminId: adminRow.id,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [orderPayments.orderId, orderPayments.type],
-        set: {
-          amount: amount.toFixed(2),
-          status: "pending",
-          qrPayload: payload,
-          promptpayAccountId: activeAccount.id,
-          promptParseData,
-          requestedByAdminId: adminRow.id,
-          updatedAt: now,
-        },
-      });
-
-    nextStatus = "awaiting_delivery_fee_payment";
-
-    const updatePayload: Partial<typeof orders.$inferInsert> = {
-      status: nextStatus,
-      courierVendor,
-      courierTrackingUrl,
-      deliveryFee: String(deliveryFeeValue),
-      // Keep totalAmount as originally charged for food;
-      // delivery fee is surfaced separately in UI.
-      updatedAt: now,
-    };
-
+    // Update order with tracking info and status
     await db
       .update(orders)
-      .set(updatePayload)
+      .set({
+        status: nextStatus,
+        courierVendor,
+        courierTrackingUrl,
+        outForDeliveryAt: now,
+        updatedAt: now,
+      })
       .where(eq(orders.id, order.id));
 
     const [insertedEvent] = await db
@@ -257,7 +222,6 @@ export async function PATCH(
         metadata: {
           courierVendor,
           courierTrackingUrl,
-          deliveryFee: deliveryFeeValue,
         },
       })
       .returning({ id: orderEvents.id });

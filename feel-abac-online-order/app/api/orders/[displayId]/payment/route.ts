@@ -4,7 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { resolveUserId } from "@/lib/api/require-user";
 import { db } from "@/src/db/client";
 import { orders, orderEvents } from "@/src/db/schema";
-import type { OrderPaymentType, OrderStatus } from "@/lib/orders/types";
+import type { OrderStatus } from "@/lib/orders/types";
 import {
   canUploadReceipt,
   markReceiptUploaded,
@@ -34,27 +34,17 @@ export async function PATCH(
   }
 
   const body = (await req.json().catch(() => null)) as {
-    type?: OrderPaymentType;
     receiptUrl?: string;
   } | null;
 
-  if (!body?.type || !body?.receiptUrl) {
+  if (!body?.receiptUrl) {
     return NextResponse.json(
-      { error: "Missing type or receiptUrl" },
+      { error: "Missing receiptUrl" },
       { status: 400 }
     );
   }
 
-  const paymentType = body.type;
   const receiptUrl = body.receiptUrl;
-
-  // Validate payment type
-  if (paymentType !== "food" && paymentType !== "delivery") {
-    return NextResponse.json(
-      { error: "Invalid payment type" },
-      { status: 400 }
-    );
-  }
 
   // Get order by displayId
   const [order] = await db
@@ -73,13 +63,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Check if order is in correct status for receipt upload
-  // Food receipts only allowed in awaiting_food_payment
-  // Delivery receipts only allowed in awaiting_delivery_fee_payment
-  const expectedStatus: OrderStatus =
-    paymentType === "food" ? "awaiting_food_payment" : "awaiting_delivery_fee_payment";
-
-  if (order.status !== expectedStatus) {
+  // Check if order is awaiting payment
+  if (order.status !== "awaiting_payment") {
     return NextResponse.json(
       { error: "Order is not awaiting payment" },
       { status: 400 }
@@ -87,7 +72,7 @@ export async function PATCH(
   }
 
   // Check if can upload (rejection count limit)
-  const uploadCheck = await canUploadReceipt(order.id, paymentType);
+  const uploadCheck = await canUploadReceipt(order.id, "combined");
   if (!uploadCheck.allowed) {
     return NextResponse.json({ error: uploadCheck.reason }, { status: 400 });
   }
@@ -95,7 +80,7 @@ export async function PATCH(
   // Update payment record
   const updatedPayment = await markReceiptUploaded({
     orderId: order.id,
-    type: paymentType,
+    type: "combined",
     receiptUrl,
   });
 
@@ -106,9 +91,7 @@ export async function PATCH(
     );
   }
 
-  // Determine new order status
-  const newStatus: OrderStatus =
-    paymentType === "food" ? "food_payment_review" : "delivery_payment_review";
+  const newStatus: OrderStatus = "payment_review";
 
   // Update order status
   await updateOrderStatusForPayment(order.id, newStatus);
@@ -123,7 +106,7 @@ export async function PATCH(
       eventType: "payment_receipt_uploaded",
       fromStatus: order.status,
       toStatus: newStatus,
-      metadata: { paymentType, receiptUrl },
+      metadata: { paymentType: "combined", receiptUrl },
     })
     .returning({ id: orderEvents.id });
 
@@ -132,7 +115,7 @@ export async function PATCH(
     eventId: insertedEvent?.id ?? "",
     orderId: order.id,
     displayId: order.displayId,
-    paymentType,
+    paymentType: "combined",
     receiptUrl,
     at: new Date().toISOString(),
   });
@@ -147,4 +130,3 @@ export async function PATCH(
     },
   });
 }
-
