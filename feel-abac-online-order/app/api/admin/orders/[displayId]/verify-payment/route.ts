@@ -5,7 +5,7 @@ import { resolveUserId } from "@/lib/api/require-user";
 import { requireAdmin } from "@/lib/api/require-admin";
 import { db } from "@/src/db/client";
 import { orders, orderEvents } from "@/src/db/schema";
-import type { OrderPaymentType, OrderStatus } from "@/lib/orders/types";
+import type { OrderStatus } from "@/lib/orders/types";
 import {
   getPaymentForOrder,
   verifyPayment,
@@ -42,19 +42,6 @@ export async function POST(
     return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
   }
 
-  const body = (await req.json().catch(() => null)) as {
-    type?: OrderPaymentType;
-  } | null;
-
-  const paymentType = body?.type ?? "food";
-
-  if (paymentType !== "food" && paymentType !== "delivery") {
-    return NextResponse.json(
-      { error: "Invalid payment type" },
-      { status: 400 }
-    );
-  }
-
   // Get order by displayId
   const [order] = await db
     .select()
@@ -67,19 +54,17 @@ export async function POST(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Verify order is in correct status for verification
-  const expectedStatus: OrderStatus =
-    paymentType === "food" ? "food_payment_review" : "delivery_payment_review";
-
-  if (order.status !== expectedStatus) {
+  // Verify order is in payment_review status
+  if (order.status !== "payment_review") {
     return NextResponse.json(
-      { error: `Order is not in ${expectedStatus} status` },
+      { error: "Order is not in payment review status" },
       { status: 400 }
     );
   }
 
-  // Check payment exists and has receipt uploaded
-  const payment = await getPaymentForOrder(order.id, paymentType);
+  // Get combined payment
+  const payment = await getPaymentForOrder(order.id, "combined");
+
   if (!payment || payment.status !== "receipt_uploaded") {
     return NextResponse.json(
       { error: "No receipt uploaded for verification" },
@@ -90,7 +75,7 @@ export async function POST(
   // Verify the payment
   const updatedPayment = await verifyPayment({
     orderId: order.id,
-    type: paymentType,
+    type: "combined",
     verifiedByAdminId: adminRow.id,
   });
 
@@ -101,9 +86,7 @@ export async function POST(
     );
   }
 
-  // Determine new order status
-  const newStatus: OrderStatus =
-    paymentType === "food" ? "order_in_kitchen" : "order_out_for_delivery";
+  const newStatus: OrderStatus = "order_in_kitchen";
 
   // Update order status
   await updateOrderStatusForPayment(order.id, newStatus);
@@ -120,7 +103,7 @@ export async function POST(
       eventType: "payment_verified",
       fromStatus: order.status,
       toStatus: newStatus,
-      metadata: { paymentType, verifiedByAdminId: adminRow.id },
+      metadata: { paymentType: "combined", verifiedByAdminId: adminRow.id },
     })
     .returning({ id: orderEvents.id });
 
@@ -131,7 +114,7 @@ export async function POST(
     eventId: `${baseEventId}-payment`,
     orderId: order.id,
     displayId: order.displayId,
-    paymentType,
+    paymentType: "combined",
     verifiedByAdminId: adminRow.id,
     newStatus,
     at: now.toISOString(),

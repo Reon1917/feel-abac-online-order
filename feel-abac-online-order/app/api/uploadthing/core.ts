@@ -11,7 +11,7 @@ export const uploadRouter = {
       if (!userId) throw new Error("Unauthorized");
 
       const orderId = req.headers.get("x-order-id");
-      const paymentType = req.headers.get("x-payment-type") || "food";
+      const paymentType = req.headers.get("x-payment-type") || "combined";
 
       if (!orderId) throw new Error("Missing order ID");
 

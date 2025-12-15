@@ -20,11 +20,14 @@
   "statusUpdatedToast": "Order status updated",
   "errorLoading": "Unable to load order",
   "statusProcessing": "Processing",
+  "statusAwaitingPayment": "Awaiting Payment",
+  "statusPaymentReview": "Verifying Payment",
   "statusAwaitingFoodPayment": "Awaiting Food Payment",
   "statusFoodPaymentReview": "Food Payment Review",
   "statusKitchen": "In Kitchen",
   "statusOutForDelivery": "Handed off to delivery",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee",
+  "statusDeliveryPaymentReview": "Delivery Payment Review",
   "statusDelivered": "Delivered",
   "statusCancelled": "Rejected",
   "viewPastOrders": "Past Orders",
@@ -64,5 +67,12 @@
   "markDeliveredSubmitting": "Marking delivered...",
   "menuLanguageLabel": "Menu language",
   "menuLanguageEnglish": "English names",
-  "menuLanguageBurmese": "Burmese names"
+  "menuLanguageBurmese": "Burmese names",
+  "acceptModalTitle": "Accept Order",
+  "acceptDeliveryFeeLabel": "Delivery Fee (THB)",
+  "acceptDeliveryFeePlaceholder": "Enter delivery fee (0 for pickup)",
+  "acceptSuggestedFee": "Suggested",
+  "acceptCustomerPays": "Customer Pays",
+  "acceptSubmit": "Accept Order",
+  "acceptSubmitting": "Accepting..."
 }

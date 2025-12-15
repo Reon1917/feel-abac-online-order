@@ -23,6 +23,12 @@ import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
 import { RejectOrderDialog } from "./reject-order-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -51,6 +57,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   
+  // Accept modal state for entering delivery fee
+  const [acceptTarget, setAcceptTarget] = useState<OrderAdminSummary | null>(null);
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState("");
+  const [acceptSubmitting, setAcceptSubmitting] = useState(false);
+  
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
 
@@ -76,21 +88,26 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   const updateOrderStatus = useCallback(async (
     order: OrderAdminSummary,
     action: "accept" | "cancel",
-    reason?: string
+    options?: { reason?: string; deliveryFee?: number }
   ) => {
     setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
     try {
       const response = await fetch(`/api/admin/orders/${order.displayId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
+        body: JSON.stringify({
+          action,
+          ...(options?.reason ? { reason: options.reason } : {}),
+          ...(typeof options?.deliveryFee === "number" ? { deliveryFee: options.deliveryFee } : {}),
+        }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(payload?.error ?? dictionary.errorLoading);
       }
-      const nextStatus =
-        action === "accept" ? "awaiting_food_payment" : "cancelled";
+      // Use new status name for combined payment flow
+      const nextStatus: OrderStatus =
+        action === "accept" ? "awaiting_payment" : "cancelled";
       setOrders((prev) =>
         prev.map((item) =>
           item.id === order.id ? { ...item, status: nextStatus } : item
@@ -108,11 +125,34 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     }
   }, [dictionary.errorLoading, dictionary.statusUpdatedToast]);
 
+  // Handle accept with delivery fee
+  const handleAcceptWithFee = useCallback(async () => {
+    if (!acceptTarget) return;
+    
+    const rawFee = deliveryFeeInput.trim();
+    const feeValue = rawFee === "" ? 0 : Number(rawFee);
+    
+    if (!Number.isFinite(feeValue) || feeValue < 0) {
+      toast.error("Delivery fee must be a non-negative number");
+      return;
+    }
+    
+    setAcceptSubmitting(true);
+    const success = await updateOrderStatus(acceptTarget, "accept", { deliveryFee: feeValue });
+    setAcceptSubmitting(false);
+    
+    if (success) {
+      setAcceptModalOpen(false);
+      setAcceptTarget(null);
+      setDeliveryFeeInput("");
+    }
+  }, [acceptTarget, deliveryFeeInput, updateOrderStatus]);
+
   const handleRejectSubmit = useCallback(
     async (reason: string) => {
       if (!rejectTarget) return;
       setRejectSubmitting(true);
-      const success = await updateOrderStatus(rejectTarget, "cancel", reason);
+      const success = await updateOrderStatus(rejectTarget, "cancel", { reason });
       setRejectSubmitting(false);
       if (success) {
         setRejectDialogOpen(false);
@@ -205,14 +245,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       // Notify admin
       toast.message("Payment slip received!");
 
-      // Update order status to reflect receipt uploaded
-      const newStatus: OrderStatus =
-        payload.paymentType === "food" ? "food_payment_review" : "delivery_payment_review";
-
+      // Update order status to payment_review
       setOrders((prev) =>
         prev.map((order) =>
           order.id === payload.orderId
-            ? { ...order, status: newStatus }
+            ? { ...order, status: "payment_review" as OrderStatus }
             : order
         )
       );
@@ -234,15 +271,10 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   const renderOrderCard = (order: OrderAdminSummary) => {
     // Derive payment badges from status
-    const showFoodSlipReceived = order.status === "food_payment_review";
-    const showDeliverySlipReceived = order.status === "delivery_payment_review";
-    const showFoodPaymentConfirmed =
+    const showSlipReceived = order.status === "payment_review";
+    const showPaymentConfirmed =
       order.status === "order_in_kitchen" ||
-      order.status === "awaiting_delivery_fee_payment" ||
-      order.status === "delivery_payment_review" ||
       order.status === "order_out_for_delivery";
-
-    const showDeliveryFeeConfirmed = order.status === "delivered";
 
     return (
       <div
@@ -262,26 +294,15 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
             >
               {statusLabel(order.status, dictionary)}
             </span>
-            {/* Food Payment Badge */}
-            {showFoodSlipReceived && (
+            {/* Payment Slip Badge */}
+            {showSlipReceived && (
               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 animate-pulse">
-                Food Payment Slip Received
+                Payment Slip Received
               </span>
             )}
-            {/* Delivery Fee Payment Badge */}
-            {showDeliverySlipReceived && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 animate-pulse">
-                Delivery Fee Slip Received
-              </span>
-            )}
-            {showFoodPaymentConfirmed && (
+            {showPaymentConfirmed && (
               <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
-                Food Payment Confirmed ✓
-              </span>
-            )}
-            {showDeliveryFeeConfirmed && (
-              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
-                {dictionary.deliveryFeeConfirmedBadge ?? "Delivery fee confirmed ✓"}
+                Payment Confirmed ✓
               </span>
             )}
           </div>
@@ -302,7 +323,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
               type="button"
               className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={actionState[order.id] === "saving"}
-              onClick={() => void updateOrderStatus(order, "accept")}
+              onClick={() => {
+                setAcceptTarget(order);
+                setDeliveryFeeInput("");
+                setAcceptModalOpen(true);
+              }}
             >
               {dictionary.accept}
             </button>
@@ -399,6 +424,104 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         isSubmitting={rejectSubmitting}
         onSubmit={handleRejectSubmit}
       />
+
+      {/* Accept Order Modal - Enter delivery fee */}
+      <Dialog
+        open={acceptModalOpen}
+        onOpenChange={(open) => {
+          setAcceptModalOpen(open);
+          if (!open) {
+            setAcceptTarget(null);
+            setDeliveryFeeInput("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {dictionary.acceptModalTitle ?? "Accept Order"}
+            </DialogTitle>
+          </DialogHeader>
+          {acceptTarget && (
+            <div className="space-y-4">
+              {/* Order summary */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Order</span>
+                  <span className="font-semibold text-slate-900">{acceptTarget.displayId}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-slate-500">Customer</span>
+                  <span className="font-semibold text-slate-900">{acceptTarget.customerName}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-slate-500">Location</span>
+                  <span className="font-medium text-slate-700">{acceptTarget.deliveryLabel}</span>
+                </div>
+                <div className="flex justify-between mt-2 pt-2 border-t border-slate-200">
+                  <span className="text-slate-500">Food Total</span>
+                  <span className="font-semibold text-slate-900">{formatCurrency(acceptTarget.totalAmount)}</span>
+                </div>
+              </div>
+
+              {/* Delivery fee input */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">
+                  {dictionary.acceptDeliveryFeeLabel ?? "Delivery Fee (THB)"}
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={deliveryFeeInput}
+                  onChange={(e) => setDeliveryFeeInput(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  placeholder={dictionary.acceptDeliveryFeePlaceholder ?? "Enter delivery fee (0 for pickup)"}
+                />
+              </div>
+
+              {/* Combined total preview */}
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-emerald-700">
+                    {dictionary.acceptCustomerPays ?? "Customer Pays"}
+                  </span>
+                  <span className="text-lg font-bold text-emerald-800">
+                    {formatCurrency(
+                      acceptTarget.totalAmount + (Number(deliveryFeeInput) || 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAcceptModalOpen(false);
+                    setAcceptTarget(null);
+                    setDeliveryFeeInput("");
+                  }}
+                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={acceptSubmitting}
+                  onClick={() => void handleAcceptWithFee()}
+                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {acceptSubmitting
+                    ? (dictionary.acceptSubmitting ?? "Accepting...")
+                    : (dictionary.acceptSubmit ?? "Accept Order")}
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

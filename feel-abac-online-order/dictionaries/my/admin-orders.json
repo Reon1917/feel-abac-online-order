@@ -20,11 +20,14 @@
   "statusUpdatedToast": "Order status updated",
   "errorLoading": "Unable to load order",
   "statusProcessing": "Processing",
+  "statusAwaitingPayment": "ငွေပေးချေမှု စောင့်ဆိုင်းနေသည်",
+  "statusPaymentReview": "ငွေပေးချေမှု စစ်ဆေးနေသည်",
   "statusAwaitingFoodPayment": "Awaiting Food Payment",
   "statusFoodPaymentReview": "Food Payment Review",
   "statusKitchen": "In Kitchen",
   "statusOutForDelivery": "Handed off to delivery",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee",
+  "statusDeliveryPaymentReview": "Delivery Payment Review",
   "statusDelivered": "Delivered",
   "statusCancelled": "Rejected",
   "viewPastOrders": "Past Orders",
@@ -64,5 +67,12 @@
   "markDeliveredSubmitting": "Marking delivered...",
   "menuLanguageLabel": "မီနူး ဘာသာ",
   "menuLanguageEnglish": "အဂ္ဂလိပ် မီနူး",
-  "menuLanguageBurmese": "မြန်မာ မီနူး"
+  "menuLanguageBurmese": "မြန်မာ မီနူး",
+  "acceptModalTitle": "အော်ဒါ လက်ခံမည်",
+  "acceptDeliveryFeeLabel": "ပို့ဆောင်ခ (THB)",
+  "acceptDeliveryFeePlaceholder": "ပို့ဆောင်ခ ထည့်ပါ (pickup ဆိုရင် 0)",
+  "acceptSuggestedFee": "အကြံပြုချက်",
+  "acceptCustomerPays": "ဖောက်သည်ပေးရမည့်ငွေ",
+  "acceptSubmit": "အော်ဒါ လက်ခံမည်",
+  "acceptSubmitting": "လက်ခံနေသည်..."
 }

@@ -7,18 +7,14 @@ export function statusLabel(
   switch (status) {
     case "order_processing":
       return dictionary.statusProcessing ?? "Processing";
-    case "awaiting_food_payment":
-      return dictionary.statusAwaitingFoodPayment ?? "Awaiting Food Payment";
-    case "food_payment_review":
-      return dictionary.statusFoodPaymentReview ?? "Food Payment Review";
+    case "awaiting_payment":
+      return dictionary.statusAwaitingPayment ?? "Awaiting Payment";
+    case "payment_review":
+      return dictionary.statusPaymentReview ?? "Verifying Payment";
     case "order_in_kitchen":
       return dictionary.statusKitchen ?? "In Kitchen";
     case "order_out_for_delivery":
       return dictionary.statusOutForDelivery ?? "Out for Delivery";
-    case "awaiting_delivery_fee_payment":
-      return dictionary.statusAwaitingDeliveryFee ?? "Awaiting Delivery Fee";
-    case "delivery_payment_review":
-      return dictionary.statusDeliveryPaymentReview ?? "Delivery Payment Review";
     case "delivered":
       return dictionary.statusDelivered ?? "Delivered";
     case "cancelled":

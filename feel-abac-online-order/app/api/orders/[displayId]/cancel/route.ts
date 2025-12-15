@@ -49,23 +49,23 @@ export async function PATCH(
     return NextResponse.json({ error: "Order is already closed" }, { status: 400 });
   }
 
-  const [foodPayment] = await db
+  // Check if payment receipt has been uploaded
+  const [payment] = await db
     .select()
     .from(orderPayments)
-    .where(
-      and(eq(orderPayments.orderId, order.id), eq(orderPayments.type, "food"))
-    )
+    .where(eq(orderPayments.orderId, order.id))
     .limit(1);
 
   const receiptUploaded =
-    foodPayment?.receiptUploadedAt ||
-    (foodPayment && foodPayment.status && foodPayment.status !== "pending");
+    payment?.receiptUploadedAt ||
+    (payment && payment.status && payment.status !== "pending" && payment.status !== "rejected");
 
+  // Allow cancel in order_processing, or awaiting_payment if receipt NOT uploaded
   const canCancel =
     process.env.NODE_ENV !== "production"
       ? true
       : order.status === "order_processing" ||
-        (order.status === "awaiting_food_payment" && !receiptUploaded);
+        (order.status === "awaiting_payment" && !receiptUploaded);
 
   if (!canCancel) {
     return NextResponse.json(

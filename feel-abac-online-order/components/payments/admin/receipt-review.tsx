@@ -26,19 +26,14 @@ export function ReceiptReviewSection({
   const [isVerifying, startVerify] = useTransition();
   const [isRejecting, startReject] = useTransition();
 
-  // Only show for payment review statuses
-  if (
-    order.status !== "food_payment_review" &&
-    order.status !== "delivery_payment_review"
-  ) {
+  // Only show for payment_review status
+  if (order.status !== "payment_review") {
     return null;
   }
 
   if (!payment?.receiptUrl) {
     return null;
   }
-
-  const paymentType = order.status === "food_payment_review" ? "food" : "delivery";
 
   const handleVerify = () => {
     startVerify(async () => {
@@ -48,7 +43,7 @@ export function ReceiptReviewSection({
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: paymentType }),
+            body: JSON.stringify({}),
           }
         );
 
@@ -76,7 +71,6 @@ export function ReceiptReviewSection({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              type: paymentType,
               reason: rejectReason.trim() || undefined,
             }),
           }

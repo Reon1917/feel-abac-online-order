@@ -1,15 +1,13 @@
 export type OrderStatus =
   | "order_processing"
-  | "awaiting_food_payment"
-  | "food_payment_review"
+  | "awaiting_payment"
+  | "payment_review"
   | "order_in_kitchen"
-  | "awaiting_delivery_fee_payment"
-  | "delivery_payment_review"
   | "order_out_for_delivery"
   | "delivered"
   | "cancelled";
 
-export type OrderPaymentType = "food" | "delivery";
+export type OrderPaymentType = "combined";
 
 export type OrderPaymentStatus =
   | "pending"

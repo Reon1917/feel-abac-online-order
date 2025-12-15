@@ -5,7 +5,7 @@ import { resolveUserId } from "@/lib/api/require-user";
 import { requireAdmin } from "@/lib/api/require-admin";
 import { db } from "@/src/db/client";
 import { orders, orderEvents } from "@/src/db/schema";
-import type { OrderPaymentType, OrderStatus } from "@/lib/orders/types";
+import type { OrderStatus } from "@/lib/orders/types";
 import {
   getPaymentForOrder,
   rejectPayment,
@@ -43,22 +43,13 @@ export async function POST(
   }
 
   const body = (await req.json().catch(() => null)) as {
-    type?: OrderPaymentType;
     reason?: string;
   } | null;
 
-  const paymentType = body?.type ?? "food";
   const reason =
     typeof body?.reason === "string" && body.reason.trim().length > 0
       ? body.reason.trim()
       : null;
-
-  if (paymentType !== "food" && paymentType !== "delivery") {
-    return NextResponse.json(
-      { error: "Invalid payment type" },
-      { status: 400 }
-    );
-  }
 
   // Get order by displayId
   const [order] = await db
@@ -72,19 +63,17 @@ export async function POST(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Verify order is in correct status for rejection
-  const expectedStatus: OrderStatus =
-    paymentType === "food" ? "food_payment_review" : "delivery_payment_review";
-
-  if (order.status !== expectedStatus) {
+  // Verify order is in payment_review status
+  if (order.status !== "payment_review") {
     return NextResponse.json(
-      { error: `Order is not in ${expectedStatus} status` },
+      { error: "Order is not in payment review status" },
       { status: 400 }
     );
   }
 
-  // Check payment exists and has receipt uploaded
-  const payment = await getPaymentForOrder(order.id, paymentType);
+  // Get combined payment
+  const payment = await getPaymentForOrder(order.id, "combined");
+
   if (!payment || payment.status !== "receipt_uploaded") {
     return NextResponse.json(
       { error: "No receipt uploaded to reject" },
@@ -95,7 +84,7 @@ export async function POST(
   // Reject the payment
   const updatedPayment = await rejectPayment({
     orderId: order.id,
-    type: paymentType,
+    type: "combined",
     reason: reason ?? undefined,
   });
 
@@ -106,11 +95,7 @@ export async function POST(
     );
   }
 
-  // Move order back to awaiting payment status
-  const newStatus: OrderStatus =
-    paymentType === "food"
-      ? "awaiting_food_payment"
-      : "awaiting_delivery_fee_payment";
+  const newStatus: OrderStatus = "awaiting_payment";
 
   await updateOrderStatusForPayment(order.id, newStatus);
 
@@ -127,7 +112,7 @@ export async function POST(
       fromStatus: order.status,
       toStatus: newStatus,
       metadata: {
-        paymentType,
+        paymentType: "combined",
         reason,
         rejectionCount: updatedPayment.rejectionCount,
       },
@@ -141,7 +126,7 @@ export async function POST(
     eventId: `${baseEventId}-rejection`,
     orderId: order.id,
     displayId: order.displayId,
-    paymentType,
+    paymentType: "combined",
     reason,
     rejectionCount: updatedPayment.rejectionCount,
     at: now.toISOString(),

@@ -33,11 +33,9 @@ export default async function AdminOrdersPage({ params }: PageProps) {
   const pendingOrders = orders.filter((o) => o.status === "order_processing").length;
   const confirmedOrders = orders.filter((o) =>
     [
-      "awaiting_food_payment",
-      "food_payment_review",
+      "awaiting_payment",
+      "payment_review",
       "order_in_kitchen",
-      "awaiting_delivery_fee_payment",
-      "delivery_payment_review",
       "order_out_for_delivery",
     ].includes(o.status)
   ).length;
