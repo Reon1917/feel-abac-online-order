@@ -87,6 +87,7 @@ export async function PATCH(
   }
 
   const now = new Date();
+  let emailTotalAmount: number | string | null = null;
 
   // Determine next status based on action
   let nextStatus: OrderStatus;
@@ -125,6 +126,7 @@ export async function PATCH(
     // Calculate combined total (food + delivery fee)
     const foodTotal = Number(order.subtotal ?? 0);
     const combinedTotal = foodTotal + Math.round(deliveryFee);
+    emailTotalAmount = combinedTotal;
 
     // Update order with delivery fee and new total amount
     await db
@@ -247,6 +249,7 @@ export async function PATCH(
       userId: order.userId,
       displayId: order.displayId,
       template: "handed_off",
+      totalAmount: order.totalAmount,
       courierTrackingUrl,
     });
 
@@ -338,6 +341,7 @@ export async function PATCH(
       userId: order.userId,
       displayId: order.displayId,
       template: "proceed_to_payment",
+      totalAmount: emailTotalAmount ?? order.totalAmount,
     });
   }
 
@@ -346,6 +350,7 @@ export async function PATCH(
       userId: order.userId,
       displayId: order.displayId,
       template: "delivered",
+      totalAmount: order.totalAmount,
     });
   }
 

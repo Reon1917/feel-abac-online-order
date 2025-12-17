@@ -15,6 +15,7 @@ type SendOrderStatusEmailNotificationInput = {
   displayId: string;
   template: OrderStatusEmailTemplateKey;
   locale?: Locale;
+  totalAmount?: string | number | null;
   courierTrackingUrl?: string | null;
 };
 
@@ -39,6 +40,7 @@ export async function sendOrderStatusEmailNotification(
   const content = buildOrderStatusEmail(input.template, {
     displayId,
     locale: input.locale,
+    totalAmount: input.totalAmount,
     courierTrackingUrl: input.courierTrackingUrl,
   });
 
@@ -49,4 +51,3 @@ export async function sendOrderStatusEmailNotification(
     html: content.html,
   });
 }
-

@@ -136,6 +136,7 @@ export async function POST(
     userId: order.userId,
     displayId: order.displayId,
     template: "payment_verified",
+    totalAmount: order.totalAmount,
   });
 
   return NextResponse.json({ status: newStatus });
