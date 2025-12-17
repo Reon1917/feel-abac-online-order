@@ -15,6 +15,7 @@ import {
   broadcastPaymentVerified,
   broadcastOrderStatusChanged,
 } from "@/lib/orders/realtime";
+import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
 
 type Params = {
   displayId: string;
@@ -129,6 +130,13 @@ export async function POST(
     toStatus: newStatus,
     actorType: "admin",
     at: now.toISOString(),
+  });
+
+  await sendOrderStatusEmailNotification({
+    userId: order.userId,
+    displayId: order.displayId,
+    template: "payment_verified",
+    totalAmount: order.totalAmount,
   });
 
   return NextResponse.json({ status: newStatus });
