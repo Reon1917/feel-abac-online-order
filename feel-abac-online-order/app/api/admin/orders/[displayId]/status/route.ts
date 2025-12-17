@@ -13,6 +13,7 @@ import {
 import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
+import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
 
 type Params = {
   displayId: string;
@@ -23,6 +24,11 @@ export async function PATCH(
   { params }: { params: Promise<Params> }
 ) {
   const resolvedParams = await params;
+  const displayId = (resolvedParams.displayId ?? "").trim();
+  if (!displayId) {
+    return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+  }
+
   const userId = await resolveUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -58,7 +64,7 @@ export async function PATCH(
   const [order] = await db
     .select()
     .from(orders)
-    .where(eq(orders.displayId, resolvedParams.displayId))
+    .where(eq(orders.displayId, displayId))
     .orderBy(desc(orders.createdAt))
     .limit(1);
 
@@ -237,6 +243,13 @@ export async function PATCH(
       at: now.toISOString(),
     });
 
+    await sendOrderStatusEmailNotification({
+      userId: order.userId,
+      displayId: order.displayId,
+      template: "handed_off",
+      courierTrackingUrl,
+    });
+
     return NextResponse.json({ status: nextStatus });
   } else if (action === "delivered") {
     if (
@@ -318,6 +331,22 @@ export async function PATCH(
 
     // Cleanup transient events (keep only critical ones)
     await cleanupTransientEvents(order.id);
+  }
+
+  if (action === "accept") {
+    await sendOrderStatusEmailNotification({
+      userId: order.userId,
+      displayId: order.displayId,
+      template: "proceed_to_payment",
+    });
+  }
+
+  if (action === "delivered") {
+    await sendOrderStatusEmailNotification({
+      userId: order.userId,
+      displayId: order.displayId,
+      template: "delivered",
+    });
   }
 
   return NextResponse.json({ status: nextStatus });
