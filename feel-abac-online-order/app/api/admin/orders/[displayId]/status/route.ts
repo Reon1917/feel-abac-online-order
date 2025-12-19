@@ -51,7 +51,7 @@ export async function PATCH(
     | null;
 
   const action = body?.action;
-  const validActions = ["accept", "cancel", "handed_off", "delivered"];
+  const validActions = ["accept", "cancel", "handed_off", "delivered", "close"];
   if (!action || !validActions.includes(action)) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
@@ -76,7 +76,7 @@ export async function PATCH(
   if (
     order.isClosed ||
     order.status === "cancelled" ||
-    order.status === "delivered"
+    order.status === "closed"
   ) {
     if (!(devOverride && action === "cancel")) {
       return NextResponse.json(
@@ -84,6 +84,14 @@ export async function PATCH(
         { status: 400 }
       );
     }
+  }
+
+  // Allow "close" action only on delivered orders
+  if (action === "close" && order.status !== "delivered") {
+    return NextResponse.json(
+      { error: "Only delivered orders can be closed" },
+      { status: 400 }
+    );
   }
 
   const now = new Date();
@@ -266,6 +274,9 @@ export async function PATCH(
     }
 
     nextStatus = "delivered";
+  } else if (action === "close") {
+    // Close/archive a delivered order
+    nextStatus = "closed";
   } else {
     nextStatus = "cancelled";
   }
@@ -278,6 +289,8 @@ export async function PATCH(
   // Set timestamps based on action
   if (action === "delivered") {
     updatePayload.deliveredAt = now;
+  } else if (action === "close") {
+    // Close/archive - mark as closed but already delivered
     updatePayload.isClosed = true;
     updatePayload.closedAt = now;
   } else if (action === "cancel") {
@@ -292,9 +305,9 @@ export async function PATCH(
     .set(updatePayload)
     .where(eq(orders.id, order.id));
 
-  const isTerminalState = action === "cancel" || action === "delivered";
+  const isTerminalState = action === "cancel" || action === "close";
   const criticalEventType =
-    action === "cancel" ? "order_cancelled" : "order_delivered";
+    action === "cancel" ? "order_cancelled" : action === "close" ? "order_closed" : "order_delivered";
 
   const [insertedEvent] = await db
     .insert(orderEvents)

@@ -44,7 +44,7 @@ export function ResumeOrderBanner({ locale, dictionary }: Props) {
   if (!displayId || dismissed) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-30 sm:right-6 sm:left-auto sm:max-w-sm">
+    <div className="fixed bottom-20 left-4 right-4 z-30 sm:bottom-4 sm:right-6 sm:left-auto sm:max-w-sm">
       <div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 shadow-lg shadow-emerald-100">
         <button
           type="button"

@@ -28,18 +28,17 @@ export default async function AdminOrdersPage({ params }: PageProps) {
   const common = getDictionary(locale, "common");
   const orders = await getTodayOrdersForAdmin();
 
-  // Calculate stats
-  const totalOrders = orders.length;
-  const pendingOrders = orders.filter((o) => o.status === "order_processing").length;
-  const confirmedOrders = orders.filter((o) =>
-    [
-      "awaiting_payment",
-      "payment_review",
-      "order_in_kitchen",
-      "order_out_for_delivery",
-    ].includes(o.status)
+  // Calculate stats matching the 6-tab workflow
+  const receivedOrders = orders.filter((o) => o.status === "order_processing").length;
+  const paymentOrders = orders.filter((o) =>
+    ["awaiting_payment", "payment_review"].includes(o.status)
   ).length;
-  const completedOrders = orders.filter((o) => o.status === "delivered").length;
+  const activeOrders = orders.filter((o) =>
+    ["order_in_kitchen", "order_out_for_delivery"].includes(o.status)
+  ).length;
+  const completedOrders = orders.filter((o) =>
+    ["delivered", "closed"].includes(o.status)
+  ).length;
 
   return (
     <AdminLayoutShell locale={locale}>
@@ -77,26 +76,27 @@ export default async function AdminOrdersPage({ params }: PageProps) {
       <div className="p-4 md:p-6 lg:p-8">
         <StatsGrid columns={4}>
           <StatsCard
-            title="Total Today"
-            value={totalOrders}
-            subtitle="Orders received"
+            title="Received"
+            value={receivedOrders}
+            subtitle="New orders"
+            variant={receivedOrders > 0 ? "warning" : "default"}
           />
           <StatsCard
-            title="Pending"
-            value={pendingOrders}
-            subtitle="Awaiting confirmation"
-            variant="warning"
+            title="Payment"
+            value={paymentOrders}
+            subtitle="Awaiting payment"
+            variant={paymentOrders > 0 ? "info" : "default"}
           />
           <StatsCard
-            title="Confirmed"
-            value={confirmedOrders}
-            subtitle="Being prepared"
+            title="Active"
+            value={activeOrders}
+            subtitle="Preparing / delivering"
             variant="info"
           />
           <StatsCard
             title="Completed"
             value={completedOrders}
-            subtitle="Fulfilled today"
+            subtitle="Delivered today"
             variant="success"
           />
         </StatsGrid>

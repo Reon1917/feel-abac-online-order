@@ -1,11 +1,12 @@
 export type OrderStatus =
-  | "order_processing"
-  | "awaiting_payment"
-  | "payment_review"
-  | "order_in_kitchen"
-  | "order_out_for_delivery"
-  | "delivered"
-  | "cancelled";
+  | "order_processing"     // RECEIVED - new order just submitted
+  | "awaiting_payment"     // WAIT_FOR_PAYMENT - admin accepted, customer must pay
+  | "payment_review"       // WAIT_FOR_PAYMENT - slip uploaded, pending verification
+  | "order_in_kitchen"     // PAID - payment verified, preparing food
+  | "order_out_for_delivery" // HAND_TO_DELIVERY - food handed to courier
+  | "delivered"            // DELIVERED - courier completed delivery
+  | "closed"               // CLOSED - order archived
+  | "cancelled";           // Cancelled/rejected order
 
 export type OrderPaymentType = "combined";
 

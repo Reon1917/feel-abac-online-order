@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -22,6 +22,7 @@ import { withLocalePath } from "@/lib/i18n/path";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import type { AdminRole } from "@/lib/admin/types";
 import { isRoleAtLeast } from "@/lib/admin/permissions";
+import { useSidebar } from "./admin-sidebar-context";
 
 type NavItem = {
   href: string;
@@ -62,7 +63,7 @@ export function AdminSidebar({
   adminRole,
 }: AdminSidebarProps) {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, toggleCollapsed } = useSidebar();
 
   const navSections: NavSection[] = useMemo(
     () => [
@@ -258,7 +259,7 @@ export function AdminSidebar({
 
       {/* Collapse Toggle */}
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={toggleCollapsed}
         className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-slate-600"
       >
         {isCollapsed ? (

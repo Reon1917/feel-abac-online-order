@@ -19,16 +19,17 @@
   "newOrderToast": "New order received",
   "statusUpdatedToast": "Order status updated",
   "errorLoading": "Unable to load order",
-  "statusProcessing": "Processing",
+  "statusProcessing": "Received",
   "statusAwaitingPayment": "Awaiting Payment",
   "statusPaymentReview": "Verifying Payment",
   "statusAwaitingFoodPayment": "Awaiting Food Payment",
   "statusFoodPaymentReview": "Food Payment Review",
-  "statusKitchen": "In Kitchen",
-  "statusOutForDelivery": "Handed off to delivery",
+  "statusKitchen": "Paid",
+  "statusOutForDelivery": "With Delivery",
   "statusAwaitingDeliveryFee": "Awaiting Delivery Fee",
   "statusDeliveryPaymentReview": "Delivery Payment Review",
   "statusDelivered": "Delivered",
+  "statusClosed": "Closed",
   "statusCancelled": "Rejected",
   "viewPastOrders": "Past Orders",
   "promptpaySettings": "PromptPay Settings",
@@ -74,5 +75,36 @@
   "acceptSuggestedFee": "Suggested",
   "acceptCustomerPays": "Customer Pays",
   "acceptSubmit": "Accept Order",
-  "acceptSubmitting": "Accepting..."
+  "acceptSubmitting": "Accepting...",
+  
+  "tabReceived": "Received",
+  "tabWaitForPayment": "Wait for Payment",
+  "tabPaid": "Paid",
+  "tabHandToDelivery": "Hand to Delivery",
+  "tabDelivered": "Delivered",
+  "tabClosed": "Closed",
+  
+  "tabReceivedEmpty": "No new orders",
+  "tabWaitForPaymentEmpty": "No orders awaiting payment",
+  "tabPaidEmpty": "No orders ready for delivery",
+  "tabHandToDeliveryEmpty": "No orders out for delivery",
+  "tabDeliveredEmpty": "No delivered orders",
+  "tabClosedEmpty": "No closed orders",
+  
+  "actionAccept": "Accept Order",
+  "actionVerifyPayment": "Verify Payment",
+  "actionHandToDelivery": "Hand to Delivery",
+  "actionMarkDelivered": "Mark Delivered",
+  "actionClose": "Close Order",
+  
+  "verifyPaymentModalTitle": "Verify Payment",
+  "verifyPaymentConfirm": "Confirm Payment",
+  "verifyPaymentReject": "Reject Slip",
+  "verifyPaymentSlipLabel": "Payment Slip",
+  "verifyPaymentAmountLabel": "Expected Amount",
+  
+  "handToDeliveryModalTitle": "Hand to Delivery",
+  "handToDeliveryConfirm": "Confirm Handoff",
+  
+  "closeOrderConfirm": "Close & Archive"
 }
