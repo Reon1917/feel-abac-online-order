@@ -19,6 +19,11 @@ type PageProps = {
   }>;
   searchParams: Promise<{
     day?: string;
+    status?: string;
+    refund?: string;
+    q?: string;
+    min?: string;
+    max?: string;
   }>;
 };
 

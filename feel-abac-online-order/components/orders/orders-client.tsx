@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
   order_in_kitchen: { bg: "bg-indigo-100", text: "text-indigo-800" },
   order_out_for_delivery: { bg: "bg-purple-100", text: "text-purple-800" },
   delivered: { bg: "bg-emerald-100", text: "text-emerald-800" },
+  closed: { bg: "bg-slate-100", text: "text-slate-600" },
   cancelled: { bg: "bg-red-100", text: "text-red-800" },
 };
 
