@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq, inArray, sql, lt } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, lte, or, sql, isNull } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import {
@@ -19,6 +19,7 @@ import type {
   OrderRecord,
   OrderAdminSummary,
   OrderStatus,
+  RefundStatus,
   OrderPaymentRecord,
   OrderPaymentStatus,
   OrderPaymentType,
@@ -127,6 +128,7 @@ function mapOrder(
     updatedAt: dateToIso(row.updatedAt) ?? "",
     cancelledAt: dateToIso(row.cancelledAt),
     cancelReason: row.cancelReason,
+    refundStatus: (row.refundStatus as RefundStatus) ?? null,
     isClosed: row.isClosed,
     courierTrackingUrl: row.courierTrackingUrl,
     courierVendor: row.courierVendor,
@@ -257,6 +259,7 @@ const adminSummarySelect = {
   displayId: orders.displayId,
   displayDay: orders.displayDay,
   status: orders.status,
+  refundStatus: orders.refundStatus,
   customerName: orders.customerName,
   customerPhone: orders.customerPhone,
   totalAmount: orders.totalAmount,
@@ -273,6 +276,7 @@ type AdminSummaryRow = {
   displayId: string;
   displayDay: Date | null;
   status: string;
+  refundStatus: string | null;
   customerName: string;
   customerPhone: string;
   totalAmount: string | null;
@@ -299,6 +303,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     displayId: row.displayId,
     displayDay: pgDateToString(row.displayDay),
     status: row.status as OrderStatus,
+    refundStatus: (row.refundStatus as RefundStatus) ?? null,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     totalAmount: numericToNumber(row.totalAmount),
@@ -372,6 +377,100 @@ export async function getArchivedOrdersForAdmin(
     )
     .orderBy(desc(orders.displayDay), desc(orders.createdAt))
     .limit(limit);
+
+  return rows.map((row) => mapOrderAdminSummary(row));
+}
+
+/**
+ * Get distinct archived order days (before today) for admin filters.
+ */
+export async function getArchivedOrderDays(limit = 7): Promise<string[]> {
+  const today = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`;
+  const sevenDaysAgo = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '7 days'`;
+  const rows = await db
+    .select({
+      displayDay: orders.displayDay,
+    })
+    .from(orders)
+    .where(
+      and(
+        lt(orders.displayDay, today),
+        gte(orders.displayDay, sevenDaysAgo)
+      )
+    )
+    .groupBy(orders.displayDay)
+    .orderBy(desc(orders.displayDay))
+    .limit(limit);
+
+  return rows
+    .map((row) => pgDateToString(row.displayDay))
+    .filter((value) => value.length > 0);
+}
+
+/**
+ * Get archived orders with optional filters (limited to the last 7 days).
+ */
+export async function getArchivedOrdersForAdminFiltered(filters: {
+  displayDay?: string | null;
+  status?: OrderStatus | null;
+  refundStatus?: "requested" | "paid" | "none" | null;
+  query?: string | null;
+  minTotal?: number | null;
+  maxTotal?: number | null;
+}): Promise<OrderAdminSummary[]> {
+  const today = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`;
+  const sevenDaysAgo = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '7 days'`;
+  const conditions = [];
+
+  if (filters.displayDay) {
+    conditions.push(eq(orders.displayDay, sql`${filters.displayDay}::date`));
+  } else {
+    conditions.push(lt(orders.displayDay, today));
+    conditions.push(gte(orders.displayDay, sevenDaysAgo));
+  }
+
+  if (filters.status) {
+    conditions.push(eq(orders.status, filters.status));
+  }
+
+  if (filters.refundStatus === "requested" || filters.refundStatus === "paid") {
+    conditions.push(eq(orders.refundStatus, filters.refundStatus));
+  } else if (filters.refundStatus === "none") {
+    conditions.push(isNull(orders.refundStatus));
+  }
+
+  if (filters.query) {
+    const keyword = `%${filters.query}%`;
+    conditions.push(
+      or(
+        ilike(orders.displayId, keyword),
+        ilike(orders.customerName, keyword),
+        ilike(orders.customerPhone, keyword)
+      )
+    );
+  }
+
+  if (typeof filters.minTotal === "number") {
+    conditions.push(gte(orders.totalAmount, String(filters.minTotal)));
+  }
+
+  if (typeof filters.maxTotal === "number") {
+    conditions.push(lte(orders.totalAmount, String(filters.maxTotal)));
+  }
+
+  const rows = await db
+    .select(adminSummarySelect)
+    .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
+    .where(and(...conditions))
+    .orderBy(desc(orders.createdAt));
 
   return rows.map((row) => mapOrderAdminSummary(row));
 }

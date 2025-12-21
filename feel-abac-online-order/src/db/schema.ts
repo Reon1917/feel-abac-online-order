@@ -474,6 +474,7 @@ export const orders = pgTable(
     closedAt: timestamp("closed_at"),
     cancelledAt: timestamp("cancelled_at"),
     cancelReason: text("cancel_reason"),
+    refundStatus: text("refund_status"),
     isClosed: boolean("is_closed").default(false).notNull(),
     resolvedByAdminId: text("resolved_by_admin_id").references(
       () => admins.id,

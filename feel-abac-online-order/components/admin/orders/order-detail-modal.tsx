@@ -204,7 +204,9 @@ export function OrderDetailModal({
                 statusBadgeClass(order.status)
               )}
             >
-              {statusLabel(order.status, dictionary)}
+              {statusLabel(order.status, dictionary, {
+                refundStatus: order.refundStatus,
+              })}
             </span>
           </div>
         </DialogHeader>
