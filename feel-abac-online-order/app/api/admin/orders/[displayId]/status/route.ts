@@ -51,7 +51,15 @@ export async function PATCH(
     | null;
 
   const action = body?.action;
-  const validActions = ["accept", "cancel", "handed_off", "delivered", "close"];
+  const validActions = [
+    "accept",
+    "cancel",
+    "handed_off",
+    "delivered",
+    "close",
+    "refund_requested",
+    "refund_paid",
+  ];
   if (!action || !validActions.includes(action)) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
@@ -73,10 +81,10 @@ export async function PATCH(
   }
 
   const devOverride = process.env.NODE_ENV !== "production";
+  const isRefundAction = action === "refund_paid" || action === "refund_requested";
   if (
-    order.isClosed ||
-    order.status === "cancelled" ||
-    order.status === "closed"
+    !isRefundAction &&
+    (order.isClosed || order.status === "cancelled" || order.status === "closed")
   ) {
     if (!(devOverride && action === "cancel")) {
       return NextResponse.json(
@@ -95,6 +103,64 @@ export async function PATCH(
   }
 
   const now = new Date();
+
+  if (action === "refund_requested") {
+    if (order.status !== "cancelled") {
+      return NextResponse.json(
+        { error: "Refund can only be requested for cancelled orders" },
+        { status: 400 }
+      );
+    }
+
+    if (order.refundStatus === "requested" || order.refundStatus === "paid") {
+      return NextResponse.json(
+        { error: "Refund is already marked for this order" },
+        { status: 400 }
+      );
+    }
+
+    await db
+      .update(orders)
+      .set({
+        refundStatus: "requested",
+        updatedAt: now,
+      })
+      .where(eq(orders.id, order.id));
+
+    return NextResponse.json({
+      status: order.status,
+      refundStatus: "requested",
+    });
+  }
+
+  if (action === "refund_paid") {
+    if (order.status !== "cancelled") {
+      return NextResponse.json(
+        { error: "Refund can only be marked for cancelled orders" },
+        { status: 400 }
+      );
+    }
+
+    if (order.refundStatus === "paid") {
+      return NextResponse.json(
+        { error: "Refund is already marked as paid" },
+        { status: 400 }
+      );
+    }
+
+    await db
+      .update(orders)
+      .set({
+        refundStatus: "paid",
+        updatedAt: now,
+      })
+      .where(eq(orders.id, order.id));
+
+    return NextResponse.json({
+      status: order.status,
+      refundStatus: "paid",
+    });
+  }
   let emailTotalAmount: number | string | null = null;
 
   // Determine next status based on action
@@ -278,6 +344,12 @@ export async function PATCH(
     // Close/archive a delivered order
     nextStatus = "closed";
   } else {
+    if (order.status === "delivered") {
+      return NextResponse.json(
+        { error: "Delivered orders cannot be cancelled" },
+        { status: 400 }
+      );
+    }
     nextStatus = "cancelled";
   }
 
@@ -367,5 +439,8 @@ export async function PATCH(
     });
   }
 
-  return NextResponse.json({ status: nextStatus });
+  return NextResponse.json({
+    status: nextStatus,
+    refundStatus: updatePayload.refundStatus ?? order.refundStatus ?? null,
+  });
 }

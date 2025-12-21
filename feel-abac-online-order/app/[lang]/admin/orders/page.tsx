@@ -28,7 +28,7 @@ export default async function AdminOrdersPage({ params }: PageProps) {
   const common = getDictionary(locale, "common");
   const orders = await getTodayOrdersForAdmin();
 
-  // Calculate stats matching the 6-tab workflow
+  // Calculate stats matching the workflow overview
   const receivedOrders = orders.filter((o) => o.status === "order_processing").length;
   const paymentOrders = orders.filter((o) =>
     ["awaiting_payment", "payment_review"].includes(o.status)

@@ -8,6 +8,8 @@ export type OrderStatus =
   | "closed"               // CLOSED - order archived
   | "cancelled";           // Cancelled/rejected order
 
+export type RefundStatus = "requested" | "paid";
+
 export type OrderPaymentType = "combined";
 
 export type OrderPaymentStatus =
@@ -93,6 +95,7 @@ export type OrderRecord = {
   updatedAt: string;
   cancelledAt: string | null;
   cancelReason: string | null;
+  refundStatus: RefundStatus | null;
   isClosed: boolean;
   courierTrackingUrl: string | null;
   courierVendor: string | null;
@@ -108,6 +111,7 @@ export type OrderAdminSummary = {
   displayId: string;
   displayDay: string;
   status: OrderStatus;
+  refundStatus: RefundStatus | null;
   customerName: string;
   customerPhone: string;
   totalAmount: number;

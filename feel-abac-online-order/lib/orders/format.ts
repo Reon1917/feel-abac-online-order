@@ -1,8 +1,9 @@
-import type { OrderStatus } from "./types";
+import type { OrderStatus, RefundStatus } from "./types";
 
 export function statusLabel(
   status: OrderStatus,
-  dictionary: Record<string, string>
+  dictionary: Record<string, string>,
+  options?: { refundStatus?: RefundStatus | null }
 ) {
   switch (status) {
     case "order_processing":
@@ -20,6 +21,12 @@ export function statusLabel(
     case "closed":
       return dictionary.statusClosed ?? "Closed";
     case "cancelled":
+      if (options?.refundStatus === "paid") {
+        return dictionary.statusRefundPaid ?? "Refund paid";
+      }
+      if (options?.refundStatus === "requested") {
+        return dictionary.statusRefundRequested ?? "Order cancelled after payment";
+      }
       return dictionary.statusCancelled ?? "Cancelled";
     default:
       return status;

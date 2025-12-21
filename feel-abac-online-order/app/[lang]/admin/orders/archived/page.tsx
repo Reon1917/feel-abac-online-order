@@ -8,7 +8,8 @@ import { ArchivedOrdersClient } from "@/components/admin/orders/archived-orders-
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
-import { getArchivedOrdersForAdmin } from "@/lib/orders/queries";
+import { getArchivedOrderDays, getArchivedOrdersForAdminFiltered } from "@/lib/orders/queries";
+import type { OrderStatus } from "@/lib/orders/types";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
 import { Button } from "@/components/ui/button";
 
@@ -16,16 +17,86 @@ type PageProps = {
   params: Promise<{
     lang: string;
   }>;
+  searchParams: Promise<{
+    day?: string;
+  }>;
 };
 
-export default async function ArchivedOrdersPage({ params }: PageProps) {
+export default async function ArchivedOrdersPage({
+  params,
+  searchParams,
+}: PageProps) {
   noStore();
-  const { lang } = await params;
+  const [{ lang }, query] = await Promise.all([params, searchParams]);
   const locale = lang as Locale;
 
   const dictionary = getDictionary(locale, "adminOrders");
   const common = getDictionary(locale, "common");
-  const orders = await getArchivedOrdersForAdmin();
+  const days = await getArchivedOrderDays();
+  const requestedDay = typeof query.day === "string" ? query.day.trim() : "";
+  const dayValue =
+    requestedDay && requestedDay !== "all" && days.includes(requestedDay)
+      ? requestedDay
+      : null;
+
+  const allowedStatuses: OrderStatus[] = [
+    "order_processing",
+    "awaiting_payment",
+    "payment_review",
+    "order_in_kitchen",
+    "order_out_for_delivery",
+    "delivered",
+    "closed",
+    "cancelled",
+  ];
+  const statusValue =
+    typeof query.status === "string" && allowedStatuses.includes(query.status as OrderStatus)
+      ? (query.status as OrderStatus)
+      : null;
+  const refundValue =
+    typeof query.refund === "string" &&
+    ["requested", "paid", "none"].includes(query.refund)
+      ? (query.refund as "requested" | "paid" | "none")
+      : null;
+  const searchValue =
+    typeof query.q === "string" && query.q.trim().length > 0
+      ? query.q.trim()
+      : null;
+  const minValue =
+    typeof query.min === "string" && query.min.trim().length > 0
+      ? Number(query.min)
+      : null;
+  const maxValue =
+    typeof query.max === "string" && query.max.trim().length > 0
+      ? Number(query.max)
+      : null;
+
+  const normalizedMin =
+    typeof minValue === "number" && Number.isFinite(minValue) && minValue >= 0
+      ? minValue
+      : null;
+  const normalizedMax =
+    typeof maxValue === "number" && Number.isFinite(maxValue) && maxValue >= 0
+      ? maxValue
+      : null;
+
+  const finalMin =
+    normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin
+      ? normalizedMax
+      : normalizedMin;
+  const finalMax =
+    normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin
+      ? normalizedMin
+      : normalizedMax;
+
+  const orders = await getArchivedOrdersForAdminFiltered({
+    displayDay: dayValue,
+    status: statusValue,
+    refundStatus: refundValue,
+    query: searchValue,
+    minTotal: finalMin,
+    maxTotal: finalMax,
+  });
 
   return (
     <AdminLayoutShell locale={locale}>
@@ -55,7 +126,19 @@ export default async function ArchivedOrdersPage({ params }: PageProps) {
       />
 
       <div className="p-4 md:p-6 lg:p-8">
-        <ArchivedOrdersClient initialOrders={orders} dictionary={dictionary} />
+        <ArchivedOrdersClient
+          initialOrders={orders}
+          dictionary={dictionary}
+          days={days}
+          initialFilters={{
+            day: dayValue ?? "all",
+            status: statusValue ?? "all",
+            refund: refundValue ?? "all",
+            query: searchValue ?? "",
+            min: finalMin !== null ? String(finalMin) : "",
+            max: finalMax !== null ? String(finalMax) : "",
+          }}
+        />
       </div>
     </AdminLayoutShell>
   );

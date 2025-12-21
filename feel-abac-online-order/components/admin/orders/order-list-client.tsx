@@ -10,6 +10,7 @@ import {
   ChefHat,
   Truck,
   CheckCircle2,
+  RotateCcw,
   Archive,
   Eye,
   X,
@@ -45,13 +46,14 @@ import { Button } from "@/components/ui/button";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
-// Tab definitions matching the 6-state workflow
+// Tab definitions matching the order workflow
 const WORKFLOW_TABS = [
   { key: "received", statuses: ["order_processing"] as OrderStatus[], icon: Package },
   { key: "waitForPayment", statuses: ["awaiting_payment", "payment_review"] as OrderStatus[], icon: CreditCard },
   { key: "paid", statuses: ["order_in_kitchen"] as OrderStatus[], icon: ChefHat },
   { key: "handToDelivery", statuses: ["order_out_for_delivery"] as OrderStatus[], icon: Truck },
   { key: "delivered", statuses: ["delivered"] as OrderStatus[], icon: CheckCircle2 },
+  { key: "refunds", statuses: ["cancelled"] as OrderStatus[], icon: RotateCcw },
   { key: "closed", statuses: ["closed"] as OrderStatus[], icon: Archive },
 ] as const;
 
@@ -119,13 +121,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       paid: [],
       handToDelivery: [],
       delivered: [],
+      refunds: [],
       closed: [],
     };
 
     for (const order of orders) {
-      // Skip cancelled orders from workflow tabs
-      if (order.status === "cancelled") continue;
-
       const tab = WORKFLOW_TABS.find((t) =>
         t.statuses.includes(order.status as OrderStatus)
       );
@@ -145,6 +145,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       paid: dictionary.tabPaid ?? "Paid",
       handToDelivery: dictionary.tabHandToDelivery ?? "Hand to Delivery",
       delivered: dictionary.tabDelivered ?? "Delivered",
+      refunds: dictionary.tabRefunds ?? "Refunds",
       closed: dictionary.tabClosed ?? "Closed",
     };
     return labels[key];
@@ -157,6 +158,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       paid: dictionary.tabPaidEmpty ?? "No orders ready for delivery",
       handToDelivery: dictionary.tabHandToDeliveryEmpty ?? "No orders out for delivery",
       delivered: dictionary.tabDeliveredEmpty ?? "No delivered orders",
+      refunds: dictionary.tabRefundsEmpty ?? "No refunds pending",
       closed: dictionary.tabClosedEmpty ?? "No closed orders",
     };
     return messages[key];
@@ -430,7 +432,91 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
-              ? { ...item, status: "cancelled" as OrderStatus }
+              ? {
+                  ...item,
+                  status: "cancelled" as OrderStatus,
+                  refundStatus: payload?.refundStatus ?? item.refundStatus ?? null,
+                }
+              : item
+          )
+        );
+        toast.success(dictionary.statusUpdatedToast);
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : dictionary.errorLoading
+        );
+        return false;
+      } finally {
+        setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
+      }
+    },
+    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+  );
+
+  const handleMarkRefundPaid = useCallback(
+    async (order: OrderAdminSummary) => {
+      setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
+      try {
+        const response = await fetch(
+          `/api/admin/orders/${order.displayId}/status`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "refund_paid" }),
+          }
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error ?? dictionary.errorLoading);
+        }
+        setOrders((prev) =>
+          prev.map((item) =>
+            item.id === order.id
+              ? {
+                  ...item,
+                  refundStatus: payload?.refundStatus ?? "paid",
+                }
+              : item
+          )
+        );
+        toast.success(dictionary.statusUpdatedToast);
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : dictionary.errorLoading
+        );
+        return false;
+      } finally {
+        setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
+      }
+    },
+    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+  );
+
+  const handleMarkRefundRequested = useCallback(
+    async (order: OrderAdminSummary) => {
+      setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
+      try {
+        const response = await fetch(
+          `/api/admin/orders/${order.displayId}/status`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "refund_requested" }),
+          }
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error ?? dictionary.errorLoading);
+        }
+        setOrders((prev) =>
+          prev.map((item) =>
+            item.id === order.id
+              ? {
+                  ...item,
+                  refundStatus: payload?.refundStatus ?? "requested",
+                }
               : item
           )
         );
@@ -543,6 +629,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         displayId: payload.displayId,
         displayDay: payload.displayDay,
         status: payload.status,
+        refundStatus: null,
         customerName: payload.customerName,
         customerPhone: payload.customerPhone,
         totalAmount: payload.totalAmount,
@@ -697,6 +784,37 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           </Button>
         );
 
+      case "cancelled":
+        if (order.refundStatus === "requested") {
+          return (
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={isSaving}
+              onClick={() => void handleMarkRefundPaid(order)}
+            >
+              {dictionary.actionMarkRefundPaid ?? "Mark refund paid"}
+            </Button>
+          );
+        }
+        if (order.refundStatus === "paid") {
+          return (
+            <span className="text-sm font-medium text-emerald-600">
+              {dictionary.statusRefundPaid ?? "Refund paid"}
+            </span>
+          );
+        }
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isSaving}
+            onClick={() => void handleMarkRefundRequested(order)}
+          >
+            {dictionary.actionMarkRefundRequested ?? "Mark refund requested"}
+          </Button>
+        );
+
       default:
         return null;
     }
@@ -726,7 +844,9 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                 statusBadgeClass(order.status)
               )}
             >
-              {statusLabel(order.status, dictionary)}
+              {statusLabel(order.status, dictionary, {
+                refundStatus: order.refundStatus,
+              })}
             </span>
             {showSlipReceived && (
               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 animate-pulse">
@@ -806,18 +926,16 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
             >
               <Icon className="w-4 h-4" />
               <span className="hidden sm:inline">{getTabLabel(tab.key)}</span>
-              {count > 0 && (
-                <span
-                  className={clsx(
-                    "inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold",
-                    isActive
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-200 text-slate-600"
-                  )}
-                >
-                  {count}
-                </span>
-              )}
+              <span
+                className={clsx(
+                  "inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold",
+                  isActive
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-200 text-slate-600"
+                )}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
