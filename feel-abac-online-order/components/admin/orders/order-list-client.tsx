@@ -730,11 +730,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         return (
           <Button
             size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
             disabled={isSaving}
             onClick={() => {
               setVerifyTarget(order);
               setPaymentReceipt(null);
+              setSlipLightboxOpen(false);
               fetchPaymentDetails(order);
               setVerifyModalOpen(true);
             }}
@@ -1090,16 +1090,22 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       <Dialog
         open={verifyModalOpen}
         onOpenChange={(open) => {
+          // Don't close the modal if the lightbox is open - just close the lightbox instead
+          if (!open && slipLightboxOpen) {
+            setSlipLightboxOpen(false);
+            return;
+          }
           setVerifyModalOpen(open);
           if (!open) {
             setVerifyTarget(null);
             setPaymentReceipt(null);
+            setSlipLightboxOpen(false);
           }
         }}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-slate-900">
               {dictionary.verifyPaymentModalTitle ?? "Verify Payment"}
             </DialogTitle>
           </DialogHeader>
@@ -1288,11 +1294,19 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       {slipLightboxOpen && paymentReceipt?.receiptUrl && (
         <div
           className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setSlipLightboxOpen(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setSlipLightboxOpen(false);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <button
             type="button"
-            onClick={() => setSlipLightboxOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSlipLightboxOpen(false);
+            }}
             className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             aria-label="Close"
           >
@@ -1301,6 +1315,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           <div
             className="relative w-full h-full max-w-3xl max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <Image
               src={paymentReceipt.receiptUrl}
