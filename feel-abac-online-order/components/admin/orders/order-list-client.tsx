@@ -64,6 +64,9 @@ type Props = {
   dictionary: AdminOrdersDictionary;
 };
 
+const ORDER_SOUND_SRC = "/api/admin/sounds/order";
+const PAYMENT_SOUND_SRC = "/api/admin/sounds/payment";
+
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
   style: "currency",
   currency: "THB",
@@ -112,6 +115,77 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const audioPlayingRef = useRef(false);
+  const soundReadyRef = useRef(false);
+
+  const playNextSound = useCallback(() => {
+    if (audioPlayingRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    const nextSrc = audioQueueRef.current.shift();
+    if (!nextSrc) return;
+
+    audioPlayingRef.current = true;
+    audio.src = new URL(nextSrc, window.location.origin).toString();
+    audio.currentTime = 0;
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        audioPlayingRef.current = false;
+        playNextSound();
+      });
+    }
+  }, []);
+
+  const enqueueSound = useCallback(
+    (src: string) => {
+      audioQueueRef.current.push(src);
+      if (soundReadyRef.current) {
+        playNextSound();
+      }
+    },
+    [playNextSound]
+  );
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "auto";
+
+    const handleEnded = () => {
+      audioPlayingRef.current = false;
+      playNextSound();
+    };
+
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleEnded);
+
+    audioRef.current = audio;
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleEnded);
+      audio.pause();
+      audioRef.current = null;
+    };
+  }, [playNextSound]);
+
+  useEffect(() => {
+    const handleReady = () => {
+      soundReadyRef.current = true;
+      playNextSound();
+    };
+
+    window.addEventListener("pointerdown", handleReady, { once: true });
+    window.addEventListener("keydown", handleReady, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleReady);
+      window.removeEventListener("keydown", handleReady);
+    };
+  }, [playNextSound]);
 
   // Group orders by tab
   const ordersByTab = useMemo(() => {
@@ -623,6 +697,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       seenEvents.add(payload.eventId);
 
       toast.success(dictionary.newOrderToast);
+      enqueueSound(ORDER_SOUND_SRC);
 
       const summary: OrderAdminSummary = {
         id: payload.orderId,
@@ -674,6 +749,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       seenEvents.add(payload.eventId);
 
       toast.message("Payment slip received!");
+      enqueueSound(PAYMENT_SOUND_SRC);
 
       setOrders((prev) =>
         prev.map((order) =>
@@ -696,7 +772,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       channel.unbind(PAYMENT_RECEIPT_UPLOADED_EVENT, handlePaymentReceiptUploaded);
       pusher.unsubscribe(ADMIN_ORDERS_CHANNEL);
     };
-  }, [dictionary.newOrderToast, dictionary.statusUpdatedToast]);
+  }, [dictionary.newOrderToast, dictionary.statusUpdatedToast, enqueueSound]);
 
   // Render primary action button for each tab
   const renderPrimaryAction = (order: OrderAdminSummary) => {
