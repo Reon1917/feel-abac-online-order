@@ -64,6 +64,9 @@ type Props = {
   dictionary: AdminOrdersDictionary;
 };
 
+const ORDER_SOUND_SRC = "/api/admin/sounds/order";
+const PAYMENT_SOUND_SRC = "/api/admin/sounds/payment";
+
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
   style: "currency",
   currency: "THB",
@@ -112,6 +115,77 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<string[]>([]);
+  const audioPlayingRef = useRef(false);
+  const soundReadyRef = useRef(false);
+
+  const playNextSound = useCallback(() => {
+    if (audioPlayingRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    const nextSrc = audioQueueRef.current.shift();
+    if (!nextSrc) return;
+
+    audioPlayingRef.current = true;
+    audio.src = new URL(nextSrc, window.location.origin).toString();
+    audio.currentTime = 0;
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        audioPlayingRef.current = false;
+        playNextSound();
+      });
+    }
+  }, []);
+
+  const enqueueSound = useCallback(
+    (src: string) => {
+      audioQueueRef.current.push(src);
+      if (soundReadyRef.current) {
+        playNextSound();
+      }
+    },
+    [playNextSound]
+  );
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "auto";
+
+    const handleEnded = () => {
+      audioPlayingRef.current = false;
+      playNextSound();
+    };
+
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleEnded);
+
+    audioRef.current = audio;
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleEnded);
+      audio.pause();
+      audioRef.current = null;
+    };
+  }, [playNextSound]);
+
+  useEffect(() => {
+    const handleReady = () => {
+      soundReadyRef.current = true;
+      playNextSound();
+    };
+
+    window.addEventListener("pointerdown", handleReady, { once: true });
+    window.addEventListener("keydown", handleReady, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleReady);
+      window.removeEventListener("keydown", handleReady);
+    };
+  }, [playNextSound]);
 
   // Group orders by tab
   const ordersByTab = useMemo(() => {
@@ -623,6 +697,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       seenEvents.add(payload.eventId);
 
       toast.success(dictionary.newOrderToast);
+      enqueueSound(ORDER_SOUND_SRC);
 
       const summary: OrderAdminSummary = {
         id: payload.orderId,
@@ -674,6 +749,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       seenEvents.add(payload.eventId);
 
       toast.message("Payment slip received!");
+      enqueueSound(PAYMENT_SOUND_SRC);
 
       setOrders((prev) =>
         prev.map((order) =>
@@ -696,7 +772,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       channel.unbind(PAYMENT_RECEIPT_UPLOADED_EVENT, handlePaymentReceiptUploaded);
       pusher.unsubscribe(ADMIN_ORDERS_CHANNEL);
     };
-  }, [dictionary.newOrderToast, dictionary.statusUpdatedToast]);
+  }, [dictionary.newOrderToast, dictionary.statusUpdatedToast, enqueueSound]);
 
   // Render primary action button for each tab
   const renderPrimaryAction = (order: OrderAdminSummary) => {
@@ -730,11 +806,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         return (
           <Button
             size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
             disabled={isSaving}
             onClick={() => {
               setVerifyTarget(order);
               setPaymentReceipt(null);
+              setSlipLightboxOpen(false);
               fetchPaymentDetails(order);
               setVerifyModalOpen(true);
             }}
@@ -1090,16 +1166,22 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       <Dialog
         open={verifyModalOpen}
         onOpenChange={(open) => {
+          // Don't close the modal if the lightbox is open - just close the lightbox instead
+          if (!open && slipLightboxOpen) {
+            setSlipLightboxOpen(false);
+            return;
+          }
           setVerifyModalOpen(open);
           if (!open) {
             setVerifyTarget(null);
             setPaymentReceipt(null);
+            setSlipLightboxOpen(false);
           }
         }}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-slate-900">
               {dictionary.verifyPaymentModalTitle ?? "Verify Payment"}
             </DialogTitle>
           </DialogHeader>
@@ -1288,11 +1370,19 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       {slipLightboxOpen && paymentReceipt?.receiptUrl && (
         <div
           className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setSlipLightboxOpen(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setSlipLightboxOpen(false);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           <button
             type="button"
-            onClick={() => setSlipLightboxOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSlipLightboxOpen(false);
+            }}
             className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
             aria-label="Close"
           >
@@ -1301,6 +1391,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           <div
             className="relative w-full h-full max-w-3xl max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <Image
               src={paymentReceipt.receiptUrl}

@@ -14,7 +14,6 @@ import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { OrderRecord } from "@/lib/orders/types";
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
-import { ReceiptReviewSection } from "@/components/payments/admin/receipt-review";
 import { PaymentBadge } from "@/components/payments/admin/payment-badge";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 
@@ -82,14 +81,6 @@ export function OrderDetailModal({
     () => order?.payments?.find((p) => p.type === "combined") ?? null,
     [order?.payments]
   );
-
-  const reviewPayment = useMemo(() => {
-    if (!order) return null;
-    if (order.status === "payment_review") {
-      return combinedPayment;
-    }
-    return null;
-  }, [combinedPayment, order]);
 
   useEffect(() => {
     if (!order) return;
@@ -340,22 +331,6 @@ export function OrderDetailModal({
               </dl>
             )}
           </div>
-        )}
-
-        {/* Receipt Review Section - shows when awaiting verification */}
-        {reviewPayment && (
-          <ReceiptReviewSection
-            order={order}
-            payment={reviewPayment}
-            onVerified={() => {
-              onOrderUpdated?.();
-              onOpenChange(false);
-            }}
-            onRejected={() => {
-              onOrderUpdated?.();
-              onOpenChange(false);
-            }}
-          />
         )}
 
         {/* Order Items - Table/Kitchen Receipt Style */}
