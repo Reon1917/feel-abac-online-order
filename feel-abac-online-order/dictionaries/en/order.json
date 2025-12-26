@@ -59,6 +59,7 @@
   "paymentReviewWarningTitle": "Hang tight while we review your payment",
   "paymentReviewWarningBody": "Please keep this page open so we can confirm your slip and update the status instantly.",
   "cancelReasonDisplayLabel": "Reason provided",
+  "calculatingLabel": "Calculating...",
   "tabOngoing": "Ongoing",
   "tabCompleted": "Completed",
   "tabCancelled": "Cancelled",

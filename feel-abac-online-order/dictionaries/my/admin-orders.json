@@ -90,6 +90,7 @@
   "menuLanguageBurmese": "မြန်မာ မီနူး",
   "acceptModalTitle": "အော်ဒါ လက်ခံမည်",
   "acceptDeliveryFeeLabel": "ပို့ဆောင်ခ (THB)",
+  "deliveryFeeLabel": "ပို့ဆောင်ခ",
   "acceptDeliveryFeePlaceholder": "ပို့ဆောင်ခ ထည့်ပါ (pickup ဆိုရင် 0)",
   "acceptSuggestedFee": "အကြံပြုချက်",
   "acceptCustomerPays": "ဖောက်သည်ပေးရမည့်ငွေ",
@@ -113,12 +114,15 @@
   "tabClosedEmpty": "No closed orders",
   
   "actionAccept": "Accept Order",
+  "actionReject": "အော်ဒါ ငြင်းပယ်ရန်",
+  "actionCancel": "အော်ဒါ ပယ်ဖျက်ရန်",
   "actionVerifyPayment": "Verify Payment",
   "actionHandToDelivery": "Hand to Delivery",
   "actionMarkDelivered": "Mark Delivered",
   "actionClose": "Close Order",
   "actionMarkRefundRequested": "Mark refund requested",
   "actionMarkRefundPaid": "Mark refund paid",
+  "noRefundNeeded": "ပြန်အမ်းစရာမလို",
   
   "verifyPaymentModalTitle": "Verify Payment",
   "verifyPaymentConfirm": "Confirm Payment",
@@ -126,7 +130,16 @@
   "verifyPaymentSlipLabel": "Payment Slip",
   "verifyPaymentAmountLabel": "Expected Amount",
   
+  "slipRejectModalTitle": "ငွေလွှဲစလစ် ငြင်းပယ်ရန်",
+  "slipRejectModalDescription": "ဖောက်သည်ကို အကြောင်းကြားပြီး စလစ် အသစ် ပြန်တင်နိုင်ပါသည်။",
+  "slipRejectReasonLabel": "အကြောင်းပြချက် (ရွေးချယ်နိုင်)",
+  "slipRejectReasonPlaceholder": "ဥပမာ - ပမာဏ မကိုက်ညီပါ၊ ပုံမရှင်းပါ...",
+  "slipRejectSubmit": "စလစ် ငြင်းပယ်မည်",
+  "slipRejectSubmitting": "ငြင်းပယ်နေသည်...",
+  "slipRejectedToast": "စလစ် ငြင်းပယ်ပြီး - ဖောက်သည် ပြန်တင်နိုင်ပါသည်",
+  
   "handToDeliveryModalTitle": "Hand to Delivery",
+  "handoffDescription": "ပို့သမားဆီဆောင်မော်တော်စကား ပို့ုအပ်ဖျက်ရုံး အသေးစိတ်များကို ထည့်ပါ။",
   "handToDeliveryConfirm": "Confirm Handoff",
   "closeOrderConfirm": "Close & Archive",
   "actionsLabel": "Actions"

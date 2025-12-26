@@ -114,7 +114,11 @@ export type OrderAdminSummary = {
   refundStatus: RefundStatus | null;
   customerName: string;
   customerPhone: string;
+  subtotal: number;
+  deliveryFee: number | null;
   totalAmount: number;
   deliveryLabel: string;
   createdAt: string;
+  /** True if order has at least one verified payment (determines if refund is needed on cancel) */
+  hasVerifiedPayment: boolean;
 };

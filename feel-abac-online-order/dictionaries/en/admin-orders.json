@@ -90,6 +90,7 @@
   "menuLanguageBurmese": "Burmese names",
   "acceptModalTitle": "Accept Order",
   "acceptDeliveryFeeLabel": "Delivery Fee (THB)",
+  "deliveryFeeLabel": "Delivery Fee",
   "acceptDeliveryFeePlaceholder": "Enter delivery fee (0 for pickup)",
   "acceptSuggestedFee": "Suggested",
   "acceptCustomerPays": "Customer Pays",
@@ -113,12 +114,15 @@
   "tabClosedEmpty": "No closed orders",
   
   "actionAccept": "Accept Order",
+  "actionReject": "Reject Order",
+  "actionCancel": "Cancel Order",
   "actionVerifyPayment": "Verify Payment",
   "actionHandToDelivery": "Hand to Delivery",
   "actionMarkDelivered": "Mark Delivered",
   "actionClose": "Close Order",
   "actionMarkRefundRequested": "Mark refund requested",
   "actionMarkRefundPaid": "Mark refund paid",
+  "noRefundNeeded": "No refund needed",
   
   "verifyPaymentModalTitle": "Verify Payment",
   "verifyPaymentConfirm": "Confirm Payment",
@@ -126,7 +130,16 @@
   "verifyPaymentSlipLabel": "Payment Slip",
   "verifyPaymentAmountLabel": "Expected Amount",
   
+  "slipRejectModalTitle": "Reject Payment Slip",
+  "slipRejectModalDescription": "The customer will be notified and can upload a new payment slip.",
+  "slipRejectReasonLabel": "Reason (optional)",
+  "slipRejectReasonPlaceholder": "e.g., Amount doesn't match, unclear image...",
+  "slipRejectSubmit": "Reject Slip",
+  "slipRejectSubmitting": "Rejecting...",
+  "slipRejectedToast": "Slip rejected - customer can re-upload",
+  
   "handToDeliveryModalTitle": "Hand to Delivery",
+  "handoffDescription": "Enter the delivery tracking details before handing off to the courier.",
   "handToDeliveryConfirm": "Confirm Handoff",
   "closeOrderConfirm": "Close & Archive",
   "actionsLabel": "Actions"

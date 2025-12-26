@@ -113,6 +113,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   // Fullscreen slip lightbox state
   const [slipLightboxOpen, setSlipLightboxOpen] = useState(false);
 
+  // Slip rejection modal state (separate from order rejection)
+  const [slipRejectTarget, setSlipRejectTarget] = useState<OrderAdminSummary | null>(null);
+  const [slipRejectModalOpen, setSlipRejectModalOpen] = useState(false);
+  const [slipRejectReason, setSlipRejectReason] = useState("");
+  const [slipRejectSubmitting, setSlipRejectSubmitting] = useState(false);
+
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
 
@@ -362,6 +368,44 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       }
     },
     [dictionary.errorLoading, dictionary.statusUpdatedToast]
+  );
+
+  // Reject payment slip (customer can re-upload)
+  const handleRejectSlip = useCallback(
+    async (order: OrderAdminSummary, reason: string) => {
+      setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
+      try {
+        const response = await fetch(
+          `/api/admin/orders/${order.displayId}/reject-payment`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason: reason || undefined }),
+          }
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error ?? dictionary.errorLoading);
+        }
+        setOrders((prev) =>
+          prev.map((item) =>
+            item.id === order.id
+              ? { ...item, status: "awaiting_payment" as OrderStatus }
+              : item
+          )
+        );
+        toast.success(dictionary.slipRejectedToast ?? "Slip rejected - customer can re-upload");
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : dictionary.errorLoading
+        );
+        return false;
+      } finally {
+        setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
+      }
+    },
+    [dictionary.errorLoading, dictionary.slipRejectedToast]
   );
 
   // Hand off to delivery: PAID → HAND_TO_DELIVERY
@@ -683,6 +727,23 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     [rejectTarget, handleCancelOrder]
   );
 
+  // Handle slip rejection modal submit
+  const handleSlipRejectSubmit = useCallback(async () => {
+    if (!slipRejectTarget) return;
+    setSlipRejectSubmitting(true);
+    const success = await handleRejectSlip(slipRejectTarget, slipRejectReason);
+    setSlipRejectSubmitting(false);
+    if (success) {
+      setSlipRejectModalOpen(false);
+      setSlipRejectTarget(null);
+      setSlipRejectReason("");
+      // Also close the verify modal if open
+      setVerifyModalOpen(false);
+      setVerifyTarget(null);
+      setPaymentReceipt(null);
+    }
+  }, [slipRejectTarget, slipRejectReason, handleRejectSlip]);
+
   // Pusher realtime events
   useEffect(() => {
     const pusher = getPusherClient();
@@ -707,6 +768,8 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         refundStatus: null,
         customerName: payload.customerName,
         customerPhone: payload.customerPhone,
+        subtotal: payload.totalAmount,
+        deliveryFee: null,
         totalAmount: payload.totalAmount,
         deliveryLabel: payload.deliveryLabel,
         createdAt: payload.at,
@@ -722,7 +785,14 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       setOrders((prev) =>
         prev.map((order) =>
           order.id === payload.orderId
-            ? { ...order, status: payload.toStatus }
+            ? {
+                ...order,
+                status: payload.toStatus,
+                // Update amounts if provided (e.g. when order is accepted with delivery fee)
+                ...(payload.subtotal !== undefined && { subtotal: payload.subtotal }),
+                ...(payload.deliveryFee !== undefined && { deliveryFee: payload.deliveryFee }),
+                ...(payload.totalAmount !== undefined && { totalAmount: payload.totalAmount }),
+              }
             : order
         )
       );
@@ -861,6 +931,14 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         );
 
       case "cancelled":
+        // Only show refund options if there was a verified payment
+        if (!order.hasVerifiedPayment) {
+          return (
+            <span className="text-sm text-slate-500">
+              {dictionary.noRefundNeeded ?? "No refund needed"}
+            </span>
+          );
+        }
         if (order.refundStatus === "requested") {
           return (
             <Button
@@ -946,6 +1024,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
             <p className="text-base font-bold text-slate-900">
               {formatCurrency(order.totalAmount)}
             </p>
+            {order.deliveryFee != null && order.deliveryFee > 0 && (
+              <p className="text-xs text-slate-500">
+                {dictionary.subtotalLabel ?? "Subtotal"}: {formatCurrency(order.subtotal)} + {dictionary.deliveryFeeLabel ?? "Delivery"}: {formatCurrency(order.deliveryFee)}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -954,14 +1037,17 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
             {!isTerminal && order.status !== "awaiting_payment" && (
               <Button
                 size="sm"
-                variant="ghost"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                variant="outline"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                 onClick={() => {
                   setRejectTarget(order);
                   setRejectDialogOpen(true);
                 }}
               >
-                <X className="w-4 h-4" />
+                {/* After payment verified (order_in_kitchen onwards), show "Cancel Order" instead of "Reject Order" */}
+                {order.status === "order_processing" || order.status === "payment_review"
+                  ? (dictionary.actionReject ?? "Reject Order")
+                  : (dictionary.actionCancel ?? "Cancel Order")}
               </Button>
             )}
 
@@ -1072,43 +1158,50 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-emerald-600">
               {dictionary.acceptModalTitle ?? "Accept Order"}
             </DialogTitle>
           </DialogHeader>
           {acceptTarget && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Order</span>
-                  <span className="font-semibold text-slate-900">
-                    {acceptTarget.displayId}
-                  </span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-slate-500">Customer</span>
-                  <span className="font-semibold text-slate-900">
-                    {acceptTarget.customerName}
-                  </span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-slate-500">Location</span>
-                  <span className="font-medium text-slate-700">
-                    {acceptTarget.deliveryLabel}
-                  </span>
-                </div>
-                <div className="flex justify-between mt-2 pt-2 border-t border-slate-200">
-                  <span className="text-slate-500">Food Total</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatCurrency(acceptTarget.totalAmount)}
-                  </span>
+              {/* Order Summary Section */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Order Details
+                </h4>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Order ID</span>
+                    <span className="font-semibold text-slate-900">
+                      {acceptTarget.displayId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Customer</span>
+                    <span className="font-semibold text-slate-900">
+                      {acceptTarget.customerName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Location</span>
+                    <span className="font-medium text-slate-700">
+                      {acceptTarget.deliveryLabel}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-slate-200">
+                    <span className="text-slate-500">Food Total</span>
+                    <span className="font-semibold text-slate-900">
+                      {formatCurrency(acceptTarget.totalAmount)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">
-                  {dictionary.acceptDeliveryFeeLabel ?? "Delivery Fee (THB)"}
-                </label>
+              {/* Delivery Fee Input Section */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Set Delivery Fee
+                </h4>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -1123,6 +1216,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                 />
               </div>
 
+              {/* Total Summary Section */}
               <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-emerald-700">
@@ -1136,6 +1230,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                 </div>
               </div>
 
+              {/* Action Buttons */}
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   variant="outline"
@@ -1244,13 +1339,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                   variant="outline"
                   className="text-red-600 hover:bg-red-50"
                   onClick={() => {
-                    setVerifyModalOpen(false);
-                    setVerifyTarget(null);
-                    setPaymentReceipt(null);
-                    // Open reject dialog
+                    // Open slip rejection modal (NOT order rejection)
                     if (verifyTarget) {
-                      setRejectTarget(verifyTarget);
-                      setRejectDialogOpen(true);
+                      setSlipRejectTarget(verifyTarget);
+                      setSlipRejectReason("");
+                      setSlipRejectModalOpen(true);
                     }
                   }}
                 >
@@ -1271,6 +1364,63 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         </DialogContent>
       </Dialog>
 
+      {/* Slip Rejection Modal (separate from order rejection) */}
+      <Dialog
+        open={slipRejectModalOpen}
+        onOpenChange={(open) => {
+          setSlipRejectModalOpen(open);
+          if (!open) {
+            setSlipRejectTarget(null);
+            setSlipRejectReason("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-amber-600">
+              {dictionary.slipRejectModalTitle ?? "Reject Payment Slip"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              {dictionary.slipRejectModalDescription ?? "The customer will be notified and can upload a new payment slip."}
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                {dictionary.slipRejectReasonLabel ?? "Reason (optional)"}
+              </label>
+              <textarea
+                value={slipRejectReason}
+                onChange={(e) => setSlipRejectReason(e.target.value)}
+                placeholder={dictionary.slipRejectReasonPlaceholder ?? "e.g., Amount doesn't match, unclear image..."}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm min-h-[80px] focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSlipRejectModalOpen(false);
+                  setSlipRejectTarget(null);
+                  setSlipRejectReason("");
+                }}
+              >
+                {dictionary.cancel ?? "Cancel"}
+              </Button>
+              <Button
+                disabled={slipRejectSubmitting}
+                onClick={() => void handleSlipRejectSubmit()}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {slipRejectSubmitting
+                  ? (dictionary.slipRejectSubmitting ?? "Rejecting...")
+                  : (dictionary.slipRejectSubmit ?? "Reject Slip")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Hand to Delivery Modal */}
       <Dialog
         open={handoffModalOpen}
@@ -1285,34 +1435,47 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-emerald-600">
               {dictionary.handToDeliveryModalTitle ?? "Hand to Delivery"}
             </DialogTitle>
           </DialogHeader>
           {handoffTarget && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Order</span>
-                  <span className="font-semibold text-slate-900">
-                    {handoffTarget.displayId}
-                  </span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-slate-500">Customer</span>
-                  <span className="font-semibold text-slate-900">
-                    {handoffTarget.customerName}
-                  </span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-slate-500">Delivery to</span>
-                  <span className="font-medium text-slate-700">
-                    {handoffTarget.deliveryLabel}
-                  </span>
+              {/* Order Summary Card */}
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                <div className="grid gap-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">{dictionary.orderIdLabel ?? "Order"}</span>
+                    <span className="font-bold text-emerald-700">
+                      #{handoffTarget.displayId}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">{dictionary.customerLabel ?? "Customer"}</span>
+                    <span className="font-semibold text-slate-900">
+                      {handoffTarget.customerName}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">{dictionary.locationLabel ?? "Delivery to"}</span>
+                    <span className="font-medium text-slate-700 text-right max-w-[200px] truncate">
+                      {handoffTarget.deliveryLabel}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-emerald-100 pt-2 mt-1">
+                    <span className="text-slate-500">{dictionary.totalLabel ?? "Total"}</span>
+                    <span className="font-bold text-slate-900">
+                      {formatCurrency(handoffTarget.totalAmount)}
+                    </span>
+                  </div>
                 </div>
               </div>
 
+              {/* Tracking Info Section */}
               <div className="space-y-3">
+                <p className="text-sm text-slate-600">
+                  {dictionary.handoffDescription ?? "Enter the delivery tracking details before handing off to the courier."}
+                </p>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">
                     {dictionary.handoffVendorLabel ?? "Courier vendor (optional)"}
@@ -1322,19 +1485,19 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                     value={handoffVendor}
                     onChange={(e) => setHandoffVendor(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                    placeholder="Grab, Bolt, etc."
+                    placeholder="Grab, Bolt, Lalamove, etc."
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-slate-700">
-                    {dictionary.handoffTrackingLabel ?? "Delivery tracking link"}
+                    {dictionary.handoffTrackingLabel ?? "Delivery tracking link"} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="url"
                     value={handoffTrackingUrl}
                     onChange={(e) => setHandoffTrackingUrl(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                    placeholder="https://..."
+                    placeholder="https://grab.com/tracking/..."
                   />
                 </div>
               </div>
@@ -1349,7 +1512,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                     setHandoffTrackingUrl("");
                   }}
                 >
-                  Cancel
+                  {dictionary.cancel ?? "Cancel"}
                 </Button>
                 <Button
                   disabled={handoffSubmitting || !handoffTrackingUrl.trim()}

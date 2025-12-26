@@ -419,13 +419,33 @@ export function OrderDetailModal({
             
             {/* Subtotal Footer */}
             <div className="border-t-2 border-slate-300 bg-slate-100 px-4 py-3 sm:px-5 sm:py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-700">
-                  {dictionary.subtotalLabel ?? "Subtotal"}
-                </span>
-                <span className="text-xl font-bold text-slate-900 sm:text-2xl">
-                  {formatCurrency(order.subtotal)}
-                </span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">
+                    {dictionary.subtotalLabel ?? "Subtotal"}
+                  </span>
+                  <span className="text-sm font-medium text-slate-700">
+                    {formatCurrency(order.subtotal)}
+                  </span>
+                </div>
+                {typeof order.deliveryFee === "number" && order.deliveryFee > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">
+                      {dictionary.deliveryFeeLabel ?? "Delivery Fee"}
+                    </span>
+                    <span className="text-sm font-medium text-slate-700">
+                      {formatCurrency(order.deliveryFee)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-slate-300 pt-2">
+                  <span className="text-sm font-bold text-slate-700">
+                    {dictionary.totalLabel ?? "Total"}
+                  </span>
+                  <span className="text-xl font-bold text-slate-900 sm:text-2xl">
+                    {formatCurrency(order.totalAmount)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

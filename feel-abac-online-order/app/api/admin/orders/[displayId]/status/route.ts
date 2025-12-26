@@ -14,6 +14,7 @@ import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
 import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
+import { getOrderEmailDetails } from "@/lib/orders/queries";
 
 type Params = {
   displayId: string;
@@ -162,6 +163,10 @@ export async function PATCH(
     });
   }
   let emailTotalAmount: number | string | null = null;
+  // Track updated amounts for broadcasting (set when accept action updates totals)
+  let updatedSubtotal: number | undefined;
+  let updatedDeliveryFee: number | null | undefined;
+  let updatedTotalAmount: number | undefined;
 
   // Determine next status based on action
   let nextStatus: OrderStatus;
@@ -201,6 +206,11 @@ export async function PATCH(
     const foodTotal = Number(order.subtotal ?? 0);
     const combinedTotal = foodTotal + Math.round(deliveryFee);
     emailTotalAmount = combinedTotal;
+
+    // Track updated amounts for broadcasting
+    updatedSubtotal = foodTotal;
+    updatedDeliveryFee = Math.round(deliveryFee);
+    updatedTotalAmount = combinedTotal;
 
     // Update order with delivery fee and new total amount
     await db
@@ -319,13 +329,20 @@ export async function PATCH(
       at: now.toISOString(),
     });
 
-    await sendOrderStatusEmailNotification({
-      userId: order.userId,
-      displayId: order.displayId,
-      template: "handed_off",
-      totalAmount: order.totalAmount,
-      courierTrackingUrl,
-    });
+    // Fetch order details for email (wrapped in try-catch to not block order update)
+    try {
+      const orderDetails = await getOrderEmailDetails(order.displayId);
+      await sendOrderStatusEmailNotification({
+        userId: order.userId,
+        displayId: order.displayId,
+        template: "handed_off",
+        totalAmount: order.totalAmount,
+        courierTrackingUrl,
+        orderDetails,
+      });
+    } catch (emailError) {
+      console.error("[handed_off] Failed to send email notification:", emailError);
+    }
 
     return NextResponse.json({ status: nextStatus });
   } else if (action === "delivered") {
@@ -403,6 +420,10 @@ export async function PATCH(
     actorType: "admin",
     reason,
     at: now.toISOString(),
+    // Include updated amounts when they change (e.g. accept action)
+    ...(updatedSubtotal !== undefined && { subtotal: updatedSubtotal }),
+    ...(updatedDeliveryFee !== undefined && { deliveryFee: updatedDeliveryFee }),
+    ...(updatedTotalAmount !== undefined && { totalAmount: updatedTotalAmount }),
   });
 
   // If order is now closed (cancelled or delivered), broadcast close event and cleanup transient events
@@ -422,21 +443,35 @@ export async function PATCH(
   }
 
   if (action === "accept") {
-    await sendOrderStatusEmailNotification({
-      userId: order.userId,
-      displayId: order.displayId,
-      template: "proceed_to_payment",
-      totalAmount: emailTotalAmount ?? order.totalAmount,
-    });
+    // Fetch order details for email (wrapped in try-catch to not block order acceptance)
+    try {
+      const orderDetails = await getOrderEmailDetails(order.displayId);
+      await sendOrderStatusEmailNotification({
+        userId: order.userId,
+        displayId: order.displayId,
+        template: "proceed_to_payment",
+        totalAmount: emailTotalAmount ?? order.totalAmount,
+        orderDetails,
+      });
+    } catch (emailError) {
+      console.error("[accept] Failed to send email notification:", emailError);
+    }
   }
 
   if (action === "delivered") {
-    await sendOrderStatusEmailNotification({
-      userId: order.userId,
-      displayId: order.displayId,
-      template: "delivered",
-      totalAmount: order.totalAmount,
-    });
+    // Fetch order details for email (wrapped in try-catch to not block order update)
+    try {
+      const orderDetails = await getOrderEmailDetails(order.displayId);
+      await sendOrderStatusEmailNotification({
+        userId: order.userId,
+        displayId: order.displayId,
+        template: "delivered",
+        totalAmount: order.totalAmount,
+        orderDetails,
+      });
+    } catch (emailError) {
+      console.error("[delivered] Failed to send email notification:", emailError);
+    }
   }
 
   return NextResponse.json({

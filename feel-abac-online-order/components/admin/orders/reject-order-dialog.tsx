@@ -91,7 +91,7 @@ export function RejectOrderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{dictionary.rejectDialogTitle}</DialogTitle>
+          <DialogTitle className="text-red-600">{dictionary.rejectDialogTitle}</DialogTitle>
           <DialogDescription className="text-sm text-slate-500">
             {dictionary.rejectDialogSubtitle}
           </DialogDescription>
