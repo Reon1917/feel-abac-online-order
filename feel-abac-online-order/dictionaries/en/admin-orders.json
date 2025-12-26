@@ -136,11 +136,13 @@
   "slipRejectReasonPlaceholder": "e.g., Amount doesn't match, unclear image...",
   "slipRejectSubmit": "Reject Slip",
   "slipRejectSubmitting": "Rejecting...",
+  "slipRejectCancel": "Close",
   "slipRejectedToast": "Slip rejected - customer can re-upload",
   
   "handToDeliveryModalTitle": "Hand to Delivery",
   "handoffDescription": "Enter the delivery tracking details before handing off to the courier.",
   "handToDeliveryConfirm": "Confirm Handoff",
+  "handoffCancel": "Close",
   "closeOrderConfirm": "Close & Archive",
   "actionsLabel": "Actions"
 }

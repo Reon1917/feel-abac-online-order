@@ -311,16 +311,6 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
           row.buildingLabel ? `, ${row.buildingLabel}` : ""
         }`;
 
-  // Debug logging - remove after fixing
-  if (row.status === "cancelled") {
-    console.log("[DEBUG mapOrderAdminSummary]", {
-      displayId: row.displayId,
-      status: row.status,
-      hasVerifiedPayment: row.hasVerifiedPayment,
-      hasVerifiedPaymentType: typeof row.hasVerifiedPayment,
-    });
-  }
-
   return {
     id: row.id,
     displayId: row.displayId,
@@ -587,33 +577,40 @@ export async function getOrdersForUser(
  * Fetches the full order with items and formats it for email templates.
  * Uses admin privileges to access order regardless of user ownership.
  */
+/**
+ * Build order details for email notifications.
+ * Fetches the full order with items and formats it for email templates.
+ * Uses admin privileges to access order regardless of user ownership.
+ */
 export async function getOrderEmailDetails(displayId: string) {
   const order = await getOrderByDisplayId(displayId, { isAdmin: true });
   if (!order) return null;
 
   // Build address string from delivery info
   let deliveryAddress = "";
-  if (order.deliveryMode === "preset") {
-    // Fetch location details for preset delivery
-    if (order.deliveryLocationId) {
-      const [location] = await db
-        .select({
-          locationName: deliveryLocations.name,
-          buildingName: deliveryBuildings.name,
-        })
-        .from(deliveryLocations)
-        .leftJoin(
-          deliveryBuildings,
-          eq(deliveryLocations.buildingId, deliveryBuildings.id)
-        )
-        .where(eq(deliveryLocations.id, order.deliveryLocationId))
+  if (order.deliveryMode === "preset" && order.deliveryLocationId) {
+    // Fetch location and building details separately to avoid Drizzle ORM join issues
+    const locations = await db
+      .select({ condoName: deliveryLocations.condoName })
+      .from(deliveryLocations)
+      .where(eq(deliveryLocations.id, order.deliveryLocationId))
+      .limit(1);
+
+    const locationCondoName = locations[0]?.condoName ?? "";
+    let buildingLabel = "";
+
+    if (order.deliveryBuildingId) {
+      const buildings = await db
+        .select({ label: deliveryBuildings.label })
+        .from(deliveryBuildings)
+        .where(eq(deliveryBuildings.id, order.deliveryBuildingId))
         .limit(1);
-      if (location) {
-        deliveryAddress = [location.buildingName, location.locationName]
-          .filter(Boolean)
-          .join(" – ");
-      }
+      buildingLabel = buildings[0]?.label ?? "";
     }
+
+    deliveryAddress = [locationCondoName, buildingLabel]
+      .filter(Boolean)
+      .join(" – ");
   } else if (order.deliveryMode === "custom") {
     deliveryAddress = [order.customCondoName, order.customBuildingName]
       .filter(Boolean)

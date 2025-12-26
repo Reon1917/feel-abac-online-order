@@ -1405,7 +1405,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                   setSlipRejectReason("");
                 }}
               >
-                {dictionary.cancel ?? "Cancel"}
+                {dictionary.slipRejectCancel ?? "Close"}
               </Button>
               <Button
                 disabled={slipRejectSubmitting}
@@ -1512,7 +1512,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                     setHandoffTrackingUrl("");
                   }}
                 >
-                  {dictionary.cancel ?? "Cancel"}
+                  {dictionary.handoffCancel ?? "Close"}
                 </Button>
                 <Button
                   disabled={handoffSubmitting || !handoffTrackingUrl.trim()}

@@ -136,11 +136,11 @@
   "slipRejectReasonPlaceholder": "ဥပမာ - ပမာဏ မကိုက်ညီပါ၊ ပုံမရှင်းပါ...",
   "slipRejectSubmit": "စလစ် ငြင်းပယ်မည်",
   "slipRejectSubmitting": "ငြင်းပယ်နေသည်...",
+  "slipRejectCancel": "ပိတ်မည်",
   "slipRejectedToast": "စလစ် ငြင်းပယ်ပြီး - ဖောက်သည် ပြန်တင်နိုင်ပါသည်",
   
   "handToDeliveryModalTitle": "Hand to Delivery",
   "handoffDescription": "ပို့သမားဆီဆောင်မော်တော်စကား ပို့ုအပ်ဖျက်ရုံး အသေးစိတ်များကို ထည့်ပါ။",
-  "handToDeliveryConfirm": "Confirm Handoff",
-  "closeOrderConfirm": "Close & Archive",
+  "handToDeliveryConfirm": "Confirm Handoff",  "handoffCancel": "ပိတ်မည်",  "closeOrderConfirm": "Close & Archive",
   "actionsLabel": "Actions"
 }

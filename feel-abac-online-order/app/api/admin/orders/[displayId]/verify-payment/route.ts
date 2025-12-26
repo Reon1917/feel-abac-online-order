@@ -133,7 +133,7 @@ export async function POST(
     at: now.toISOString(),
   });
 
-  // Fetch order details for email (wrapped in try-catch to not block payment verification)
+  // Send email notification (wrapped in try-catch to not block payment verification)
   try {
     const orderDetails = await getOrderEmailDetails(order.displayId);
     await sendOrderStatusEmailNotification({

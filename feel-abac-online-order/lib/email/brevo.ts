@@ -32,12 +32,11 @@ function getBrevoConfig() {
 
 export async function sendTransactionalEmail(input: SendTransactionalEmailInput) {
   const config = getBrevoConfig();
-
-  if (!config) {
-    return;
-  }
+  if (!config) return;
 
   const { apiKey, senderEmail, senderName, baseUrl } = config;
+
+  if (!input.to || !input.subject) return;
 
   try {
     const response = await fetch(`${baseUrl}/smtp/email`, {
@@ -47,14 +46,11 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
         "api-key": apiKey,
       },
       body: JSON.stringify({
-        sender: {
-          email: senderEmail,
-          name: senderName,
-        },
+        sender: { email: senderEmail, name: senderName },
         to: [{ email: input.to }],
         subject: input.subject,
-        textContent: input.text,
-        htmlContent: input.html,
+        textContent: input.text ?? "",
+        htmlContent: input.html ?? "",
       }),
     });
 
