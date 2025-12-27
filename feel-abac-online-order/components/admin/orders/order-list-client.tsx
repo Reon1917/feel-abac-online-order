@@ -773,6 +773,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         totalAmount: payload.totalAmount,
         deliveryLabel: payload.deliveryLabel,
         createdAt: payload.at,
+        hasVerifiedPayment: false,
       };
 
       setOrders((prev) => [summary, ...prev]);
