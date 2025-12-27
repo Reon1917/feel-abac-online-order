@@ -8,6 +8,7 @@ import { sendTransactionalEmail } from "@/lib/email/brevo";
 import {
   buildOrderStatusEmail,
   type OrderStatusEmailTemplateKey,
+  type OrderEmailDetails,
 } from "@/lib/email/templates/order-status";
 
 type SendOrderStatusEmailNotificationInput = {
@@ -17,6 +18,8 @@ type SendOrderStatusEmailNotificationInput = {
   locale?: Locale;
   totalAmount?: string | number | null;
   courierTrackingUrl?: string | null;
+  // Extended order details
+  orderDetails?: OrderEmailDetails | null;
 };
 
 export async function sendOrderStatusEmailNotification(
@@ -42,6 +45,7 @@ export async function sendOrderStatusEmailNotification(
     locale: input.locale,
     totalAmount: input.totalAmount,
     courierTrackingUrl: input.courierTrackingUrl,
+    orderDetails: input.orderDetails ?? null,
   });
 
   await sendTransactionalEmail({

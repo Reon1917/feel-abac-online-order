@@ -295,10 +295,17 @@ export function ArchivedOrdersClient({
           const order = row.original;
           const isViewing = loadingOrderId === order.id;
           const refundSaving = refundState[order.id] === "saving";
+          // Only show refund options if there was a verified payment
           const canMarkRefundPaid =
-            order.status === "cancelled" && order.refundStatus === "requested";
+            order.status === "cancelled" && 
+            order.hasVerifiedPayment && 
+            order.refundStatus === "requested";
           const canMarkRefundRequested =
-            order.status === "cancelled" && !order.refundStatus;
+            order.status === "cancelled" && 
+            order.hasVerifiedPayment && 
+            !order.refundStatus;
+          const noRefundNeeded = 
+            order.status === "cancelled" && !order.hasVerifiedPayment;
 
           return (
             <div className="flex items-center gap-2">
@@ -310,6 +317,11 @@ export function ArchivedOrdersClient({
               >
                 {isViewing ? "..." : dictionary.viewOrder}
               </Button>
+              {noRefundNeeded && (
+                <span className="text-xs text-slate-500">
+                  {dictionary.noRefundNeeded ?? "No refund needed"}
+                </span>
+              )}
               {canMarkRefundPaid && (
                 <Button
                   size="sm"

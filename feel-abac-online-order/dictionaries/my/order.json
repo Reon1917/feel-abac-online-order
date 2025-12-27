@@ -59,6 +59,7 @@
   "paymentReviewWarningTitle": "ငွေပေးချေမှုကို ကျနော်တို့ စစ်ဆေးနေပါသည်",
   "paymentReviewWarningBody": "ကျေးဇူးပြု၍ ဤစာမျက်နှာကို ဖွင့်ထားပါ၊ ကျနော်တို့ သင့်စလစ်ကို အတည်ပြု၍ အဆင့်ကို ခဏတွင် အပ်ဒိတ်လုပ်ပါမည်။",
   "cancelReasonDisplayLabel": "ပေးပို့ထားသောအကြောင်းပြချက်",
+  "calculatingLabel": "တွက်ချက်နေသည်...",
   "tabOngoing": "လက်ရှိ",
   "tabCompleted": "ပြီးဆုံးပြီး",
   "tabCancelled": "ပယ်ဖျက်",

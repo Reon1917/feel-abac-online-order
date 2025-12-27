@@ -40,6 +40,10 @@ export type OrderStatusChangedPayload = BaseEventPayload & {
   toStatus: OrderStatus;
   actorType: "admin" | "user" | "system";
   reason?: string | null;
+  // Optional updated amounts (included when order totals change, e.g. accept with delivery fee)
+  subtotal?: number;
+  deliveryFee?: number | null;
+  totalAmount?: number;
 };
 
 export type OrderSubmittedPayload = BaseEventPayload & {

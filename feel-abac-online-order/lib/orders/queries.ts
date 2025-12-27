@@ -262,6 +262,8 @@ const adminSummarySelect = {
   refundStatus: orders.refundStatus,
   customerName: orders.customerName,
   customerPhone: orders.customerPhone,
+  subtotal: orders.subtotal,
+  deliveryFee: orders.deliveryFee,
   totalAmount: orders.totalAmount,
   createdAt: orders.createdAt,
   deliveryMode: orders.deliveryMode,
@@ -269,6 +271,14 @@ const adminSummarySelect = {
   customBuildingName: orders.customBuildingName,
   locationCondoName: deliveryLocations.condoName,
   buildingLabel: deliveryBuildings.label,
+  // Subquery to check if order has verified payment
+  hasVerifiedPayment: sql<string>`(
+    SELECT CASE WHEN EXISTS (
+      SELECT 1 FROM order_payments op 
+      WHERE op.order_id = orders.id 
+      AND op.status = 'verified'
+    ) THEN 'true' ELSE 'false' END
+  )`.as("has_verified_payment"),
 } as const;
 
 type AdminSummaryRow = {
@@ -279,6 +289,8 @@ type AdminSummaryRow = {
   refundStatus: string | null;
   customerName: string;
   customerPhone: string;
+  subtotal: string | null;
+  deliveryFee: string | null;
   totalAmount: string | null;
   createdAt: Date | null;
   deliveryMode: string | null;
@@ -286,6 +298,7 @@ type AdminSummaryRow = {
   customBuildingName: string | null;
   locationCondoName: string | null;
   buildingLabel: string | null;
+  hasVerifiedPayment: string;
 };
 
 function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
@@ -306,9 +319,12 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     refundStatus: (row.refundStatus as RefundStatus) ?? null,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
+    subtotal: numericToNumber(row.subtotal),
+    deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : null,
     totalAmount: numericToNumber(row.totalAmount),
     deliveryLabel,
     createdAt: dateToIso(row.createdAt) ?? "",
+    hasVerifiedPayment: row.hasVerifiedPayment === "true",
   };
 }
 
@@ -554,4 +570,74 @@ export async function getOrdersForUser(
     itemCount: countMap.get(row.id) ?? 0,
     createdAt: dateToIso(row.createdAt) ?? "",
   }));
+}
+
+/**
+ * Build order details for email notifications.
+ * Fetches the full order with items and formats it for email templates.
+ * Uses admin privileges to access order regardless of user ownership.
+ */
+export async function getOrderEmailDetails(displayId: string) {
+  const order = await getOrderByDisplayId(displayId, { isAdmin: true });
+  if (!order) return null;
+
+  // Build address string from delivery info
+  let deliveryAddress = "";
+  if (order.deliveryMode === "preset" && order.deliveryLocationId) {
+    // Fetch location and building details separately to avoid Drizzle ORM join issues
+    const locations = await db
+      .select({ condoName: deliveryLocations.condoName })
+      .from(deliveryLocations)
+      .where(eq(deliveryLocations.id, order.deliveryLocationId))
+      .limit(1);
+
+    const locationCondoName = locations[0]?.condoName ?? "";
+    let buildingLabel = "";
+
+    if (order.deliveryBuildingId) {
+      const buildings = await db
+        .select({ label: deliveryBuildings.label })
+        .from(deliveryBuildings)
+        .where(eq(deliveryBuildings.id, order.deliveryBuildingId))
+        .limit(1);
+      buildingLabel = buildings[0]?.label ?? "";
+    }
+
+    deliveryAddress = [locationCondoName, buildingLabel]
+      .filter(Boolean)
+      .join(" – ");
+  } else if (order.deliveryMode === "custom") {
+    deliveryAddress = [order.customCondoName, order.customBuildingName]
+      .filter(Boolean)
+      .join(" – ");
+  }
+
+  if (!deliveryAddress) {
+    deliveryAddress = "See order for details";
+  }
+
+  // Build items array for email
+  const items = (order.items ?? []).map((item) => {
+    const choices = (item.choices ?? [])
+      .filter((c) => c.selectionRole !== "base")
+      .map((c) => c.optionName);
+    return {
+      name: item.menuItemName,
+      quantity: item.quantity,
+      price: item.totalPrice,
+      choices: choices.length > 0 ? choices : undefined,
+      note: item.note,
+    };
+  });
+
+  return {
+    customerName: order.customerName ?? "Customer",
+    customerPhone: order.customerPhone ?? "",
+    deliveryAddress,
+    deliveryNotes: order.deliveryNotes,
+    orderNote: order.orderNote,
+    subtotal: order.subtotal,
+    deliveryFee: order.deliveryFee,
+    items,
+  };
 }

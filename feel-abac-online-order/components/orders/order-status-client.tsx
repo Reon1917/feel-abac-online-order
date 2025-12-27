@@ -592,12 +592,26 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
           <div className="flex items-center justify-between">
             <span>{dictionary.deliveryFeeLabel}</span>
             <span className="font-semibold">
-              {formatCurrency(order.deliveryFee)}
+              {order.status === "order_processing" ? (
+                <span className="text-amber-600 italic">
+                  {dictionary.calculatingLabel ?? "Calculating..."}
+                </span>
+              ) : (
+                formatCurrency(order.deliveryFee)
+              )}
             </span>
           </div>
           <div className="flex items-center justify-between text-base font-semibold text-slate-900">
             <span>{dictionary.orderTotalLabel}</span>
-            <span>{formatCurrency(order.totalAmount)}</span>
+            <span>
+              {order.status === "order_processing" ? (
+                <span className="text-amber-600 italic">
+                  {dictionary.calculatingLabel ?? "Calculating..."}
+                </span>
+              ) : (
+                formatCurrency(order.totalAmount)
+              )}
+            </span>
           </div>
         </div>
       </section>

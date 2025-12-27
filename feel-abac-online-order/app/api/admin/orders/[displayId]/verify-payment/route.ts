@@ -16,6 +16,7 @@ import {
   broadcastOrderStatusChanged,
 } from "@/lib/orders/realtime";
 import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
+import { getOrderEmailDetails } from "@/lib/orders/queries";
 
 type Params = {
   displayId: string;
@@ -132,12 +133,19 @@ export async function POST(
     at: now.toISOString(),
   });
 
-  await sendOrderStatusEmailNotification({
-    userId: order.userId,
-    displayId: order.displayId,
-    template: "payment_verified",
-    totalAmount: order.totalAmount,
-  });
+  // Send email notification (wrapped in try-catch to not block payment verification)
+  try {
+    const orderDetails = await getOrderEmailDetails(order.displayId);
+    await sendOrderStatusEmailNotification({
+      userId: order.userId,
+      displayId: order.displayId,
+      template: "payment_verified",
+      totalAmount: order.totalAmount,
+      orderDetails,
+    });
+  } catch (emailError) {
+    console.error("[verify-payment] Failed to send email notification:", emailError);
+  }
 
   return NextResponse.json({ status: newStatus });
 }
