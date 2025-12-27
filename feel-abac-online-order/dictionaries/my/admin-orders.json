@@ -141,6 +141,8 @@
   
   "handToDeliveryModalTitle": "Hand to Delivery",
   "handoffDescription": "ပို့သမားဆီဆောင်မော်တော်စကား ပို့ုအပ်ဖျက်ရုံး အသေးစိတ်များကို ထည့်ပါ။",
-  "handToDeliveryConfirm": "Confirm Handoff",  "handoffCancel": "ပိတ်မည်",  "closeOrderConfirm": "Close & Archive",
+  "handToDeliveryConfirm": "Confirm Handoff",
+  "handoffCancel": "ပိတ်မည်",
+  "closeOrderConfirm": "Close & Archive",
   "actionsLabel": "Actions"
 }

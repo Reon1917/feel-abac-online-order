@@ -577,11 +577,6 @@ export async function getOrdersForUser(
  * Fetches the full order with items and formats it for email templates.
  * Uses admin privileges to access order regardless of user ownership.
  */
-/**
- * Build order details for email notifications.
- * Fetches the full order with items and formats it for email templates.
- * Uses admin privileges to access order regardless of user ownership.
- */
 export async function getOrderEmailDetails(displayId: string) {
   const order = await getOrderByDisplayId(displayId, { isAdmin: true });
   if (!order) return null;
