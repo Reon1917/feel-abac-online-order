@@ -49,15 +49,19 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
         sender: { email: senderEmail, name: senderName },
         to: [{ email: input.to }],
         subject: input.subject,
-        textContent: input.text ?? "",
-        htmlContent: input.html ?? "",
+        textContent: input.text || undefined,
+        htmlContent: input.html || undefined,
       }),
     });
 
     if (!response.ok && process.env.NODE_ENV !== "production") {
+      const errorBody = await response.text().catch(() => "");
       console.error("[brevo] Failed to send email", {
         status: response.status,
         statusText: response.statusText,
+        body: errorBody,
+        sender: senderEmail,
+        to: input.to,
       });
     }
   } catch (error) {
