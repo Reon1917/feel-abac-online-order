@@ -7,6 +7,7 @@ import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { MobileBottomNav } from "@/components/menu/mobile-bottom-nav";
 import { ProfileClient } from "@/components/profile/profile-client";
+import { hasCredentialAccount } from "@/lib/auth/queries";
 
 type PageProps = {
   params: Promise<{
@@ -28,7 +29,10 @@ export default async function ProfilePage({ params }: PageProps) {
     redirect(withLocalePath(locale, "/"));
   }
 
-  const profile = await getUserProfile(session.user.id);
+  const [profile, hasPassword] = await Promise.all([
+    getUserProfile(session.user.id),
+    hasCredentialAccount(session.user.id),
+  ]);
 
   // If user hasn't completed onboarding, redirect them there
   if (!profile?.phoneNumber) {
@@ -46,6 +50,7 @@ export default async function ProfilePage({ params }: PageProps) {
               email: session.user.email,
             }}
             phone={profile.phoneNumber}
+            hasPassword={hasPassword}
             dictionary={dictionary}
             common={common}
             locale={locale}

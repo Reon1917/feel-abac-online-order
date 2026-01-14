@@ -34,6 +34,7 @@ type ProfileClientProps = {
     email: string;
   };
   phone: string;
+  hasPassword: boolean;
   dictionary: ProfileDictionary;
   common: CommonDictionary;
   locale: Locale;
@@ -42,6 +43,7 @@ type ProfileClientProps = {
 export function ProfileClient({
   user,
   phone,
+  hasPassword,
   dictionary,
   common,
   locale,
@@ -76,16 +78,23 @@ export function ProfileClient({
       return;
     }
 
+    // For users with password, require password entry
+    if (hasPassword && !deletePassword) {
+      toast.error(toastMessages.passwordRequired);
+      return;
+    }
+
     setIsDeletingAccount(true);
 
     try {
+      // Only send password if user has one; OAuth-only users get email verification
       const response = await fetch("/api/user/delete-account", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          password: deletePassword,
+          password: hasPassword ? deletePassword : undefined,
         }),
       });
 
@@ -339,20 +348,29 @@ export function ProfileClient({
           <p className="text-xs text-red-700">
             {sections.dangerZone.description}
           </p>
+          {/* OAuth-only users see email verification flow hint */}
+          {!hasPassword && (
+            <p className="text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-md">
+              {sections.dangerZone.oauthDeleteHint}
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr),auto] sm:items-end">
             <div className="space-y-2">
-              <label className="flex flex-col gap-1 text-xs">
-                <span className="font-medium text-slate-800">
-                  {sections.dangerZone.passwordLabel}
-                </span>
-                <input
-                  type="password"
-                  value={deletePassword}
-                  onChange={(event) => setDeletePassword(event.target.value)}
-                  placeholder={sections.dangerZone.passwordPlaceholder}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
-                />
-              </label>
+              {/* Only show password field if user has a password */}
+              {hasPassword && (
+                <label className="flex flex-col gap-1 text-xs">
+                  <span className="font-medium text-slate-800">
+                    {sections.dangerZone.passwordLabel}
+                  </span>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    placeholder={sections.dangerZone.passwordPlaceholder}
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
+                  />
+                </label>
+              )}
               <label className="flex flex-col gap-1 text-xs">
                 <span className="font-medium text-slate-800">
                   {sections.dangerZone.confirmLabel}
@@ -377,7 +395,9 @@ export function ProfileClient({
             >
               {isDeletingAccount
                 ? sections.dangerZone.deletingLabel
-                : sections.dangerZone.deleteButton}
+                : hasPassword
+                  ? sections.dangerZone.deleteButton
+                  : sections.dangerZone.sendVerificationButton}
             </button>
           </div>
         </div>

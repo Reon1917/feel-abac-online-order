@@ -37,11 +37,13 @@
       "title": "Danger zone",
       "description": "Deleting your account is permanent. Your past orders may remain for restaurant records, but you will no longer be able to sign in.",
       "subtitle": "We will send you a confirmation email before final deletion.",
-      "passwordLabel": "Current password (recommended)",
+      "oauthDeleteHint": "You signed in with Google, so we'll send you a confirmation email instead of asking for a password.",
+      "passwordLabel": "Current password",
       "passwordPlaceholder": "Enter your password",
       "confirmLabel": "Type DELETE to confirm",
       "confirmPlaceholder": "DELETE",
       "deleteButton": "Delete account",
+      "sendVerificationButton": "Send confirmation email",
       "deletingLabel": "Deleting…"
     }
   },
@@ -51,6 +53,7 @@
     "accountDeleted": "Your account has been deleted.",
     "accountDeleteVerificationSent": "Check your email to confirm account deletion.",
     "accountDeleteError": "Failed to delete your account. Please try again.",
-    "deleteConfirmMismatch": "Type DELETE exactly to confirm account deletion."
+    "deleteConfirmMismatch": "Type DELETE exactly to confirm account deletion.",
+    "passwordRequired": "Please enter your password to delete your account."
   }
 }
