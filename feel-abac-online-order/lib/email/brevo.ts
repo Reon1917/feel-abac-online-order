@@ -61,7 +61,8 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
         statusText: response.statusText,
         body: errorBody,
         sender: senderEmail,
-        to: input.to,
+        to: input.to?.replace(/(.{2}).*@/, "$1***@"), // Mask email
+      });
       });
     }
   } catch (error) {
