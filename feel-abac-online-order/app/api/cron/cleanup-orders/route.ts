@@ -30,11 +30,22 @@ function extractUploadThingKey(url: string | null): string | null {
 }
 
 export async function GET(request: Request) {
-  // Verify Vercel cron secret
+  // Verify Vercel cron secret - fail closed in production
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
+  const isProduction = process.env.NODE_ENV === "production";
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    if (isProduction) {
+      console.error("[cleanup-orders] CRON_SECRET is not set in production - blocking request");
+      return NextResponse.json(
+        { error: "Server misconfiguration: CRON_SECRET not set" },
+        { status: 500 }
+      );
+    }
+    // Dev/local: allow but warn
+    console.warn("[cleanup-orders] CRON_SECRET not set - allowing request in development");
+  } else if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
