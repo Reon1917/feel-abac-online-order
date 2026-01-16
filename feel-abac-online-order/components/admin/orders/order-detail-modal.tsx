@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
+import Image from "next/image";
+import { X, ImageIcon } from "lucide-react";
 
 import {
   Dialog,
@@ -74,6 +76,7 @@ export function OrderDetailModal({
   const [courierTrackingUrl, setCourierTrackingUrl] = useState("");
   const [handoffSaving, setHandoffSaving] = useState(false);
   const [deliverSaving, setDeliverSaving] = useState(false);
+  const [receiptLightboxOpen, setReceiptLightboxOpen] = useState(false);
   const { menuLocale } = useMenuLocale();
 
   // Find combined payment
@@ -231,6 +234,32 @@ export function OrderDetailModal({
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-slate-600">Payment:</span>
             <PaymentBadge payment={combinedPayment} />
+          </div>
+        )}
+
+        {/* Payment Receipt Preview - Clickable to view fullscreen */}
+        {combinedPayment?.receiptUrl && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Payment Receipt
+            </p>
+            <button
+              type="button"
+              onClick={() => setReceiptLightboxOpen(true)}
+              className="group relative aspect-[3/4] w-32 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:border-emerald-300"
+            >
+              <Image
+                src={combinedPayment.receiptUrl}
+                alt="Payment receipt"
+                fill
+                className="object-cover"
+                sizes="128px"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition">
+                <ImageIcon className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition" />
+              </div>
+            </button>
+            <p className="mt-2 text-xs text-slate-500">Click to view full size</p>
           </div>
         )}
 
@@ -480,6 +509,42 @@ export function OrderDetailModal({
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Fullscreen Receipt Lightbox */}
+    {receiptLightboxOpen && combinedPayment?.receiptUrl && (
+      <div
+        className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+        onClick={() => setReceiptLightboxOpen(false)}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setReceiptLightboxOpen(false);
+          }}
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-6 h-6 text-white" />
+        </button>
+        <div
+          className="relative w-full h-full max-w-3xl max-h-[90vh]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Image
+            src={combinedPayment.receiptUrl}
+            alt="Payment receipt - full size"
+            fill
+            className="object-contain"
+            sizes="(max-width: 768px) 100vw, 800px"
+            priority
+          />
+        </div>
+        <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+          Tap anywhere to close
+        </p>
+      </div>
+    )}
     </>
   );
 }
