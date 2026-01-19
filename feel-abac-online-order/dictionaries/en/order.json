@@ -67,5 +67,18 @@
   "listPageTitle": "Your Orders",
   "noOrdersYet": "No orders yet",
   "startOrdering": "Start ordering to see your order history here.",
-  "trackDelivery": "Track delivery"
+  "trackDelivery": "Track delivery",
+  "downloadReceipt": "Download Receipt",
+  "receiptTitle": "Order Receipt",
+  "receiptDate": "Date",
+  "receiptCustomer": "Customer",
+  "receiptDeliveryAddress": "Delivery Address",
+  "receiptDeliveryFallback": "See order for details",
+  "receiptNoItems": "No items",
+  "receiptFree": "Free",
+  "receiptDiscount": "Discount",
+  "receiptThankYou": "Thank you for your order!",
+  "receiptFooter": "Feel ABAC – Delicious food delivered to your door",
+  "receiptPrint": "Print / Save PDF",
+  "receiptPrintedOn": "Printed on"
 }

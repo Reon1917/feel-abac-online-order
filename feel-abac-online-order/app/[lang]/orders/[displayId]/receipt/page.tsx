@@ -1,9 +1,16 @@
-import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
+import { notFound, redirect } from "next/navigation";
 
+import { ReceiptView } from "@/components/orders/receipt-view";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { getOrderByDisplayId } from "@/lib/orders/queries";
+import { getSession } from "@/lib/session";
+import { db } from "@/src/db/client";
+import { deliveryLocations, deliveryBuildings } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 
-// TODO: Revisit PDF receipt export for this route if/when it's reintroduced.
 type PageProps = {
   params: Promise<{
     lang: string;
@@ -11,9 +18,71 @@ type PageProps = {
   }>;
 };
 
-export default async function OrderReceiptPage({ params }: PageProps) {
+export default async function ReceiptPage({ params }: PageProps) {
+  noStore();
+
   const { lang, displayId } = await params;
   const locale = lang as Locale;
 
-  redirect(withLocalePath(locale, `/orders/${displayId}`));
+  const session = await getSession();
+  if (!session?.session?.user) {
+    redirect(withLocalePath(locale, "/"));
+  }
+
+  const order = await getOrderByDisplayId(displayId, {
+    userId: session.session.user.id,
+    isAdmin: session.isAdmin,
+  });
+
+  if (!order) {
+    notFound();
+  }
+
+  // Only allow receipt for delivered or closed orders
+  if (order.status !== "delivered" && order.status !== "closed") {
+    redirect(withLocalePath(locale, `/orders/${displayId}`));
+  }
+
+  const dictionary = getDictionary(locale, "order");
+
+  // Build delivery address string
+  let deliveryAddress = "";
+  if (order.deliveryMode === "preset" && order.deliveryLocationId) {
+    const [location] = await db
+      .select({ condoName: deliveryLocations.condoName })
+      .from(deliveryLocations)
+      .where(eq(deliveryLocations.id, order.deliveryLocationId))
+      .limit(1);
+
+    let buildingLabel = "";
+    if (order.deliveryBuildingId) {
+      const [building] = await db
+        .select({ label: deliveryBuildings.label })
+        .from(deliveryBuildings)
+        .where(eq(deliveryBuildings.id, order.deliveryBuildingId))
+        .limit(1);
+      buildingLabel = building?.label ?? "";
+    }
+
+    deliveryAddress = [location?.condoName, buildingLabel]
+      .filter(Boolean)
+      .join(" – ");
+  } else if (order.deliveryMode === "custom") {
+    deliveryAddress = [order.customCondoName, order.customBuildingName]
+      .filter(Boolean)
+      .join(" – ");
+  }
+
+  if (!deliveryAddress) {
+    deliveryAddress = dictionary.receiptDeliveryFallback ?? "See order for details";
+  }
+
+  return (
+    <ReceiptView
+      order={order}
+      deliveryAddress={deliveryAddress}
+      dictionary={dictionary}
+      locale={locale}
+    />
+  );
 }
