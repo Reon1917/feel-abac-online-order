@@ -3,8 +3,6 @@
 import type orderDictionary from "@/dictionaries/en/order.json";
 import type { OrderRecord } from "@/lib/orders/types";
 import type { Locale } from "@/lib/i18n/config";
-import { withLocalePath } from "@/lib/i18n/path";
-import Link from "next/link";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -15,22 +13,14 @@ type Props = {
   locale: Locale;
 };
 
-const currencyFormatter = new Intl.NumberFormat("en-TH", {
-  style: "currency",
-  currency: "THB",
-  minimumFractionDigits: 0,
-});
-
 const dateFormatter = new Intl.DateTimeFormat("en-TH", {
   timeZone: "Asia/Bangkok",
-  dateStyle: "long",
-  timeStyle: "short",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
 });
-
-function formatCurrency(amount: number | null | undefined) {
-  const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
-  return currencyFormatter.format(safe);
-}
 
 function formatDate(value: string | null) {
   if (!value) return "";
@@ -39,67 +29,51 @@ function formatDate(value: string | null) {
   return dateFormatter.format(date);
 }
 
-export function ReceiptView({ order, deliveryAddress, dictionary, locale }: Props) {
+function formatAmount(amount: number | null | undefined) {
+  const safe = typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
+  return safe.toLocaleString();
+}
+
+export function ReceiptView({ order, deliveryAddress, dictionary }: Props) {
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <>
-      {/* Print-specific styles */}
       <style jsx global>{`
         @media print {
           @page {
-            size: A4;
-            margin: 15mm;
+            size: 80mm auto;
+            margin: 4mm;
           }
-          
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          
           .no-print {
             display: none !important;
           }
-          
-          .print-only {
-            display: block !important;
-          }
-          
-          .receipt-container {
+          .receipt-wrapper {
             padding: 0 !important;
             background: white !important;
             min-height: auto !important;
           }
-          
-          .receipt-card {
+          .receipt-paper {
             box-shadow: none !important;
-            border: none !important;
+            max-width: none !important;
             border-radius: 0 !important;
-          }
-        }
-        
-        @media screen {
-          .print-only {
-            display: none !important;
           }
         }
       `}</style>
 
-      <div className="receipt-container min-h-screen bg-slate-100 py-8 px-4 sm:px-6">
-        {/* Screen-only header with actions */}
-        <div className="no-print mx-auto max-w-2xl mb-6 flex items-center justify-between">
-          <Link
-            href={withLocalePath(locale, `/orders/${order.displayId}`)}
-            className="inline-flex items-center text-sm font-semibold text-emerald-700 hover:text-emerald-800"
-          >
-            ← {dictionary.backToMenu ?? "Back"}
-          </Link>
+      <div className="receipt-wrapper min-h-screen bg-slate-200 py-6 px-4">
+        {/* Print button - screen only */}
+        <div className="no-print mx-auto max-w-sm mb-4 flex justify-end">
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -116,167 +90,118 @@ export function ReceiptView({ order, deliveryAddress, dictionary, locale }: Prop
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
               <rect width="12" height="8" x="6" y="14" />
             </svg>
-            {dictionary.receiptPrint ?? "Print / Save PDF"}
+            {dictionary.receiptPrint ?? "Print"}
           </button>
         </div>
 
-        {/* Receipt card */}
-        <div className="receipt-card mx-auto max-w-2xl bg-white shadow-lg rounded-xl overflow-hidden">
+        {/* Receipt paper */}
+        <div className="receipt-paper mx-auto max-w-sm bg-white shadow-lg font-mono text-xs leading-tight">
           {/* Header */}
-          <div className="bg-emerald-600 px-6 py-5 text-center text-white print:bg-emerald-600">
-            <h1 className="text-2xl font-bold tracking-tight">Feel ABAC</h1>
-            <p className="mt-1 text-emerald-100 text-sm">
-              {dictionary.receiptTitle ?? "Order Receipt"}
-            </p>
+          <div className="text-center py-4 border-b border-dashed border-slate-400">
+            <h1 className="text-lg font-bold tracking-wide">Feel ABAC</h1>
+            <p className="text-[10px] text-slate-500 mt-1">Order #{order.displayId}</p>
           </div>
 
-          {/* Order info */}
-          <div className="px-6 py-5 border-b border-slate-200">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-slate-500 font-medium uppercase text-xs tracking-wide">
-                  {dictionary.orderIdLabel ?? "Order"}
-                </p>
-                <p className="mt-1 font-semibold text-slate-900">{order.displayId}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-slate-500 font-medium uppercase text-xs tracking-wide">
-                  {dictionary.receiptDate ?? "Date"}
-                </p>
-                <p className="mt-1 font-semibold text-slate-900">
-                  {formatDate(order.createdAt)}
-                </p>
-              </div>
+          {/* Customer & Date */}
+          <div className="px-3 py-3 border-b border-dashed border-slate-400 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Date:</span>
+              <span>{formatDate(order.createdAt)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Customer:</span>
+              <span>{order.customerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Phone:</span>
+              <span>{order.customerPhone}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-500 shrink-0">Address:</span>
+              <span className="text-right">{deliveryAddress}</span>
             </div>
           </div>
 
-          {/* Customer info */}
-          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-slate-500 font-medium uppercase text-xs tracking-wide">
-                  {dictionary.receiptCustomer ?? "Customer"}
-                </p>
-                <p className="mt-1 font-semibold text-slate-900">{order.customerName}</p>
-                <p className="text-slate-600">{order.customerPhone}</p>
-              </div>
-              <div>
-                <p className="text-slate-500 font-medium uppercase text-xs tracking-wide">
-                  {dictionary.receiptDeliveryAddress ?? "Delivery Address"}
-                </p>
-                <p className="mt-1 font-semibold text-slate-900">{deliveryAddress}</p>
-                {order.deliveryNotes && (
-                  <p className="text-slate-600 text-xs mt-1 italic">
-                    {order.deliveryNotes}
-                  </p>
-                )}
-              </div>
+          {/* Items header */}
+          <div className="px-3 py-2 border-b border-slate-300 bg-slate-50">
+            <div className="flex text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+              <span className="flex-1">Item</span>
+              <span className="w-8 text-center">Qty</span>
+              <span className="w-16 text-right">Price</span>
             </div>
           </div>
 
           {/* Items */}
-          <div className="px-6 py-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">
-              {dictionary.itemsLabel ?? "Items"}
-            </h2>
-            <div className="divide-y divide-slate-200">
-              {order.items.length === 0 ? (
-                <p className="text-sm text-slate-500 py-4">
-                  {dictionary.receiptNoItems ?? "No items"}
-                </p>
-              ) : (
-                order.items.map((item) => (
-                  <div key={item.id} className="py-3">
-                    <div className="flex justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="font-semibold text-slate-900">
-                          {item.menuItemName}
-                          <span className="ml-2 text-slate-500 font-normal">
-                            ×{item.quantity}
-                          </span>
-                        </p>
-                        {item.choices.length > 0 && (
-                          <div className="mt-1 text-xs text-slate-600">
-                            {item.choices.map((choice) => (
-                              <span key={choice.id} className="inline-block mr-2">
-                                • {choice.optionName}
-                                {choice.extraPrice > 0 && (
-                                  <span className="text-slate-400 ml-1">
-                                    (+{formatCurrency(choice.extraPrice)})
-                                  </span>
-                                )}
-                              </span>
-                            ))}
+          <div className="px-3 py-2">
+            {order.items.length === 0 ? (
+              <p className="text-slate-400 py-2">No items</p>
+            ) : (
+              order.items.map((item) => {
+                // Build choice/note string
+                const extras: string[] = [];
+                item.choices.forEach((c) => {
+                  if (c.selectionRole !== "base") {
+                    extras.push(c.optionNameMm || c.optionName);
+                  }
+                });
+                if (item.note) {
+                  extras.push(`"${item.note}"`);
+                }
+                const extrasStr = extras.length > 0 ? extras.join(", ") : null;
+
+                // Use Burmese name if available, fallback to English
+                const itemName = item.menuItemNameMm || item.menuItemName;
+                const menuCode = item.menuCode || "";
+
+                return (
+                  <div key={item.id} className="py-1.5 border-b border-dotted border-slate-200 last:border-0">
+                    <div className="flex items-start">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold">
+                          {menuCode && <span className="text-slate-500">{menuCode} </span>}
+                          {itemName}
+                        </span>
+                        {extrasStr && (
+                          <div className="text-[10px] text-slate-500 mt-0.5 pl-2">
+                            └ {extrasStr}
                           </div>
                         )}
-                        {item.note && (
-                          <p className="mt-1 text-xs text-slate-500 italic">
-                            Note: {item.note}
-                          </p>
-                        )}
                       </div>
-                      <div className="text-right font-semibold text-slate-900 whitespace-nowrap">
-                        {formatCurrency(item.totalPrice)}
-                      </div>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <span className="w-16 text-right">{formatAmount(item.totalPrice)}</span>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                );
+              })
+            )}
           </div>
 
           {/* Totals */}
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-slate-600">
-                <span>{dictionary.subtotalLabel ?? "Subtotal"}</span>
-                <span>{formatCurrency(order.subtotal)}</span>
+          <div className="px-3 py-3 border-t border-dashed border-slate-400 space-y-1">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{formatAmount(order.subtotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Delivery</span>
+              <span>{order.deliveryFee != null ? formatAmount(order.deliveryFee) : "0"}</span>
+            </div>
+            {order.discountTotal > 0 && (
+              <div className="flex justify-between">
+                <span>Discount</span>
+                <span>-{formatAmount(order.discountTotal)}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
-                <span>{dictionary.deliveryFeeLabel ?? "Delivery fee"}</span>
-                <span>
-                  {order.deliveryFee != null
-                    ? formatCurrency(order.deliveryFee)
-                    : dictionary.receiptFree ?? "Free"}
-                </span>
-              </div>
-              {order.discountTotal > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>{dictionary.receiptDiscount ?? "Discount"}</span>
-                  <span>-{formatCurrency(order.discountTotal)}</span>
-                </div>
-              )}
-              <div className="flex justify-between pt-2 border-t border-slate-300 text-base font-bold text-slate-900">
-                <span>{dictionary.orderTotalLabel ?? "Total"}</span>
-                <span>{formatCurrency(order.totalAmount)}</span>
-              </div>
+            )}
+            <div className="flex justify-between font-bold text-sm pt-1 border-t border-slate-300">
+              <span>TOTAL</span>
+              <span>฿{formatAmount(order.totalAmount)}</span>
             </div>
           </div>
-
-          {/* Order note */}
-          {order.orderNote && (
-            <div className="px-6 py-4 border-t border-slate-200">
-              <p className="text-slate-500 font-medium uppercase text-xs tracking-wide">
-                {dictionary.orderNoteLabel ?? "Order Note"}
-              </p>
-              <p className="mt-1 text-sm text-slate-700">{order.orderNote}</p>
-            </div>
-          )}
 
           {/* Footer */}
-          <div className="px-6 py-5 bg-slate-900 text-center">
-            <p className="text-white font-semibold">
-              {dictionary.receiptThankYou ?? "Thank you for your order!"}
-            </p>
-            <p className="mt-1 text-slate-400 text-sm">
-              {dictionary.receiptFooter ?? "Feel ABAC – Delicious food delivered to your door"}
-            </p>
+          <div className="text-center py-4 border-t border-dashed border-slate-400">
+            <p className="font-semibold">{dictionary.receiptThankYou ?? "Thank you!"}</p>
           </div>
-        </div>
-
-        {/* Print-only footer */}
-        <div className="print-only text-center mt-8 text-xs text-slate-500">
-          <p>{dictionary.receiptPrintedOn ?? "Printed on"}: {new Date().toLocaleString()}</p>
         </div>
       </div>
     </>
