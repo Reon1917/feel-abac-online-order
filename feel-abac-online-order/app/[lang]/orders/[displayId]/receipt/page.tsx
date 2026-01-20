@@ -23,13 +23,18 @@ export default async function ReceiptPage({ params }: PageProps) {
 
   const { lang, displayId } = await params;
   const locale = lang as Locale;
+  const trimmedDisplayId = displayId.trim();
+
+  if (!trimmedDisplayId) {
+    notFound();
+  }
 
   const session = await getSession();
   if (!session?.session?.user) {
     redirect(withLocalePath(locale, "/"));
   }
 
-  const order = await getOrderByDisplayId(displayId, {
+  const order = await getOrderByDisplayId(trimmedDisplayId, {
     userId: session.session.user.id,
     isAdmin: session.isAdmin,
   });
@@ -40,7 +45,7 @@ export default async function ReceiptPage({ params }: PageProps) {
 
   // Only allow receipt for delivered or closed orders
   if (order.status !== "delivered" && order.status !== "closed") {
-    redirect(withLocalePath(locale, `/orders/${displayId}`));
+    redirect(withLocalePath(locale, `/orders/${trimmedDisplayId}`));
   }
 
   // Get both dictionaries for bilingual PDF download

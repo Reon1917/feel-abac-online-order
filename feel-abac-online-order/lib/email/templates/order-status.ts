@@ -401,11 +401,15 @@ export function buildOrderStatusEmail(
       `<p style="margin:0 0 14px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:14px;line-height:20px;">Thank you for ordering with Feel ABAC. Your receipt is below.</p>`,
       renderInfoTable(DEFAULT_EMAIL_THEME, summaryRows),
       orderDetailsHtml,
-      `<div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;">`,
-      renderButton(DEFAULT_EMAIL_THEME, orderUrl, "View order"),
-      `<span style="display:inline-block;width:8px;"></span>`,
-      downloadButtonHtml,
-      `</div>`,
+      [
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">',
+        "<tr>",
+        `<td style="padding:0;vertical-align:top;">${renderButton(DEFAULT_EMAIL_THEME, orderUrl, "View order")}</td>`,
+        '<td style="width:12px;font-size:0;line-height:0;">&nbsp;</td>',
+        `<td style="padding:0;vertical-align:top;">${downloadButtonHtml}</td>`,
+        "</tr>",
+        "</table>",
+      ].join(""),
     ].join("")
   );
 
