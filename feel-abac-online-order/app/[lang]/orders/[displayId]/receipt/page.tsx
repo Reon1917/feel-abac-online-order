@@ -75,10 +75,6 @@ export default async function ReceiptPage({ params }: PageProps) {
       .join(" – ");
   }
 
-  if (!deliveryAddress) {
-    deliveryAddress = dictionary.receiptDeliveryFallback ?? "See order for details";
-  }
-
   return (
     <ReceiptView
       order={order}

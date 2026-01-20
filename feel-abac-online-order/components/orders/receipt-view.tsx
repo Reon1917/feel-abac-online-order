@@ -149,6 +149,9 @@ const styles = {
 };
 
 function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: ReceiptContentProps) {
+  const safeDeliveryAddress =
+    deliveryAddress || dictionary.receiptDeliveryFallback || "See order for details";
+
   return (
     <div style={styles.paper}>
       {/* Header */}
@@ -173,7 +176,7 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
         </div>
         <div style={{ ...styles.row, gap: "8px" }}>
           <span style={{ ...styles.label, flexShrink: 0 }}>{dictionary.receiptAddress ?? "Address"}:</span>
-          <span style={{ ...styles.value, textAlign: "right" }}>{deliveryAddress}</span>
+          <span style={{ ...styles.value, textAlign: "right" }}>{safeDeliveryAddress}</span>
         </div>
       </div>
 
