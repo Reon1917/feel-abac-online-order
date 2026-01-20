@@ -105,19 +105,19 @@ export function ReceiptView({ order, deliveryAddress, dictionary }: Props) {
           {/* Customer & Date */}
           <div className="px-3 py-3 border-b border-dashed border-slate-400 space-y-1">
             <div className="flex justify-between">
-              <span className="text-slate-500">Date:</span>
+              <span className="text-slate-500">{dictionary.receiptDate ?? "Date"}:</span>
               <span>{formatDate(order.createdAt)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Customer:</span>
+              <span className="text-slate-500">{dictionary.receiptCustomer ?? "Customer"}:</span>
               <span>{order.customerName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Phone:</span>
+              <span className="text-slate-500">{dictionary.receiptPhone ?? "Phone"}:</span>
               <span>{order.customerPhone}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-slate-500 shrink-0">Address:</span>
+              <span className="text-slate-500 shrink-0">{dictionary.receiptAddress ?? "Address"}:</span>
               <span className="text-right">{deliveryAddress}</span>
             </div>
           </div>
@@ -125,16 +125,16 @@ export function ReceiptView({ order, deliveryAddress, dictionary }: Props) {
           {/* Items header */}
           <div className="px-3 py-2 border-b border-slate-300 bg-slate-50">
             <div className="flex text-[10px] font-bold text-slate-600 uppercase tracking-wide">
-              <span className="flex-1">Item</span>
-              <span className="w-8 text-center">Qty</span>
-              <span className="w-16 text-right">Price</span>
+              <span className="flex-1">{dictionary.receiptItemHeader ?? "Item"}</span>
+              <span className="w-8 text-center">{dictionary.receiptQtyHeader ?? "Qty"}</span>
+              <span className="w-16 text-right">{dictionary.receiptPriceHeader ?? "Price"}</span>
             </div>
           </div>
 
           {/* Items */}
           <div className="px-3 py-2">
             {order.items.length === 0 ? (
-              <p className="text-slate-400 py-2">No items</p>
+              <p className="text-slate-400 py-2">{dictionary.receiptNoItems ?? "No items"}</p>
             ) : (
               order.items.map((item) => {
                 // Build choice/note string
@@ -179,21 +179,21 @@ export function ReceiptView({ order, deliveryAddress, dictionary }: Props) {
           {/* Totals */}
           <div className="px-3 py-3 border-t border-dashed border-slate-400 space-y-1">
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>{dictionary.receiptSubtotal ?? "Subtotal"}</span>
               <span>{formatAmount(order.subtotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Delivery</span>
+              <span>{dictionary.receiptDelivery ?? "Delivery"}</span>
               <span>{order.deliveryFee != null ? formatAmount(order.deliveryFee) : "0"}</span>
             </div>
             {order.discountTotal > 0 && (
               <div className="flex justify-between">
-                <span>Discount</span>
+                <span>{dictionary.receiptDiscount ?? "Discount"}</span>
                 <span>-{formatAmount(order.discountTotal)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-sm pt-1 border-t border-slate-300">
-              <span>TOTAL</span>
+              <span>{dictionary.receiptTotal ?? "TOTAL"}</span>
               <span>฿{formatAmount(order.totalAmount)}</span>
             </div>
           </div>
