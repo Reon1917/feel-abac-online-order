@@ -15,7 +15,7 @@ import {
   SetMenuPoolLink,
   SetMenuPoolLinkWithPool,
 } from "./pool-types";
-import { numericToNumber } from "./math";
+import { numericToNumber } from "@/lib/db/numeric";
 
 // Input types
 export type CreatePoolInput = {

@@ -22,7 +22,7 @@ import {
   PublicMenuOption,
   PublicSetMenuPoolLink,
 } from "@/lib/menu/types";
-import { numericToNumber } from "./math";
+import { numericToNumber } from "@/lib/db/numeric";
 import { getPoolLinksForMenuItem } from "./pool-queries";
 
 export type PublicMenuItemWithCategory = {

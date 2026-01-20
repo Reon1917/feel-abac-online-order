@@ -29,6 +29,7 @@ type OrderDictionary = typeof orderDictionary;
 type Props = {
   initialOrder: OrderRecord;
   dictionary: OrderDictionary;
+  locale: Locale;
 };
 
 const STATUS_STEPS: Array<{ key: OrderStatus; labelKey: keyof OrderDictionary }> =
@@ -80,7 +81,7 @@ function formatTimestamp(value: string | null) {
   return dateFormatter.format(date);
 }
 
-export function OrderStatusClient({ initialOrder, dictionary }: Props) {
+export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
   const [order, setOrder] = useState<OrderRecord>(initialOrder);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,10 +302,9 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
       pusher.unsubscribe(buildOrderChannelName(order.displayId));
     }
     
-    // Navigate to menu
-    const locale = window.location.pathname.split("/")[1] as Locale;
+    // Navigate to menu using server-provided locale
     window.location.href = withLocalePath(locale, "/menu");
-  }, [order.displayId]);
+  }, [locale, order.displayId]);
 
   useEffect(() => {
     if (!copied) return;
@@ -445,6 +445,59 @@ export function OrderStatusClient({ initialOrder, dictionary }: Props) {
           {delivered && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {dictionary.deliveredCopy ?? "Your order has been delivered. Thank you!"}
+            </div>
+          )}
+          {delivered && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-slate-600">
+                {dictionary.downloadReceipt ?? "Download Receipt"}:
+              </span>
+              <a
+                href={withLocalePath("en", `/orders/${order.displayId}/receipt`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" x2="12" y1="15" y2="3" />
+                </svg>
+                English
+              </a>
+              <a
+                href={withLocalePath("my", `/orders/${order.displayId}/receipt`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" x2="12" y1="15" y2="3" />
+                </svg>
+                မြန်မာ
+              </a>
             </div>
           )}
           {isClosed && (

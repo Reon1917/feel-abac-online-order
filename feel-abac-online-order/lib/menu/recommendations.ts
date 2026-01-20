@@ -19,7 +19,7 @@ import {
   PublicMenuOption,
   PublicRecommendedMenuItem,
 } from "@/lib/menu/types";
-import { numericToNumber } from "./math";
+import { numericToNumber } from "@/lib/db/numeric";
 
 export async function getAdminRecommendedMenuItems(): Promise<
   AdminRecommendedMenuItem[]

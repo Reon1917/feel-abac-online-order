@@ -59,6 +59,7 @@ export default async function OrderPage({ params }: PageProps) {
           <OrderStatusClient
             initialOrder={order}
             dictionary={dictionary}
+            locale={locale}
           />
         </div>
       </main>

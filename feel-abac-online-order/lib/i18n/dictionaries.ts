@@ -24,7 +24,7 @@ import orderMy from "@/dictionaries/my/order.json";
 import profileMy from "@/dictionaries/my/profile.json";
 import authMy from "@/dictionaries/my/auth.json";
 
-import type { Locale } from "./config";
+import { type Locale, SUPPORTED_LOCALES, DEFAULT_LOCALE } from "./config";
 
 export const DICTIONARIES = {
   en: {
@@ -59,9 +59,14 @@ export const DICTIONARIES = {
 
 export type Surface = keyof typeof DICTIONARIES.en;
 
+function isValidLocale(locale: string): locale is Locale {
+  return SUPPORTED_LOCALES.includes(locale as Locale);
+}
+
 export function getDictionary<S extends Surface>(
-  locale: Locale,
+  locale: Locale | string,
   surface: S
 ): typeof DICTIONARIES.en[S] {
-  return DICTIONARIES[locale][surface];
+  const safeLocale = isValidLocale(locale) ? locale : DEFAULT_LOCALE;
+  return DICTIONARIES[safeLocale][surface];
 }

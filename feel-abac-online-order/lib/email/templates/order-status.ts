@@ -366,12 +366,14 @@ export function buildOrderStatusEmail(
   // delivered template (default)
   const subject = `Order Completed – ${displayId}`;
   const preheader = `Order ${displayId} completed — thank you.`;
+  const receiptUrl = `${getAppBaseUrl()}${withLocalePath(locale, `/orders/${displayId}/receipt`)}`;
   const text = [
     `Your order ${displayId} is completed.`,
     "",
     "Thank you for ordering with Feel ABAC.",
     "",
     `View your order: ${orderUrl}`,
+    `Download receipt: ${receiptUrl}`,
     orderDetailsText,
   ].join("\n");
 
@@ -381,14 +383,33 @@ export function buildOrderStatusEmail(
   ];
   if (amount) summaryRows.push(["Total", amount]);
 
+  // Secondary button style (outline)
+  const downloadButtonHtml = [
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0;display:inline-block;">',
+    "<tr>",
+    `<td style="border-radius:999px;border:2px solid ${DEFAULT_EMAIL_THEME.brandColor};">`,
+    `<a href="${escapeHtml(receiptUrl)}" style="display:inline-block;padding:10px 16px;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.brandColor};text-decoration:none;font-size:14px;font-weight:700;letter-spacing:0.2px;border-radius:999px;">Download Receipt</a>`,
+    "</td>",
+    "</tr>",
+    "</table>",
+  ].join("");
+
   const contentHtml = renderCard(
     DEFAULT_EMAIL_THEME,
     [
       `<h1 style="margin:0 0 10px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.textColor};font-size:18px;line-height:26px;">Order completed</h1>`,
-      `<p style="margin:0 0 14px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:14px;line-height:20px;">Thank you for ordering with Feel ABAC.</p>`,
+      `<p style="margin:0 0 14px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:14px;line-height:20px;">Thank you for ordering with Feel ABAC. Your receipt is below.</p>`,
       renderInfoTable(DEFAULT_EMAIL_THEME, summaryRows),
       orderDetailsHtml,
-      `<div style="margin-top:16px;">${renderButton(DEFAULT_EMAIL_THEME, orderUrl, "View order")}</div>`,
+      [
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">',
+        "<tr>",
+        `<td style="padding:0;vertical-align:top;">${renderButton(DEFAULT_EMAIL_THEME, orderUrl, "View order")}</td>`,
+        '<td style="width:12px;font-size:0;line-height:0;">&nbsp;</td>',
+        `<td style="padding:0;vertical-align:top;">${downloadButtonHtml}</td>`,
+        "</tr>",
+        "</table>",
+      ].join(""),
     ].join("")
   );
 
