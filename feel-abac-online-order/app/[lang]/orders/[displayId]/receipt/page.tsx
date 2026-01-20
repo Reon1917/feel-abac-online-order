@@ -43,7 +43,9 @@ export default async function ReceiptPage({ params }: PageProps) {
     redirect(withLocalePath(locale, `/orders/${displayId}`));
   }
 
-  const dictionary = getDictionary(locale, "order");
+  // Get both dictionaries for bilingual PDF download
+  const dictionaryEn = getDictionary("en", "order");
+  const dictionaryMy = getDictionary("my", "order");
 
   // Build delivery address string
   let deliveryAddress = "";
@@ -81,8 +83,8 @@ export default async function ReceiptPage({ params }: PageProps) {
     <ReceiptView
       order={order}
       deliveryAddress={deliveryAddress}
-      dictionary={dictionary}
-      locale={locale}
+      dictionaryEn={dictionaryEn}
+      dictionaryMy={dictionaryMy}
     />
   );
 }
