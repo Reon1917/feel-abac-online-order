@@ -509,10 +509,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        const nextStatus = (payload?.status as OrderStatus) ?? order.status;
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
-              ? { ...item, status: "closed" as OrderStatus }
+              ? { ...item, status: nextStatus }
               : item
           )
         );
@@ -774,6 +775,8 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         displayDay: payload.displayDay,
         status: payload.status,
         refundStatus: null,
+        refundType: null,
+        refundAmount: null,
         customerName: payload.customerName,
         customerPhone: payload.customerPhone,
         subtotal: payload.totalAmount,
@@ -1045,6 +1048,22 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 animate-pulse">
                 <ImageIcon className="w-3 h-3 mr-1" />
                 Slip Received
+              </span>
+            )}
+            {/* Show refund badge for closed orders that had refunds */}
+            {order.status === "closed" && order.refundStatus === "paid" && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                <RotateCcw className="w-3 h-3 mr-1" />
+                {order.refundType === "full" 
+                  ? (dictionary.refundTypeFull ?? "Full Refund")
+                  : order.refundType === "food_only"
+                    ? (dictionary.refundTypeFoodOnly ?? "Food Refund")
+                    : order.refundType === "delivery_fee_only"
+                      ? (dictionary.refundTypeDeliveryOnly ?? "Delivery Refund")
+                      : "Refunded"}
+                {order.refundAmount != null && order.refundAmount > 0 && (
+                  <span className="ml-1 font-bold">({formatCurrency(order.refundAmount)})</span>
+                )}
               </span>
             )}
           </div>

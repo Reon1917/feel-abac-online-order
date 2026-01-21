@@ -86,8 +86,10 @@ export async function PATCH(
 
   const devOverride = process.env.NODE_ENV !== "production";
   const isRefundAction = action === "refund_paid" || action === "refund_requested";
+  const isCloseAction = action === "close";
   if (
     !isRefundAction &&
+    !isCloseAction &&
     (order.isClosed || order.status === "cancelled" || order.status === "closed")
   ) {
     if (!(devOverride && action === "cancel")) {
@@ -98,12 +100,20 @@ export async function PATCH(
     }
   }
 
-  // Allow "close" action on delivered or cancelled orders
-  if (action === "close" && order.status !== "delivered" && order.status !== "cancelled") {
-    return NextResponse.json(
-      { error: "Only delivered or cancelled orders can be closed" },
-      { status: 400 }
-    );
+  // Allow "close" action on delivered or cancelled orders (but not already closed)
+  if (action === "close") {
+    if (order.status === "closed") {
+      return NextResponse.json(
+        { error: "Order is already closed" },
+        { status: 400 }
+      );
+    }
+    if (order.status !== "delivered" && order.status !== "cancelled") {
+      return NextResponse.json(
+        { error: "Only delivered or cancelled orders can be closed" },
+        { status: 400 }
+      );
+    }
   }
 
   const now = new Date();
@@ -361,8 +371,9 @@ export async function PATCH(
 
     nextStatus = "delivered";
   } else if (action === "close") {
-    // Close/archive a delivered order
-    nextStatus = "closed";
+    // Close/archive a delivered or cancelled order.
+    // Keep cancelled status for customer-facing views; use isClosed for archiving.
+    nextStatus = order.status === "cancelled" ? "cancelled" : "closed";
   } else {
     if (order.status === "delivered") {
       return NextResponse.json(

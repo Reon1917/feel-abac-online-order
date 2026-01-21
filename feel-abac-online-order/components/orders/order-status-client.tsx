@@ -293,7 +293,8 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
   const statusText = statusLabel(order.status, dictionary);
   const cancelled = order.status === "cancelled";
   const delivered = order.status === "delivered";
-  const isClosed = cancelled || delivered;
+  const closed = order.status === "closed";
+  const isClosed = cancelled || delivered || closed || order.isClosed;
   const showPaymentReviewWarning = order.status === "payment_review";
 
   // Handle cleanup and navigation back to menu
