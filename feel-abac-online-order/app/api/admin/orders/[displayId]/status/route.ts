@@ -102,7 +102,7 @@ export async function PATCH(
 
   // Allow "close" action on delivered or cancelled orders (but not already closed)
   if (action === "close") {
-    if (order.status === "closed") {
+    if (order.isClosed) {
       return NextResponse.json(
         { error: "Order is already closed" },
         { status: 400 }
@@ -403,6 +403,12 @@ export async function PATCH(
     // Handle refund fields
     const refundType = body?.refundType;
     const validRefundTypes = ["full", "food_only", "delivery_fee_only", "none"];
+    if (refundType && !validRefundTypes.includes(refundType)) {
+      return NextResponse.json(
+        { error: "Invalid refundType" },
+        { status: 400 }
+      );
+    }
     if (refundType && validRefundTypes.includes(refundType)) {
       updatePayload.refundType = refundType;
       
@@ -445,7 +451,7 @@ export async function PATCH(
     .set(updatePayload)
     .where(eq(orders.id, order.id));
 
-  const isTerminalAction = action === "cancel" || action === "close";
+  const isTerminalAction = action === "cancel" || action === "close" || action === "delivered";
   const shouldArchive = Boolean(updatePayload.isClosed);
   const criticalEventType =
     action === "cancel" ? "order_cancelled" : action === "close" ? "order_closed" : "order_delivered";
