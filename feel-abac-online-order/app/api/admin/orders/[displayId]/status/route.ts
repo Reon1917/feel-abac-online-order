@@ -548,6 +548,11 @@ export async function PATCH(
     status: nextStatus,
     refundStatus: updatePayload.refundStatus ?? order.refundStatus ?? null,
     refundType: updatePayload.refundType ?? order.refundType ?? null,
-    refundAmount: updatePayload.refundAmount ? Number(updatePayload.refundAmount) : null,
+    refundAmount:
+      updatePayload.refundAmount != null
+        ? Number(updatePayload.refundAmount)
+        : order.refundAmount != null
+          ? Number(order.refundAmount)
+          : null,
   });
 }
