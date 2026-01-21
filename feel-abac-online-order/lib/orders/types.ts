@@ -10,6 +10,8 @@ export type OrderStatus =
 
 export type RefundStatus = "requested" | "paid";
 
+export type RefundType = "full" | "food_only" | "delivery_fee_only" | "none";
+
 export type OrderPaymentType = "combined";
 
 export type OrderPaymentStatus =
@@ -96,6 +98,10 @@ export type OrderRecord = {
   cancelledAt: string | null;
   cancelReason: string | null;
   refundStatus: RefundStatus | null;
+  refundType: RefundType | null;
+  refundAmount: number | null;
+  refundReason: string | null;
+  refundProcessedAt: string | null;
   isClosed: boolean;
   courierTrackingUrl: string | null;
   courierVendor: string | null;
@@ -111,7 +117,10 @@ export type OrderAdminSummary = {
   displayId: string;
   displayDay: string;
   status: OrderStatus;
+  isClosed: boolean;
   refundStatus: RefundStatus | null;
+  refundType: RefundType | null;
+  refundAmount: number | null;
   customerName: string;
   customerPhone: string;
   subtotal: number;

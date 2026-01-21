@@ -44,6 +44,9 @@ export type OrderStatusChangedPayload = BaseEventPayload & {
   subtotal?: number;
   deliveryFee?: number | null;
   totalAmount?: number;
+  // Optional refund info (included when order is cancelled with refund)
+  refundType?: "full" | "food_only" | "delivery_fee_only" | "none" | null;
+  refundAmount?: number | null;
 };
 
 export type OrderSubmittedPayload = BaseEventPayload & {

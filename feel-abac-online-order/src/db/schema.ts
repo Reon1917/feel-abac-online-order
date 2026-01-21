@@ -475,6 +475,14 @@ export const orders = pgTable(
     cancelledAt: timestamp("cancelled_at"),
     cancelReason: text("cancel_reason"),
     refundStatus: text("refund_status"),
+    refundType: text("refund_type"),
+    refundAmount: numeric("refund_amount", { precision: 10, scale: 0 }),
+    refundReason: text("refund_reason"),
+    refundProcessedAt: timestamp("refund_processed_at", { withTimezone: true }),
+    refundProcessedByAdminId: text("refund_processed_by_admin_id").references(
+      () => admins.id,
+      { onDelete: "set null" }
+    ),
     isClosed: boolean("is_closed").default(false).notNull(),
     resolvedByAdminId: text("resolved_by_admin_id").references(
       () => admins.id,

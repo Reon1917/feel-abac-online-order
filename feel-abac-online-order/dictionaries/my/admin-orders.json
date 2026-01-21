@@ -144,5 +144,18 @@
   "handToDeliveryConfirm": "Confirm Handoff",
   "handoffCancel": "ပိတ်မည်",
   "closeOrderConfirm": "Close & Archive",
-  "actionsLabel": "Actions"
+  "actionsLabel": "Actions",
+  
+  "refundTypeLabel": "ပြန်အမ်းမှု အမျိုးအစား",
+  "refundTypeFull": "ငွေအပြည့် ပြန်အမ်း",
+  "refundTypeFoodOnly": "အစားအစာ ငွေသာ ပြန်အမ်း",
+  "refundTypeDeliveryOnly": "ပို့ဆောင်ခသာ ပြန်အမ်း",
+  "refundTypeNone": "ပြန်အမ်းစရာမလို",
+  "refundAmountLabel": "ပြန်အမ်းငွေပမာဏ",
+  "refundReasonLabel": "ပြန်အမ်းမှု မှတ်စု (ရွေးချယ်နိုင်)",
+  "refundReasonPlaceholder": "ဥပမာ - ဖောက်သည် စိတ်ပြောင်းသည်၊ အော်ဒါ နှောင့်နှေးသည်...",
+  "closeOrder": "အော်ဒါ ပိတ်မည်",
+  "cancelWithRefundTitle": "အော်ဒါ ပယ်ဖျက်မည်",
+  "cancelWithRefundDescription": "ဤအော်ဒါအတွက် ပြန်အမ်းမှု အမျိုးအစား ရွေးပါ။",
+  "cancelSubmit": "အော်ဒါ ပယ်ဖျက်မည်"
 }

@@ -48,6 +48,9 @@ export async function PATCH(
         courierVendor?: string;
         courierTrackingUrl?: string;
         deliveryFee?: number | string;
+        refundType?: string;
+        refundAmount?: number | string;
+        refundReason?: string;
       }
     | null;
 
@@ -83,8 +86,10 @@ export async function PATCH(
 
   const devOverride = process.env.NODE_ENV !== "production";
   const isRefundAction = action === "refund_paid" || action === "refund_requested";
+  const isCloseAction = action === "close";
   if (
     !isRefundAction &&
+    !isCloseAction &&
     (order.isClosed || order.status === "cancelled" || order.status === "closed")
   ) {
     if (!(devOverride && action === "cancel")) {
@@ -95,12 +100,20 @@ export async function PATCH(
     }
   }
 
-  // Allow "close" action only on delivered orders
-  if (action === "close" && order.status !== "delivered") {
-    return NextResponse.json(
-      { error: "Only delivered orders can be closed" },
-      { status: 400 }
-    );
+  // Allow "close" action on delivered or cancelled orders (but not already closed)
+  if (action === "close") {
+    if (order.isClosed) {
+      return NextResponse.json(
+        { error: "Order is already closed" },
+        { status: 400 }
+      );
+    }
+    if (order.status !== "delivered" && order.status !== "cancelled") {
+      return NextResponse.json(
+        { error: "Only delivered or cancelled orders can be closed" },
+        { status: 400 }
+      );
+    }
   }
 
   const now = new Date();
@@ -358,8 +371,9 @@ export async function PATCH(
 
     nextStatus = "delivered";
   } else if (action === "close") {
-    // Close/archive a delivered order
-    nextStatus = "closed";
+    // Close/archive a delivered or cancelled order.
+    // Keep cancelled status for customer-facing views; use isClosed for archiving.
+    nextStatus = order.status === "cancelled" ? "cancelled" : "closed";
   } else {
     if (order.status === "delivered") {
       return NextResponse.json(
@@ -385,8 +399,51 @@ export async function PATCH(
   } else if (action === "cancel") {
     updatePayload.cancelledAt = now;
     updatePayload.cancelReason = reason;
-    updatePayload.isClosed = true;
-    updatePayload.closedAt = now;
+
+    // Handle refund fields
+    const refundType = body?.refundType;
+    const validRefundTypes = ["full", "food_only", "delivery_fee_only", "none"];
+    if (refundType && !validRefundTypes.includes(refundType)) {
+      return NextResponse.json(
+        { error: "Invalid refundType" },
+        { status: 400 }
+      );
+    }
+    if (refundType && validRefundTypes.includes(refundType)) {
+      updatePayload.refundType = refundType;
+      
+      // Set refund status based on type
+      if (refundType !== "none") {
+        updatePayload.refundStatus = "requested";
+        // Don't close order yet - it needs to go through refund process
+      } else {
+        // No refund needed - can close immediately
+        updatePayload.isClosed = true;
+        updatePayload.closedAt = now;
+      }
+
+      // Parse and set refund amount
+      const rawRefundAmount = body?.refundAmount;
+      const refundAmount =
+        typeof rawRefundAmount === "number"
+          ? rawRefundAmount
+          : typeof rawRefundAmount === "string"
+            ? Number(rawRefundAmount)
+            : null;
+      if (refundAmount !== null && Number.isFinite(refundAmount) && refundAmount >= 0) {
+        updatePayload.refundAmount = String(refundAmount);
+      }
+
+      // Set refund reason/notes
+      const refundReason = body?.refundReason;
+      if (typeof refundReason === "string" && refundReason.trim().length > 0) {
+        updatePayload.refundReason = refundReason.trim();
+      }
+    } else {
+      // No refund type specified (e.g., user-initiated cancel or no payment made)
+      updatePayload.isClosed = true;
+      updatePayload.closedAt = now;
+    }
   }
 
   await db
@@ -394,9 +451,19 @@ export async function PATCH(
     .set(updatePayload)
     .where(eq(orders.id, order.id));
 
-  const isTerminalState = action === "cancel" || action === "close";
+  const isTerminalAction = action === "cancel" || action === "close" || action === "delivered";
+  const shouldArchive = Boolean(updatePayload.isClosed);
   const criticalEventType =
     action === "cancel" ? "order_cancelled" : action === "close" ? "order_closed" : "order_delivered";
+
+  // Build event metadata
+  const eventMetadata: Record<string, unknown> = {};
+  if (reason) eventMetadata.reason = reason;
+  if (action === "cancel" && updatePayload.refundType) {
+    eventMetadata.refundType = updatePayload.refundType;
+    if (updatePayload.refundAmount) eventMetadata.refundAmount = updatePayload.refundAmount;
+    if (updatePayload.refundReason) eventMetadata.refundReason = updatePayload.refundReason;
+  }
 
   const [insertedEvent] = await db
     .insert(orderEvents)
@@ -404,10 +471,10 @@ export async function PATCH(
       orderId: order.id,
       actorType: "admin",
       actorId: userId,
-      eventType: isTerminalState ? criticalEventType : "status_updated",
+      eventType: isTerminalAction ? criticalEventType : "status_updated",
       fromStatus: order.status,
       toStatus: nextStatus,
-      metadata: reason ? { reason } : null,
+      metadata: Object.keys(eventMetadata).length > 0 ? eventMetadata : null,
     })
     .returning({ id: orderEvents.id });
 
@@ -424,10 +491,13 @@ export async function PATCH(
     ...(updatedSubtotal !== undefined && { subtotal: updatedSubtotal }),
     ...(updatedDeliveryFee !== undefined && { deliveryFee: updatedDeliveryFee }),
     ...(updatedTotalAmount !== undefined && { totalAmount: updatedTotalAmount }),
+    // Include refund info when cancelling
+    ...(action === "cancel" && updatePayload.refundType && { refundType: updatePayload.refundType as "full" | "food_only" | "delivery_fee_only" | "none" }),
+    ...(action === "cancel" && updatePayload.refundAmount && { refundAmount: Number(updatePayload.refundAmount) }),
   });
 
-  // If order is now closed (cancelled or delivered), broadcast close event and cleanup transient events
-  if (isTerminalState) {
+  // Only archive + broadcast close when the order was actually marked closed.
+  if (shouldArchive) {
     await broadcastOrderClosed({
       eventId: insertedEvent?.id ?? "",
       orderId: order.id,
@@ -477,5 +547,12 @@ export async function PATCH(
   return NextResponse.json({
     status: nextStatus,
     refundStatus: updatePayload.refundStatus ?? order.refundStatus ?? null,
+    refundType: updatePayload.refundType ?? order.refundType ?? null,
+    refundAmount:
+      updatePayload.refundAmount != null
+        ? Number(updatePayload.refundAmount)
+        : order.refundAmount != null
+          ? Number(order.refundAmount)
+          : null,
   });
 }

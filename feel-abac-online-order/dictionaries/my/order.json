@@ -88,5 +88,10 @@
   "receiptThankYou": "သင့်အော်ဒါအတွက် ကျေးဇူးတင်ပါသည်!",
   "receiptFooter": "Feel ABAC – အရသာရှိသော အစားအစာများ သင့်တံခါးဝအထိ ပို့ဆောင်ပေးသည်",
   "receiptPrint": "ပရင့်ထုတ် / PDF သိမ်း",
-  "receiptPrintedOn": "ပရင့်ထုတ်သည့်ရက်"
+  "receiptPrintedOn": "ပရင့်ထုတ်သည့်ရက်",
+  "contactBannerTitle": "Cancel လိုပါသလား?",
+  "contactBannerSubtitle": "ကျွန်ုပ်တို့ကို တိုက်ရိုက်ဆက်သွယ်ပါ။",
+  "contactPhone": "09X-XXX-XXXX",
+  "cancelledRefundPending": "ငွေပြန်အမ်း ဆောင်ရွက်ပေးပါမည်။",
+  "cancelledNoRefund": "ငွေပြန်အမ်းခြင်း မလိုအပ်ပါ။"
 }

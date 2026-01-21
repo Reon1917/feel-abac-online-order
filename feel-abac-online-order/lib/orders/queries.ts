@@ -20,6 +20,7 @@ import type {
   OrderAdminSummary,
   OrderStatus,
   RefundStatus,
+  RefundType,
   OrderPaymentRecord,
   OrderPaymentStatus,
   OrderPaymentType,
@@ -129,6 +130,10 @@ function mapOrder(
     cancelledAt: dateToIso(row.cancelledAt),
     cancelReason: row.cancelReason,
     refundStatus: (row.refundStatus as RefundStatus) ?? null,
+    refundType: (row.refundType as RefundType) ?? null,
+    refundAmount: row.refundAmount ? numericToNumber(row.refundAmount) : null,
+    refundReason: row.refundReason ?? null,
+    refundProcessedAt: dateToIso(row.refundProcessedAt),
     isClosed: row.isClosed,
     courierTrackingUrl: row.courierTrackingUrl,
     courierVendor: row.courierVendor,
@@ -259,7 +264,10 @@ const adminSummarySelect = {
   displayId: orders.displayId,
   displayDay: orders.displayDay,
   status: orders.status,
+  isClosed: orders.isClosed,
   refundStatus: orders.refundStatus,
+  refundType: orders.refundType,
+  refundAmount: orders.refundAmount,
   customerName: orders.customerName,
   customerPhone: orders.customerPhone,
   subtotal: orders.subtotal,
@@ -286,7 +294,10 @@ type AdminSummaryRow = {
   displayId: string;
   displayDay: Date | null;
   status: string;
+  isClosed: boolean | null;
   refundStatus: string | null;
+  refundType: string | null;
+  refundAmount: string | null;
   customerName: string;
   customerPhone: string;
   subtotal: string | null;
@@ -316,7 +327,10 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     displayId: row.displayId,
     displayDay: pgDateToString(row.displayDay),
     status: row.status as OrderStatus,
+    isClosed: Boolean(row.isClosed),
     refundStatus: (row.refundStatus as RefundStatus) ?? null,
+    refundType: (row.refundType as RefundType) ?? null,
+    refundAmount: row.refundAmount ? numericToNumber(row.refundAmount) : null,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     subtotal: numericToNumber(row.subtotal),
