@@ -445,7 +445,8 @@ export async function PATCH(
     .set(updatePayload)
     .where(eq(orders.id, order.id));
 
-  const isTerminalState = action === "cancel" || action === "close";
+  const isTerminalAction = action === "cancel" || action === "close";
+  const shouldArchive = Boolean(updatePayload.isClosed);
   const criticalEventType =
     action === "cancel" ? "order_cancelled" : action === "close" ? "order_closed" : "order_delivered";
 
@@ -464,7 +465,7 @@ export async function PATCH(
       orderId: order.id,
       actorType: "admin",
       actorId: userId,
-      eventType: isTerminalState ? criticalEventType : "status_updated",
+      eventType: isTerminalAction ? criticalEventType : "status_updated",
       fromStatus: order.status,
       toStatus: nextStatus,
       metadata: Object.keys(eventMetadata).length > 0 ? eventMetadata : null,
@@ -489,8 +490,8 @@ export async function PATCH(
     ...(action === "cancel" && updatePayload.refundAmount && { refundAmount: Number(updatePayload.refundAmount) }),
   });
 
-  // If order is now closed (cancelled or delivered), broadcast close event and cleanup transient events
-  if (isTerminalState) {
+  // Only archive + broadcast close when the order was actually marked closed.
+  if (shouldArchive) {
     await broadcastOrderClosed({
       eventId: insertedEvent?.id ?? "",
       orderId: order.id,
