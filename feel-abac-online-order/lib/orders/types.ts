@@ -117,6 +117,7 @@ export type OrderAdminSummary = {
   displayId: string;
   displayDay: string;
   status: OrderStatus;
+  isClosed: boolean;
   refundStatus: RefundStatus | null;
   refundType: RefundType | null;
   refundAmount: number | null;

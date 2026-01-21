@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LOCALE_COOKIE_NAME,
@@ -33,10 +33,15 @@ export function UiLanguageSwitcher({
   labels,
   className,
 }: UiLanguageSwitcherProps) {
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLocaleChange = (nextValue: string) => {
     if (!SUPPORTED_LOCALES.includes(nextValue as Locale)) return;
@@ -55,6 +60,20 @@ export function UiLanguageSwitcher({
 
   const activeLabel = locale === "en" ? labels.english : labels.burmese;
 
+  if (!mounted) {
+    return (
+      <div className={className}>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {labels.label}
+        </label>
+        <div
+          aria-hidden="true"
+          className="h-9 w-40 rounded-md border border-slate-200 bg-white shadow-xs"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -72,4 +91,3 @@ export function UiLanguageSwitcher({
     </div>
   );
 }
-

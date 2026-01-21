@@ -264,6 +264,7 @@ const adminSummarySelect = {
   displayId: orders.displayId,
   displayDay: orders.displayDay,
   status: orders.status,
+  isClosed: orders.isClosed,
   refundStatus: orders.refundStatus,
   refundType: orders.refundType,
   refundAmount: orders.refundAmount,
@@ -293,6 +294,7 @@ type AdminSummaryRow = {
   displayId: string;
   displayDay: Date | null;
   status: string;
+  isClosed: boolean | null;
   refundStatus: string | null;
   refundType: string | null;
   refundAmount: string | null;
@@ -325,6 +327,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     displayId: row.displayId,
     displayDay: pgDateToString(row.displayDay),
     status: row.status as OrderStatus,
+    isClosed: Boolean(row.isClosed),
     refundStatus: (row.refundStatus as RefundStatus) ?? null,
     refundType: (row.refundType as RefundType) ?? null,
     refundAmount: row.refundAmount ? numericToNumber(row.refundAmount) : null,

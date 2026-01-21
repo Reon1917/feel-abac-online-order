@@ -206,6 +206,14 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     };
 
     for (const order of orders) {
+      if (order.isClosed || order.status === "closed") {
+        grouped.closed.push(order);
+        continue;
+      }
+      if (order.status === "cancelled") {
+        grouped.refunds.push(order);
+        continue;
+      }
       const tab = WORKFLOW_TABS.find((t) =>
         t.statuses.includes(order.status as OrderStatus)
       );
@@ -513,7 +521,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
-              ? { ...item, status: nextStatus }
+              ? { ...item, status: nextStatus, isClosed: true }
               : item
           )
         );
@@ -774,6 +782,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         displayId: payload.displayId,
         displayDay: payload.displayDay,
         status: payload.status,
+        isClosed: false,
         refundStatus: null,
         refundType: null,
         refundAmount: null,
@@ -806,6 +815,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                 ...(payload.totalAmount !== undefined && { totalAmount: payload.totalAmount }),
                 // Mark payment as verified when transitioning to order_in_kitchen (payment was just verified)
                 ...(payload.toStatus === "order_in_kitchen" && { hasVerifiedPayment: true }),
+                ...(payload.toStatus === "closed" && { isClosed: true }),
                 // Include refund info when cancelling
                 ...(payload.refundType !== undefined && { refundType: payload.refundType }),
                 ...(payload.refundAmount !== undefined && { refundAmount: payload.refundAmount }),
@@ -823,7 +833,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       setOrders((prev) =>
         prev.map((order) =>
           order.id === payload.orderId
-            ? { ...order, status: payload.finalStatus }
+            ? { ...order, status: payload.finalStatus, isClosed: true }
             : order
         )
       );
@@ -864,6 +874,9 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   // Render primary action button for each tab
   const renderPrimaryAction = (order: OrderAdminSummary) => {
     const isSaving = actionState[order.id] === "saving";
+    if (order.isClosed) {
+      return null;
+    }
 
     switch (order.status) {
       case "order_processing":
