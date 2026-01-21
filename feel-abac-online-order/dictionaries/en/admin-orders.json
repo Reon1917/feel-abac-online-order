@@ -144,5 +144,18 @@
   "handToDeliveryConfirm": "Confirm Handoff",
   "handoffCancel": "Close",
   "closeOrderConfirm": "Close & Archive",
-  "actionsLabel": "Actions"
+  "actionsLabel": "Actions",
+  
+  "refundTypeLabel": "Refund Type",
+  "refundTypeFull": "Full Amount",
+  "refundTypeFoodOnly": "Food Payment Only",
+  "refundTypeDeliveryOnly": "Delivery Fee Only",
+  "refundTypeNone": "No Refund Needed",
+  "refundAmountLabel": "Refund Amount",
+  "refundReasonLabel": "Refund Notes (optional)",
+  "refundReasonPlaceholder": "e.g., Customer changed mind, order was delayed...",
+  "closeOrder": "Close Order",
+  "cancelWithRefundTitle": "Cancel Order",
+  "cancelWithRefundDescription": "Select the refund type for this order.",
+  "cancelSubmit": "Cancel Order"
 }

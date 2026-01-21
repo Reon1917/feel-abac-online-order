@@ -88,5 +88,10 @@
   "receiptThankYou": "Thank you for your order!",
   "receiptFooter": "Feel ABAC – Delicious food delivered to your door",
   "receiptPrint": "Print / Save PDF",
-  "receiptPrintedOn": "Printed on"
+  "receiptPrintedOn": "Printed on",
+  "contactBannerTitle": "Need to cancel?",
+  "contactBannerSubtitle": "Contact us directly.",
+  "contactPhone": "09X-XXX-XXXX",
+  "cancelledRefundPending": "Refund will be processed.",
+  "cancelledNoRefund": "No refund applicable."
 }

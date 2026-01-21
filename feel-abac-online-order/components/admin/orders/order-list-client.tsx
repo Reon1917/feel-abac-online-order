@@ -35,7 +35,7 @@ import type { OrderAdminSummary, OrderRecord, OrderPaymentRecord } from "@/lib/o
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
-import { RejectOrderDialog } from "./reject-order-dialog";
+import { RejectOrderDialog, type CancelOrderData } from "./reject-order-dialog";
 import {
   Dialog,
   DialogContent,
@@ -532,7 +532,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   // Cancel order
   const handleCancelOrder = useCallback(
-    async (order: OrderAdminSummary, reason: string) => {
+    async (order: OrderAdminSummary, data: CancelOrderData) => {
       setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
       try {
         const response = await fetch(
@@ -540,7 +540,13 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "cancel", reason }),
+            body: JSON.stringify({
+              action: "cancel",
+              reason: data.reason,
+              refundType: data.refundType,
+              refundAmount: data.refundAmount,
+              refundReason: data.refundReason,
+            }),
           }
         );
         const payload = await response.json().catch(() => null);
@@ -554,6 +560,8 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                   ...item,
                   status: "cancelled" as OrderStatus,
                   refundStatus: payload?.refundStatus ?? item.refundStatus ?? null,
+                  refundType: payload?.refundType ?? data.refundType ?? null,
+                  refundAmount: payload?.refundAmount ?? data.refundAmount ?? null,
                 }
               : item
           )
@@ -714,10 +722,10 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   }, [verifyTarget, handleVerifyPayment]);
 
   const handleRejectSubmit = useCallback(
-    async (reason: string) => {
+    async (data: CancelOrderData) => {
       if (!rejectTarget) return;
       setRejectSubmitting(true);
-      const success = await handleCancelOrder(rejectTarget, reason);
+      const success = await handleCancelOrder(rejectTarget, data);
       setRejectSubmitting(false);
       if (success) {
         setRejectDialogOpen(false);
@@ -793,6 +801,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                 ...(payload.subtotal !== undefined && { subtotal: payload.subtotal }),
                 ...(payload.deliveryFee !== undefined && { deliveryFee: payload.deliveryFee }),
                 ...(payload.totalAmount !== undefined && { totalAmount: payload.totalAmount }),
+                // Mark payment as verified when transitioning to order_in_kitchen (payment was just verified)
+                ...(payload.toStatus === "order_in_kitchen" && { hasVerifiedPayment: true }),
+                // Include refund info when cancelling
+                ...(payload.refundType !== undefined && { refundType: payload.refundType }),
+                ...(payload.refundAmount !== undefined && { refundAmount: payload.refundAmount }),
               }
             : order
         )
@@ -932,33 +945,58 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         );
 
       case "cancelled":
-        // Only show refund options if there was a verified payment
-        if (!order.hasVerifiedPayment) {
-          return (
-            <span className="text-sm text-slate-500">
-              {dictionary.noRefundNeeded ?? "No refund needed"}
-            </span>
-          );
-        }
-        if (order.refundStatus === "requested") {
+        // No verified payment or refund type is "none" - show close button
+        if (!order.hasVerifiedPayment || order.refundType === "none") {
           return (
             <Button
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              variant="outline"
               disabled={isSaving}
-              onClick={() => void handleMarkRefundPaid(order)}
+              onClick={() => void handleCloseOrder(order)}
             >
-              {dictionary.actionMarkRefundPaid ?? "Mark refund paid"}
+              {dictionary.closeOrder ?? "Close Order"}
             </Button>
           );
         }
+        // Refund paid - show close button
         if (order.refundStatus === "paid") {
           return (
-            <span className="text-sm font-medium text-emerald-600">
-              {dictionary.statusRefundPaid ?? "Refund paid"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-emerald-600">
+                {dictionary.statusRefundPaid ?? "Refund paid"}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isSaving}
+                onClick={() => void handleCloseOrder(order)}
+              >
+                {dictionary.closeOrder ?? "Close Order"}
+              </Button>
+            </div>
           );
         }
+        // Refund requested - show mark paid button
+        if (order.refundStatus === "requested") {
+          return (
+            <div className="flex flex-col items-end gap-1">
+              {order.refundAmount != null && order.refundAmount > 0 && (
+                <span className="text-xs text-amber-600">
+                  Refund: {formatCurrency(order.refundAmount)}
+                </span>
+              )}
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={isSaving}
+                onClick={() => void handleMarkRefundPaid(order)}
+              >
+                {dictionary.actionMarkRefundPaid ?? "Mark refund paid"}
+              </Button>
+            </div>
+          );
+        }
+        // Has verified payment but no refund status yet - show mark requested button
         return (
           <Button
             size="sm"
@@ -1144,6 +1182,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         dictionary={dictionary}
         isSubmitting={rejectSubmitting}
         onSubmit={handleRejectSubmit}
+        hasVerifiedPayment={rejectTarget?.hasVerifiedPayment ?? false}
+        orderAmounts={rejectTarget ? {
+          subtotal: rejectTarget.subtotal,
+          deliveryFee: rejectTarget.deliveryFee,
+          totalAmount: rejectTarget.totalAmount,
+        } : undefined}
       />
 
       {/* Accept Order Modal */}

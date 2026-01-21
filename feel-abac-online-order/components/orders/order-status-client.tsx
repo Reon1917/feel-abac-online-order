@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type orderDictionary from "@/dictionaries/en/order.json";
 import { PaymentQrSection } from "@/components/payments/payment-qr-section";
 import { RefundNoticeBanner } from "@/components/payments/refund-notice-banner";
+import { ContactFeelAbacBanner } from "@/components/orders/contact-feel-abac-banner";
 import { getPusherClient } from "@/lib/pusher/client";
 import {
   ORDER_STATUS_CHANGED_EVENT,
@@ -51,7 +52,12 @@ function resolveStep(status: OrderStatus) {
     case "order_out_for_delivery":
       return 2;
     case "delivered":
+    case "closed":
+      // Terminal success state - all steps completed
       return 3;
+    case "cancelled":
+      // Terminal failure state - return -1 to grey out all steps
+      return -1;
     default:
       return 0;
   }
@@ -182,6 +188,9 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
           payload.toStatus === "cancelled" ? payload.at : prev.cancelledAt,
         cancelReason: payload.reason ?? prev.cancelReason,
         isClosed: payload.toStatus === "cancelled" || payload.toStatus === "delivered",
+        // Include refund info when cancelling
+        ...(payload.refundType !== undefined && { refundType: payload.refundType }),
+        ...(payload.refundAmount !== undefined && { refundAmount: payload.refundAmount }),
       }));
       
       // Only refresh for non-terminal states
@@ -440,6 +449,16 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
                   {order.cancelReason}
                 </p>
               ) : null}
+              {/* Show refund status message */}
+              {order.refundType && order.refundType !== "none" ? (
+                <p className="mt-2 text-sm font-medium text-amber-700">
+                  {dictionary.cancelledRefundPending ?? "Refund will be processed."}
+                </p>
+              ) : order.refundType === "none" ? (
+                <p className="mt-2 text-sm text-red-600">
+                  {dictionary.cancelledNoRefund ?? "No refund applicable."}
+                </p>
+              ) : null}
             </div>
           )}
           {delivered && (
@@ -533,6 +552,13 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
 
       {/* Refund notice for cancelled orders with verified payment */}
       <RefundNoticeBanner order={order} />
+
+      {/* Contact banner - prominent after payment submitted */}
+      {(order.status === "payment_review" ||
+        order.status === "order_in_kitchen" ||
+        order.status === "order_out_for_delivery") && (
+        <ContactFeelAbacBanner dictionary={dictionary} />
+      )}
 
       {/* Payment section - shows for awaiting payment and review statuses */}
       {(order.status === "awaiting_payment" ||
