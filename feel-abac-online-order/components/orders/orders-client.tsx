@@ -46,6 +46,8 @@ const ONGOING_STATUSES: OrderStatus[] = [
   "order_out_for_delivery",
 ];
 
+const COMPLETED_STATUSES: OrderStatus[] = ["delivered", "closed"];
+
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -144,7 +146,9 @@ export function OrdersClient({
   const ongoingOrders = orders.filter((o) =>
     ONGOING_STATUSES.includes(o.status)
   );
-  const completedOrders = orders.filter((o) => o.status === "delivered");
+  const completedOrders = orders.filter((o) =>
+    COMPLETED_STATUSES.includes(o.status)
+  );
   const cancelledOrders = orders.filter((o) => o.status === "cancelled");
 
   const tabs: { id: TabType; label: string; count: number }[] = [

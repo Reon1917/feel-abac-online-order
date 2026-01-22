@@ -295,6 +295,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
   const delivered = order.status === "delivered";
   const closed = order.status === "closed";
   const isClosed = cancelled || delivered || closed || order.isClosed;
+  const refundPaid = order.refundStatus === "paid";
   const showPaymentReviewWarning = order.status === "payment_review";
 
   // Handle cleanup and navigation back to menu
@@ -452,8 +453,15 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
               ) : null}
               {/* Show refund status message */}
               {order.refundType && order.refundType !== "none" ? (
-                <p className="mt-2 text-sm font-medium text-amber-700">
-                  {dictionary.cancelledRefundPending ?? "Refund will be processed."}
+                <p
+                  className={clsx(
+                    "mt-2 text-sm font-medium",
+                    refundPaid ? "text-emerald-700" : "text-amber-700"
+                  )}
+                >
+                  {refundPaid
+                    ? (dictionary.cancelledRefundPaid ?? "Refund paid.")
+                    : (dictionary.cancelledRefundPending ?? "Refund will be processed.")}
                 </p>
               ) : order.refundType === "none" ? (
                 <p className="mt-2 text-sm text-red-600">
