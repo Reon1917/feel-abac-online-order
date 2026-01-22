@@ -94,5 +94,6 @@
   "contactBannerSubtitle": "Contact us directly.",
   "contactPhone": "09X-XXX-XXXX",
   "cancelledRefundPending": "Refund will be processed.",
+  "cancelledRefundPaid": "Refund paid.",
   "cancelledNoRefund": "No refund applicable."
 }
