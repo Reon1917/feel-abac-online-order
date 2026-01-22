@@ -8,6 +8,7 @@
   "statusKitchen": "Order in Kitchen",
   "statusOutForDelivery": "Handed off to delivery",
   "statusDelivered": "Delivered",
+  "statusClosed": "Closed",
   "statusCancelled": "Cancelled",
   "lastUpdated": "Last updated",
   "howToPay": "How to pay:",

@@ -48,6 +48,7 @@ export default async function OrdersPage({ params }: PageProps) {
     order_in_kitchen: dictionary.statusKitchen,
     order_out_for_delivery: dictionary.statusOutForDelivery,
     delivered: dictionary.statusDelivered,
+    closed: dictionary.statusClosed ?? "Closed",
     cancelled: dictionary.statusCancelled,
   };
 
