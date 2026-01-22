@@ -173,14 +173,14 @@ export function RejectOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg md:max-h-[85vh] md:overflow-y-auto md:p-5 lg:max-h-none lg:p-6">
         <DialogHeader>
           <DialogTitle className="text-red-600">{dialogTitle}</DialogTitle>
           <DialogDescription className="text-sm text-slate-500">
             {dialogDescription}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-3 lg:space-y-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {dictionary.rejectQuickReasonsLabel}
@@ -226,12 +226,12 @@ export function RejectOrderDialog({
 
           {/* Refund options - only shown when payment was verified */}
           {hasVerifiedPayment && orderAmounts && (
-            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 md:space-y-2 md:p-2.5 lg:space-y-3 lg:p-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
                   {dictionary.refundTypeLabel ?? "Refund Type"}
                 </p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2 md:gap-1.5 lg:gap-2">
                   {REFUND_TYPE_OPTIONS.map((type) => {
                     const isActive = refundType === type;
                     return (
@@ -254,11 +254,11 @@ export function RejectOrderDialog({
               </div>
 
               {/* Refund amount display */}
-              <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-amber-200">
+              <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-amber-200 md:px-2.5 md:py-1.5 lg:px-3 lg:py-2">
                 <span className="text-sm text-amber-700">
                   {dictionary.refundAmountLabel ?? "Refund Amount"}
                 </span>
-                <span className="text-lg font-bold text-amber-800">
+                <span className="text-lg font-bold text-amber-800 md:text-base lg:text-lg">
                   {formatCurrency(calculatedRefundAmount)}
                 </span>
               </div>
