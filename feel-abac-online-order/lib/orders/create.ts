@@ -172,7 +172,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     throw new Error("Cart is empty");
   }
 
-  // Preload menu codes for all referenced menu items so we can persist them on order items
+  // Preload menu codes and availability for all referenced menu items
   const uniqueMenuItemIds = Array.from(
     new Set(
       cart.items
@@ -182,18 +182,33 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   );
 
   const menuCodesByItemId = new Map<string, string | null>();
+  const unavailableItems: string[] = [];
   if (uniqueMenuItemIds.length > 0) {
     const menuRows = await db
       .select({
         id: menuItems.id,
         menuCode: menuItems.menuCode,
+        isAvailable: menuItems.isAvailable,
+        nameEn: menuItems.nameEn,
       })
       .from(menuItems)
       .where(inArray(menuItems.id, uniqueMenuItemIds));
 
     for (const row of menuRows) {
       menuCodesByItemId.set(row.id, row.menuCode ?? null);
+      if (!row.isAvailable) {
+        unavailableItems.push(row.nameEn);
+      }
     }
+  }
+
+  // Reject order if any cart items are now out of stock
+  if (unavailableItems.length > 0) {
+    const itemList = unavailableItems.slice(0, 3).join(", ");
+    const suffix = unavailableItems.length > 3 ? ` and ${unavailableItems.length - 3} more` : "";
+    throw new Error(
+      `Some items in your cart are no longer available: ${itemList}${suffix}. Please remove them and try again.`
+    );
   }
 
   const bangkokNow = nowUtc();
