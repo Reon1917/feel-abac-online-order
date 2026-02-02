@@ -526,6 +526,11 @@ async function buildCartLinePlans(cartId: string, inputs: AddToCartInput[]) {
     }
 
     const item = menuResult.item;
+
+    // Reject add-to-cart if item is out of stock
+    if (!item.isAvailable) {
+      throw new Error("This item is currently out of stock.");
+    }
     const sanitizedSelections = validateSelections(input.selections);
     const choiceDetails = ensureGroupSelections(item, sanitizedSelections);
     const normalizedNote =
@@ -707,6 +712,11 @@ export async function addSetMenuToCart(
   }
   if (!itemData.item.isSetMenu) {
     throw new Error("This item is not a set menu.");
+  }
+
+  // Reject add-to-cart if item is out of stock
+  if (!itemData.item.isAvailable) {
+    throw new Error("This item is currently out of stock.");
   }
 
   // Get pool links to validate selections
