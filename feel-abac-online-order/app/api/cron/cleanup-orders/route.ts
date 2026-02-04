@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, lt, eq, inArray } from "drizzle-orm";
+import { lt, inArray } from "drizzle-orm";
 import { UTApi } from "uploadthing/server";
 
 import { db } from "@/src/db/client";
@@ -15,17 +15,23 @@ const CLEANUP_NOTIFY_EMAIL = process.env.CLEANUP_NOTIFY_EMAIL;
 
 /**
  * Extract UploadThing file key from URL.
- * UploadThing URLs are typically: https://utfs.io/f/{fileKey}
+ * Supports:
+ * - https://utfs.io/f/{fileKey}
+ * - https://uploadthing.com/f/{appId}/{fileKey}
  */
 function extractUploadThingKey(url: string | null): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    // UploadThing URLs: /f/{fileKey}
-    const match = parsed.pathname.match(/\/f\/(.+)$/);
-    return match?.[1] ?? null;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const fIndex = parts.indexOf("f");
+    if (fIndex === -1) return null;
+    const after = parts.slice(fIndex + 1);
+    if (after.length === 0) return null;
+    return after[after.length - 1] ?? null;
   } catch {
-    return null;
+    const match = url.match(/\/f\/([^/?#]+)(?:[/?#]|$)/);
+    return match?.[1] ?? null;
   }
 }
 
@@ -54,15 +60,12 @@ export async function GET(request: Request) {
   cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
 
   try {
-    // Step 1: Get closed orders older than retention period (with limit)
+    // Step 1: Get orders older than retention period (with limit)
     const oldOrders = await db
       .select({ id: orders.id, displayId: orders.displayId })
       .from(orders)
       .where(
-        and(
-          lt(orders.createdAt, cutoffDate),
-          eq(orders.isClosed, true)
-        )
+        lt(orders.createdAt, cutoffDate)
       )
       .limit(ORDER_LIMIT);
 
