@@ -1,6 +1,4 @@
 import { unstable_noStore as noStore } from "next/cache";
-import Link from "next/link";
-import { Archive, CreditCard } from "lucide-react";
 
 import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -8,10 +6,8 @@ import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 import { OrderListClient } from "@/components/admin/orders/order-list-client";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
-import { withLocalePath } from "@/lib/i18n/path";
 import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
 import { MenuLanguageToggle } from "@/components/i18n/menu-language-toggle";
-import { Button } from "@/components/ui/button";
 
 type PageProps = {
   params: Promise<{
@@ -57,18 +53,6 @@ export default async function AdminOrdersPage({ params }: PageProps) {
               }}
               hideLabel
             />
-            <Button asChild variant="outline" size="sm">
-              <Link href={withLocalePath(locale, "/admin/settings/promptpay")}>
-                <CreditCard className="mr-2 h-4 w-4" />
-                {dictionary.promptpaySettings ?? "PromptPay"}
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={withLocalePath(locale, "/admin/orders/archived")}>
-                <Archive className="mr-2 h-4 w-4" />
-                {dictionary.viewPastOrders ?? "Past Orders"}
-              </Link>
-            </Button>
           </div>
         }
       />

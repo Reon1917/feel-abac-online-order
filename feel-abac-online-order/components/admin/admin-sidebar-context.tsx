@@ -6,12 +6,16 @@ type SidebarContextValue = {
   isCollapsed: boolean;
   toggleCollapsed: () => void;
   setCollapsed: (value: boolean) => void;
+  isMobileOpen: boolean;
+  toggleMobile: () => void;
+  setMobileOpen: (value: boolean) => void;
 };
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 export function AdminSidebarProvider({ children }: { children: ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const toggleCollapsed = useCallback(() => {
     setIsCollapsed((prev) => !prev);
@@ -21,8 +25,25 @@ export function AdminSidebarProvider({ children }: { children: ReactNode }) {
     setIsCollapsed(value);
   }, []);
 
+  const toggleMobile = useCallback(() => {
+    setIsMobileOpen((prev) => !prev);
+  }, []);
+
+  const setMobileOpen = useCallback((value: boolean) => {
+    setIsMobileOpen(value);
+  }, []);
+
   return (
-    <SidebarContext.Provider value={{ isCollapsed, toggleCollapsed, setCollapsed }}>
+    <SidebarContext.Provider
+      value={{
+        isCollapsed,
+        toggleCollapsed,
+        setCollapsed,
+        isMobileOpen,
+        toggleMobile,
+        setMobileOpen,
+      }}
+    >
       {children}
     </SidebarContext.Provider>
   );

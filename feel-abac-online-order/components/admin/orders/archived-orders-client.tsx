@@ -394,8 +394,8 @@ export function ArchivedOrdersClient({
         }}
       >
         <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[200px] flex-1">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="w-full md:min-w-[240px] md:flex-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {dictionary.filterSearchLabel ?? "Search"}
             </label>
             <input
@@ -405,11 +405,11 @@ export function ArchivedOrdersClient({
                 setFilters((prev) => ({ ...prev, query: event.target.value }))
               }
               placeholder={dictionary.filterSearchPlaceholder ?? "Order ID or customer"}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
             />
           </div>
-          <div className="min-w-[160px]">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="w-full sm:min-w-[160px] md:w-auto">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {dictionary.archivedDayLabel ?? "Day"}
             </label>
             <Select
@@ -419,7 +419,7 @@ export function ArchivedOrdersClient({
               }
               disabled={isPending}
             >
-              <SelectTrigger className="mt-1 w-48">
+              <SelectTrigger className="mt-1 w-full border-slate-300 bg-white text-slate-900 data-[placeholder]:text-slate-400 shadow-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 md:w-48">
                 <SelectValue
                   placeholder={dictionary.archivedDayPlaceholder ?? "Select a day"}
                 />
@@ -436,8 +436,8 @@ export function ArchivedOrdersClient({
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-[160px]">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="w-full sm:min-w-[160px] md:w-auto">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {dictionary.filterStatusLabel ?? "Status"}
             </label>
             <Select
@@ -447,7 +447,7 @@ export function ArchivedOrdersClient({
               }
               disabled={isPending}
             >
-              <SelectTrigger className="mt-1 w-44">
+              <SelectTrigger className="mt-1 w-full border-slate-300 bg-white text-slate-900 data-[placeholder]:text-slate-400 shadow-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 md:w-44">
                 <SelectValue placeholder={dictionary.filterStatusPlaceholder ?? "All statuses"} />
               </SelectTrigger>
               <SelectContent>
@@ -481,8 +481,8 @@ export function ArchivedOrdersClient({
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-[160px]">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="w-full sm:min-w-[160px] md:w-auto">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {dictionary.filterRefundLabel ?? "Refund"}
             </label>
             <Select
@@ -492,7 +492,7 @@ export function ArchivedOrdersClient({
               }
               disabled={isPending}
             >
-              <SelectTrigger className="mt-1 w-40">
+              <SelectTrigger className="mt-1 w-full border-slate-300 bg-white text-slate-900 data-[placeholder]:text-slate-400 shadow-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 md:w-40">
                 <SelectValue placeholder={dictionary.filterRefundPlaceholder ?? "All"} />
               </SelectTrigger>
               <SelectContent>
@@ -511,8 +511,8 @@ export function ArchivedOrdersClient({
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-[140px]">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="w-full sm:min-w-[140px] md:w-auto">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {dictionary.filterMinTotalLabel ?? "Min total"}
             </label>
             <input
@@ -524,11 +524,11 @@ export function ArchivedOrdersClient({
                 setFilters((prev) => ({ ...prev, min: event.target.value }))
               }
               placeholder="0"
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
             />
           </div>
-          <div className="min-w-[140px]">
-            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="w-full sm:min-w-[140px] md:w-auto">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
               {dictionary.filterMaxTotalLabel ?? "Max total"}
             </label>
             <input
@@ -540,15 +540,15 @@ export function ArchivedOrdersClient({
                 setFilters((prev) => ({ ...prev, max: event.target.value }))
               }
               placeholder="0"
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
             />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             {orders.length} {orders.length === 1 ? "order" : "orders"}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <Button type="button" variant="outline" size="sm" onClick={resetFilters}>
               {dictionary.filterReset ?? "Reset"}
             </Button>

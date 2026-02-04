@@ -11,6 +11,8 @@ import {
   MapPin,
   Users,
   CreditCard,
+  Layout,
+  Archive,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -63,7 +65,7 @@ export function AdminSidebar({
   adminRole,
 }: AdminSidebarProps) {
   const pathname = usePathname();
-  const { isCollapsed, toggleCollapsed } = useSidebar();
+  const { isCollapsed, toggleCollapsed, isMobileOpen, setMobileOpen } = useSidebar();
 
   const navSections: NavSection[] = useMemo(
     () => [
@@ -80,6 +82,11 @@ export function AdminSidebar({
             icon: Bell,
             label: "Live Orders",
             badge: liveOrderCount,
+          },
+          {
+            href: "/admin/orders/archived",
+            icon: Archive,
+            label: "Past Orders",
           },
         ],
       },
@@ -109,6 +116,12 @@ export function AdminSidebar({
             minRole: "admin",
           },
           {
+            href: "/admin/menu/layout",
+            icon: Layout,
+            label: "Menu Layout",
+            minRole: "admin",
+          },
+          {
             href: "/admin/delivery",
             icon: MapPin,
             label: "Delivery Locations",
@@ -129,7 +142,7 @@ export function AdminSidebar({
           {
             href: "/admin/settings/promptpay",
             icon: CreditCard,
-            label: "Payments",
+            label: "PromptPay Settings",
             minRole: "admin",
           },
         ],
@@ -151,10 +164,25 @@ export function AdminSidebar({
       .filter((section) => section.items.length > 0);
   }, [navSections, adminRole]);
 
-  const isActive = (href: string) => {
-    const fullPath = withLocalePath(locale, href);
-    return pathname === fullPath || pathname.startsWith(fullPath + "/");
-  };
+  const flatNavItems = useMemo(
+    () =>
+      filteredSections
+        .flatMap((section) => section.items)
+        .map((item) => ({
+          ...item,
+          fullPath: withLocalePath(locale, item.href),
+        })),
+    [filteredSections, locale]
+  );
+
+  const activeHref = useMemo(() => {
+    const match = flatNavItems
+      .filter((item) => pathname === item.fullPath || pathname.startsWith(item.fullPath + "/"))
+      .sort((a, b) => b.fullPath.length - a.fullPath.length)[0];
+    return match?.href ?? null;
+  }, [flatNavItems, pathname]);
+
+  const isActive = (href: string) => activeHref === href;
 
   const getInitials = (name: string) => {
     return name
@@ -181,12 +209,23 @@ export function AdminSidebar({
   const roleBadge = getRoleBadge(adminRole);
 
   return (
-    <aside
-      className={clsx(
-        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white transition-all duration-300",
-        isCollapsed ? "w-[72px]" : "w-64"
+    <>
+      {isMobileOpen && (
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close admin menu"
+          className="fixed inset-0 z-30 bg-slate-900/20 md:hidden"
+        />
       )}
-    >
+      <aside
+        className={clsx(
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white transition-all duration-300",
+          "w-64 md:translate-x-0",
+          isCollapsed ? "md:w-[72px]" : "md:w-64",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
       {/* Logo Header */}
       <div className="flex h-16 items-center border-b border-slate-200 px-4">
         <Link
@@ -219,6 +258,7 @@ export function AdminSidebar({
                   <Link
                     key={item.href}
                     href={withLocalePath(locale, item.href)}
+                    onClick={() => setMobileOpen(false)}
                     className={clsx(
                       "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                       active
@@ -260,7 +300,7 @@ export function AdminSidebar({
       {/* Collapse Toggle */}
       <button
         onClick={toggleCollapsed}
-        className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-slate-600"
+        className="absolute -right-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition hover:bg-slate-50 hover:text-slate-600 md:flex"
       >
         {isCollapsed ? (
           <ChevronRight className="h-3.5 w-3.5" />
@@ -307,6 +347,7 @@ export function AdminSidebar({
           )}
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

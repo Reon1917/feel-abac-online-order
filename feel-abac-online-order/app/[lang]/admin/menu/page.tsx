@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { Layers, Layout, Star } from "lucide-react";
+import { Layers, Star } from "lucide-react";
 
 import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -55,12 +55,6 @@ export default async function AdminMenuPage({ params }: PageProps) {
         languageLabels={common.languageSwitcher}
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href={withLocalePath(locale, "/admin/menu/layout")}>
-                <Layout className="mr-2 h-4 w-4" />
-                {dict.actions?.openLayoutEditor ?? "Layout Editor"}
-              </Link>
-            </Button>
             <Button asChild variant="outline" size="sm">
               <Link href={withLocalePath(locale, "/admin/menu/pools")}>
                 <Layers className="mr-2 h-4 w-4" />

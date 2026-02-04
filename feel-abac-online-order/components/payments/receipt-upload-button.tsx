@@ -38,7 +38,9 @@ export function ReceiptUploadButton({
       "x-payment-type": paymentType,
     },
     onClientUploadComplete: async (res) => {
-      if (!res?.[0]?.url) {
+      const initialUrl =
+        res?.[0]?.serverData?.url || res?.[0]?.ufsUrl || res?.[0]?.url;
+      if (!initialUrl) {
         toast.error("Upload failed");
         return;
       }
@@ -49,7 +51,7 @@ export function ReceiptUploadButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type: paymentType,
-            receiptUrl: res[0].url,
+            receiptUrl: initialUrl,
           }),
         });
 
@@ -134,4 +136,3 @@ export function ReceiptUploadButton({
     </label>
   );
 }
-
