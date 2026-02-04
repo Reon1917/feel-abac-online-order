@@ -13,8 +13,8 @@ export function AdminMainContent({ children }: AdminMainContentProps) {
   return (
     <main
       className={clsx(
-        "min-h-screen transition-all duration-300",
-        isCollapsed ? "ml-[72px]" : "ml-64"
+        "min-h-screen transition-all duration-300 ml-0",
+        isCollapsed ? "md:ml-[72px]" : "md:ml-64"
       )}
     >
       {children}
