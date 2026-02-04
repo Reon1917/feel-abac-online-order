@@ -11,6 +11,8 @@ import {
   MapPin,
   Users,
   CreditCard,
+  Layout,
+  Archive,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -81,6 +83,11 @@ export function AdminSidebar({
             label: "Live Orders",
             badge: liveOrderCount,
           },
+          {
+            href: "/admin/orders/archived",
+            icon: Archive,
+            label: "Past Orders",
+          },
         ],
       },
       {
@@ -109,6 +116,12 @@ export function AdminSidebar({
             minRole: "admin",
           },
           {
+            href: "/admin/menu/layout",
+            icon: Layout,
+            label: "Menu Layout",
+            minRole: "admin",
+          },
+          {
             href: "/admin/delivery",
             icon: MapPin,
             label: "Delivery Locations",
@@ -129,7 +142,7 @@ export function AdminSidebar({
           {
             href: "/admin/settings/promptpay",
             icon: CreditCard,
-            label: "Payments",
+            label: "PromptPay Settings",
             minRole: "admin",
           },
         ],
