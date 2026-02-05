@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createOrderFromCart } from "@/lib/orders/create";
+import { getLatestUnpaidOrderForUser } from "@/lib/orders/queries";
+import { ACTIVE_ORDER_BLOCK_CODE } from "@/lib/orders/active-order";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { resolveUserId } from "@/lib/api/require-user";
 import { getShopStatus } from "@/lib/shop/queries";
@@ -38,6 +40,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: shopStatus.closedMessageEn ?? "Shop is currently closed" },
       { status: 403 }
+    );
+  }
+
+  const unpaidOrder = await getLatestUnpaidOrderForUser(userId);
+  if (unpaidOrder) {
+    return NextResponse.json(
+      {
+        error:
+          "You can place a new order after payment for your current order is verified.",
+        code: ACTIVE_ORDER_BLOCK_CODE,
+        activeOrder: {
+          displayId: unpaidOrder.displayId,
+          status: unpaidOrder.status,
+        },
+      },
+      { status: 409 }
     );
   }
 

@@ -18,6 +18,7 @@ import { withLocalePath } from "@/lib/i18n/path";
 import { DeliveryLocationPicker } from "./delivery-location-picker";
 import { SwipeToRemove } from "@/components/cart/swipe-to-remove";
 import { emitCartChange } from "@/lib/cart/events";
+import { extractActiveOrderBlock } from "@/lib/orders/active-order";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -263,6 +264,27 @@ export function CartView({
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.order?.displayId) {
+        const activeOrder = extractActiveOrderBlock(payload);
+
+        if (activeOrder) {
+          const message =
+            dictionary.activeOrderBlock?.message ??
+            "You can place a new order after payment for your current order is verified.";
+          const ctaLabel = dictionary.activeOrderBlock?.cta ?? "View order";
+          setSubmitError(message);
+          toast.error(message, {
+            action: {
+              label: ctaLabel,
+              onClick: () => {
+                router.push(
+                  withLocalePath(locale, `/orders/${activeOrder.displayId}`)
+                );
+              },
+            },
+          });
+          return;
+        }
+
         throw new Error(payload?.error ?? "Unable to place order");
       }
 

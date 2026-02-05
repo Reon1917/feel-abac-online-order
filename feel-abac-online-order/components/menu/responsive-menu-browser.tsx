@@ -83,6 +83,13 @@ export function ResponsiveMenuBrowser({
   const { quickAdd } = useQuickAddToCart({
     messages: {
       error: dictionary.quickAdd?.error ?? "Couldn't add this item. Try again.",
+      activeOrderBlock: dictionary.activeOrderBlock
+        ? {
+            message: dictionary.activeOrderBlock.message,
+            cta: dictionary.activeOrderBlock.cta ?? "View order",
+            locale: appLocale,
+          }
+        : undefined,
     },
   });
   const { launch, Overlay: CartAddAnimationOverlay } = useCartAddAnimation();
@@ -137,14 +144,13 @@ export function ResponsiveMenuBrowser({
 
       const quantityDelta = 1;
       const subtotalDelta = item.price;
-      applyOptimisticDelta(quantityDelta, subtotalDelta);
-      if (rect) {
-        launch(rect);
-      }
 
       const result = await quickAdd(item);
-      if (result.status === "error") {
-        applyOptimisticDelta(-quantityDelta, -subtotalDelta);
+      if (result.status === "added") {
+        applyOptimisticDelta(quantityDelta, subtotalDelta);
+        if (rect) {
+          launch(rect);
+        }
       }
     },
     [appLocale, applyOptimisticDelta, launch, quickAdd, router]

@@ -143,6 +143,19 @@ function mapOrder(
   };
 }
 
+const UNPAID_ORDER_STATUSES: OrderStatus[] = [
+  "order_processing",
+  "awaiting_payment",
+  "payment_review",
+];
+
+export type ActiveUnpaidOrderSummary = {
+  id: string;
+  displayId: string;
+  status: OrderStatus;
+  createdAt: string;
+};
+
 async function loadOrderItems(orderId: string): Promise<OrderItemRecord[]> {
   const items = await db
     .select()
@@ -234,6 +247,39 @@ export async function getOrderByDisplayId(
   const items = await loadOrderItems(row.id);
   const payments = await loadOrderPayments(row.id);
   return mapOrder(row, items, payments);
+}
+
+export async function getLatestUnpaidOrderForUser(
+  userId: string
+): Promise<ActiveUnpaidOrderSummary | null> {
+  const [row] = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      status: orders.status,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.userId, userId),
+        eq(orders.isClosed, false),
+        inArray(orders.status, UNPAID_ORDER_STATUSES)
+      )
+    )
+    .orderBy(desc(orders.createdAt))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    displayId: row.displayId,
+    status: row.status as OrderStatus,
+    createdAt: dateToIso(row.createdAt) ?? "",
+  };
 }
 
 export async function appendOrderEvent(input: {

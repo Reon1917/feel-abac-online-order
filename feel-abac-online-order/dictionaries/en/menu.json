@@ -77,6 +77,10 @@
     },
     "totalLabel": "Subtotal"
   },
+  "activeOrderBlock": {
+    "message": "You can place a new order after payment for your current order is verified.",
+    "cta": "View order"
+  },
   "resumeOrder": {
     "title": "Return to your order",
     "subtitle": "You have an order in progress. Jump back to track it.",

@@ -15,6 +15,10 @@
     "empty": "Your cart is empty",
     "checkoutCta": "Send order"
   },
+  "activeOrderBlock": {
+    "message": "You can place a new order after payment for your current order is verified.",
+    "cta": "View order"
+  },
   "delivery": {
     "label": "Delivery location",
     "chooseCta": "Choose location",
