@@ -73,6 +73,9 @@ export default async function MenuPage({ params }: PageProps) {
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{dict.header.title}</h1>
               <p className="text-sm text-slate-600">{dict.header.description}</p>
+              <p className="text-xs text-slate-500">
+                {dict.header.vatNotice}
+              </p>
             </div>
           </header>
 

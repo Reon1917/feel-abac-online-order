@@ -58,6 +58,8 @@
   "noArchivedOrders": "No past orders found",
   "itemsTitle": "Items",
   "subtotalLabel": "Subtotal",
+  "vatLabel": "VAT (7%)",
+  "foodTotalLabel": "VAT ပါ အစားအစာ စုစုပေါင်း",
   "phoneLabel": "Phone",
   "orderNoteLabel": "Order Note",
   "deliveryNoteLabel": "Delivery Note",

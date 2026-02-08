@@ -116,6 +116,7 @@ function mapOrder(
     adminNote: row.adminNote,
     deliveryNotes: row.deliveryNotes,
     subtotal: numericToNumber(row.subtotal),
+    vatAmount: numericToNumber(row.vatAmount),
     deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : null,
     discountTotal: numericToNumber(row.discountTotal),
     totalAmount: numericToNumber(row.totalAmount),
@@ -312,6 +313,7 @@ const adminSummarySelect = {
   customerName: orders.customerName,
   customerPhone: orders.customerPhone,
   subtotal: orders.subtotal,
+  vatAmount: orders.vatAmount,
   deliveryFee: orders.deliveryFee,
   totalAmount: orders.totalAmount,
   createdAt: orders.createdAt,
@@ -342,6 +344,7 @@ type AdminSummaryRow = {
   customerName: string;
   customerPhone: string;
   subtotal: string | null;
+  vatAmount: string | null;
   deliveryFee: string | null;
   totalAmount: string | null;
   createdAt: Date | null;
@@ -375,6 +378,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     subtotal: numericToNumber(row.subtotal),
+    vatAmount: numericToNumber(row.vatAmount),
     deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : null,
     totalAmount: numericToNumber(row.totalAmount),
     deliveryLabel,
@@ -692,6 +696,7 @@ export async function getOrderEmailDetails(displayId: string) {
     deliveryNotes: order.deliveryNotes,
     orderNote: order.orderNote,
     subtotal: order.subtotal,
+    vatAmount: order.vatAmount,
     deliveryFee: order.deliveryFee,
     items,
   };

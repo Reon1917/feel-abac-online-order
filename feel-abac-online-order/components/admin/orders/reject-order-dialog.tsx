@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { RefundType } from "@/lib/orders/types";
+import { computeOrderTotals } from "@/lib/orders/totals";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -34,6 +35,7 @@ type RejectOrderDialogProps = {
   /** Order amounts for refund calculation */
   orderAmounts?: {
     subtotal: number;
+    vatAmount: number;
     deliveryFee: number | null;
     totalAmount: number;
   };
@@ -101,13 +103,19 @@ export function RejectOrderDialog({
   // Calculate refund amount based on type
   const calculatedRefundAmount = useMemo(() => {
     if (!orderAmounts) return 0;
+    const totals = computeOrderTotals({
+      foodSubtotal: orderAmounts.subtotal,
+      vatAmount: orderAmounts.vatAmount,
+      deliveryFee: orderAmounts.deliveryFee,
+    });
+
     switch (refundType) {
       case "full":
-        return orderAmounts.totalAmount;
+        return totals.totalAmount;
       case "food_only":
-        return orderAmounts.subtotal;
+        return totals.foodTotal;
       case "delivery_fee_only":
-        return orderAmounts.deliveryFee ?? 0;
+        return totals.deliveryFee;
       case "none":
         return 0;
       default:

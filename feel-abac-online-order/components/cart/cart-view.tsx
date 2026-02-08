@@ -19,6 +19,10 @@ import { DeliveryLocationPicker } from "./delivery-location-picker";
 import { SwipeToRemove } from "@/components/cart/swipe-to-remove";
 import { emitCartChange } from "@/lib/cart/events";
 import { extractActiveOrderBlock } from "@/lib/orders/active-order";
+import {
+  computeOrderTotals,
+  ORDER_VAT_PERCENT_LABEL,
+} from "@/lib/orders/totals";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -387,6 +391,9 @@ export function CartView({
           "{{count}}",
           String(itemCount)
         );
+  const cartTotals = computeOrderTotals({
+    foodSubtotal: cart.subtotal,
+  });
 
   const editingPending = editingItem ? !!pendingItems[editingItem.id] : false;
   const editingDisplayName = editingItem
@@ -655,12 +662,28 @@ export function CartView({
               <span className="text-sm font-semibold text-slate-900">
                 {dictionary.summary.foodSubtotal}
               </span>
+            </div>
+            <span className="text-sm font-semibold text-slate-900">
+              ฿{formatPrice(cartTotals.foodSubtotal)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm text-slate-700 max-lg:text-[13px]">
+            <span>
+              {dictionary.summary.vatLabel ??
+                `VAT (${ORDER_VAT_PERCENT_LABEL})`}
+            </span>
+            <span>฿{formatPrice(cartTotals.vatAmount)}</span>
+          </div>
+          <div className="flex items-start justify-between gap-2 border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900 max-lg:text-[13px]">
+            <div className="flex flex-col">
+              <span>{dictionary.summary.foodTotal ?? "Food Total"}</span>
               <span className="text-[10px] uppercase tracking-wide text-slate-500">
-                {dictionary.summary.vatIncluded}
+                {dictionary.summary.vatIncluded ??
+                  `Includes VAT (${ORDER_VAT_PERCENT_LABEL})`}
               </span>
             </div>
             <span className="text-sm font-semibold text-slate-900">
-              ฿{formatPrice(cart.subtotal)}
+              ฿{formatPrice(cartTotals.foodTotal)}
             </span>
           </div>
         </div>

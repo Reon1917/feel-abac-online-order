@@ -11,6 +11,8 @@
     },
     "subtotal": "စုစုပေါင်း",
     "foodSubtotal": "အစားအစာ စုစုပေါင်း",
+    "vatLabel": "VAT (7%)",
+    "foodTotal": "VAT ပါ အစားအစာ စုစုပေါင်း",
     "vatIncluded": "VAT ပါဝင်ပြီး",
     "empty": "အော်ဒါမရှိသေးပါ",
     "checkoutCta": "အော်ဒါပို့မည်"

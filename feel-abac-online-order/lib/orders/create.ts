@@ -25,7 +25,7 @@ import {
   createActiveOrderBlockError,
   UNPAID_ORDER_STATUSES,
 } from "./active-order";
-import { broadcastOrderSubmitted } from "./realtime";
+import { computeOrderTotals } from "./totals";
 import type { OrderSubmittedPayload } from "./events";
 import { getPusherServer } from "@/lib/pusher/server";
 import {
@@ -221,9 +221,12 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   // (PG DATE extracts the UTC date, not local date)
   const displayDayDate = new Date(`${displayDay}T00:00:00Z`);
 
-  const subtotalValue = cart.subtotal;
-  const subtotalString = toNumericString(subtotalValue);
-  const totalAmountString = subtotalString;
+  const totals = computeOrderTotals({
+    foodSubtotal: cart.subtotal,
+  });
+  const subtotalString = toNumericString(totals.foodSubtotal);
+  const vatAmountString = toNumericString(totals.vatAmount);
+  const totalAmountString = toNumericString(totals.totalAmount);
   const status: OrderStatus = "order_processing";
 
   const deliveryLabel = await formatDeliveryLabel(deliverySelection);
@@ -276,6 +279,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
               status,
               total_items,
               subtotal,
+              vat_amount,
               discount_total,
               total_amount,
               customer_name,
@@ -302,6 +306,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
               ${status},
               ${cart.items.length},
               ${subtotalString},
+              ${vatAmountString},
               '0.00',
               ${totalAmountString},
               ${userName},
@@ -459,6 +464,9 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         customerName: userName,
         customerPhone: profile.phoneNumber,
         deliveryLabel,
+        foodSubtotal: totals.foodSubtotal,
+        vatAmount: totals.vatAmount,
+        foodTotal: totals.foodTotal,
         totalAmount: Number(totalAmountString),
         status,
         at: bangkokNow.toISOString(),

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type orderDictionary from "@/dictionaries/en/order.json";
 import type { OrderRecord } from "@/lib/orders/types";
+import { computeOrderTotals, ORDER_VAT_PERCENT_LABEL } from "@/lib/orders/totals";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -151,6 +152,12 @@ const styles = {
 function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: ReceiptContentProps) {
   const safeDeliveryAddress =
     deliveryAddress || dictionary.receiptDeliveryFallback || "See order for details";
+  const totals = computeOrderTotals({
+    foodSubtotal: order.subtotal,
+    vatAmount: order.vatAmount,
+    deliveryFee: order.deliveryFee,
+    discountTotal: order.discountTotal,
+  });
 
   return (
     <div style={styles.paper}>
@@ -242,11 +249,19 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
       <div style={styles.totalsSection}>
         <div style={styles.totalRow}>
           <span>{dictionary.receiptSubtotal ?? "Subtotal"}</span>
-          <span>{formatAmount(order.subtotal)}</span>
+          <span>{formatAmount(totals.foodSubtotal)}</span>
+        </div>
+        <div style={styles.totalRow}>
+          <span>{dictionary.receiptVat ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}</span>
+          <span>{formatAmount(totals.vatAmount)}</span>
+        </div>
+        <div style={styles.totalRow}>
+          <span>{dictionary.receiptFoodTotal ?? "Food Total"}</span>
+          <span>{formatAmount(totals.foodTotal)}</span>
         </div>
         <div style={styles.totalRow}>
           <span>{dictionary.receiptDelivery ?? "Delivery"}</span>
-          <span>{order.deliveryFee != null ? formatAmount(order.deliveryFee) : "0"}</span>
+          <span>{formatAmount(totals.deliveryFee)}</span>
         </div>
         {order.discountTotal > 0 && (
           <div style={styles.totalRow}>
@@ -256,7 +271,7 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
         )}
         <div style={styles.grandTotal}>
           <span>{dictionary.receiptTotal ?? "TOTAL"}</span>
-          <span>฿{formatAmount(order.totalAmount)}</span>
+          <span>฿{formatAmount(totals.totalAmount)}</span>
         </div>
       </div>
 
