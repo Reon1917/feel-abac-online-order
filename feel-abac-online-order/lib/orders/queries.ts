@@ -25,6 +25,7 @@ import type {
   OrderPaymentStatus,
   OrderPaymentType,
 } from "./types";
+import { UNPAID_ORDER_STATUSES } from "./active-order";
 import { pgDateToString } from "@/lib/timezone";
 import { numericToNumber } from "@/lib/db/numeric";
 
@@ -142,12 +143,6 @@ function mapOrder(
     payments,
   };
 }
-
-const UNPAID_ORDER_STATUSES: OrderStatus[] = [
-  "order_processing",
-  "awaiting_payment",
-  "payment_review",
-];
 
 export type ActiveUnpaidOrderSummary = {
   id: string;

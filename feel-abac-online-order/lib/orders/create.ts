@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import { dbTx } from "@/src/db/tx-client";
@@ -21,6 +21,10 @@ import { getActiveCartForUser } from "@/lib/cart/queries";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { getUserProfile } from "@/lib/user-profile";
 import type { OrderStatus } from "./types";
+import {
+  createActiveOrderBlockError,
+  UNPAID_ORDER_STATUSES,
+} from "./active-order";
 import { broadcastOrderSubmitted } from "./realtime";
 import type { OrderSubmittedPayload } from "./events";
 import { getPusherServer } from "@/lib/pusher/server";
@@ -226,6 +230,31 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   const isCustom = deliverySelection.mode === "custom";
   const result = await dbTx.transaction(
     async (tx): Promise<{ orderId: string; displayId: string; submittedPayload: OrderSubmittedPayload }> => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${userId} FOR UPDATE`);
+
+      const [activeOrder] = await tx
+        .select({
+          displayId: orders.displayId,
+          status: orders.status,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.userId, userId),
+            eq(orders.isClosed, false),
+            inArray(orders.status, UNPAID_ORDER_STATUSES)
+          )
+        )
+        .orderBy(desc(orders.createdAt))
+        .limit(1);
+
+      if (activeOrder) {
+        throw createActiveOrderBlockError({
+          displayId: activeOrder.displayId,
+          status: activeOrder.status as OrderStatus,
+        });
+      }
+
       let orderId: string | null = null;
       let displayId: string | null = null;
       let displayCounter: number | null = null;
