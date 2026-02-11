@@ -76,7 +76,7 @@
       "one": "1 item",
       "other": "{{count}} items"
     },
-    "totalLabel": "Subtotal"
+    "totalLabel": "Food total"
   },
   "activeOrderBlock": {
     "message": "You can place a new order after payment for your current order is verified.",

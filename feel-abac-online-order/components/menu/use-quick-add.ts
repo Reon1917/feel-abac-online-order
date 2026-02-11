@@ -95,7 +95,7 @@ export function useQuickAddToCart({ messages }: UseQuickAddOptions) {
         return { status: "error", message: fallback };
       }
     },
-    [messages.error, router]
+    [messages.activeOrderBlock, messages.error, router]
   );
 
   return {

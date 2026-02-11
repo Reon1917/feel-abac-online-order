@@ -217,9 +217,16 @@ export async function PATCH(
       );
     }
 
+    const foodSubtotal = Number(order.subtotal ?? 0);
+    const parsedVatAmount =
+      order.vatAmount == null ? Number.NaN : Number(order.vatAmount);
+    const shouldRecomputeVat =
+      !Number.isFinite(parsedVatAmount) ||
+      (parsedVatAmount <= 0 && foodSubtotal > 0);
+
     const totals = computeOrderTotals({
-      foodSubtotal: Number(order.subtotal ?? 0),
-      vatAmount: Number(order.vatAmount ?? 0),
+      foodSubtotal,
+      vatAmount: shouldRecomputeVat ? undefined : parsedVatAmount,
       deliveryFee,
       discountTotal: Number(order.discountTotal ?? 0),
     });
@@ -235,6 +242,7 @@ export async function PATCH(
     await db
       .update(orders)
       .set({
+        vatAmount: String(totals.vatAmount),
         deliveryFee: String(totals.deliveryFee),
         totalAmount: String(totals.totalAmount),
         updatedAt: now,
