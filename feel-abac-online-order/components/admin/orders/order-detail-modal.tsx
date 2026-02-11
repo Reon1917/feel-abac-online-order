@@ -18,6 +18,10 @@ import { formatBangkokTimestamp } from "@/lib/timezone";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
 import { PaymentBadge } from "@/components/payments/admin/payment-badge";
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
+import {
+  computeOrderTotals,
+  ORDER_VAT_PERCENT_LABEL,
+} from "@/lib/orders/totals";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -106,6 +110,12 @@ export function OrderDetailModal({
 
   const hasDeliveryInfo =
     Boolean(order.courierTrackingUrl) || typeof order.deliveryFee === "number";
+  const totals = computeOrderTotals({
+    foodSubtotal: order.subtotal,
+    vatAmount: order.vatAmount,
+    deliveryFee: order.deliveryFee,
+    discountTotal: order.discountTotal,
+  });
 
   const handleHandOff = async () => {
     if (!order) return;
@@ -353,7 +363,7 @@ export function OrderDetailModal({
                       {dictionary.handoffFeeLabel ?? "Delivery fee (THB)"}
                     </dt>
                     <dd className="mt-0.5">
-                      {formatCurrency(order.deliveryFee)}
+                      {formatCurrency(totals.deliveryFee)}
                     </dd>
                   </div>
                 )}
@@ -454,7 +464,23 @@ export function OrderDetailModal({
                     {dictionary.subtotalLabel ?? "Subtotal"}
                   </span>
                   <span className="text-sm font-medium text-slate-700">
-                    {formatCurrency(order.subtotal)}
+                    {formatCurrency(totals.foodSubtotal)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">
+                    {dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}
+                  </span>
+                  <span className="text-sm font-medium text-slate-700">
+                    {formatCurrency(totals.vatAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">
+                    {dictionary.foodTotalLabel ?? "Food Total"}
+                  </span>
+                  <span className="text-sm font-medium text-slate-700">
+                    {formatCurrency(totals.foodTotal)}
                   </span>
                 </div>
                 {typeof order.deliveryFee === "number" && order.deliveryFee > 0 && (
@@ -463,7 +489,7 @@ export function OrderDetailModal({
                       {dictionary.deliveryFeeLabel ?? "Delivery Fee"}
                     </span>
                     <span className="text-sm font-medium text-slate-700">
-                      {formatCurrency(order.deliveryFee)}
+                      {formatCurrency(totals.deliveryFee)}
                     </span>
                   </div>
                 )}
@@ -472,7 +498,7 @@ export function OrderDetailModal({
                     {dictionary.totalLabel ?? "Total"}
                   </span>
                   <span className="text-xl font-bold text-slate-900 sm:text-2xl">
-                    {formatCurrency(order.totalAmount)}
+                    {formatCurrency(totals.totalAmount)}
                   </span>
                 </div>
               </div>

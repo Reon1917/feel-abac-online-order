@@ -6,6 +6,9 @@ import { toast } from "sonner";
 
 import type { PublicMenuItem } from "@/lib/menu/types";
 import { emitCartChange } from "@/lib/cart/events";
+import type { Locale } from "@/lib/i18n/config";
+import { withLocalePath } from "@/lib/i18n/path";
+import { extractActiveOrderBlock } from "@/lib/orders/active-order";
 
 export type QuickAddPayload = {
   item: PublicMenuItem;
@@ -16,6 +19,11 @@ export type QuickAddPayload = {
 export type QuickAddMessages = {
   success?: string;
   error: string;
+  activeOrderBlock?: {
+    message: string;
+    cta: string;
+    locale: Locale;
+  };
 };
 
 type QuickAddResult =
@@ -52,6 +60,23 @@ export function useQuickAddToCart({ messages }: UseQuickAddOptions) {
 
         if (!response.ok) {
           const data = await response.json().catch(() => null);
+          const activeOrder = extractActiveOrderBlock(data);
+
+          if (activeOrder && messages.activeOrderBlock) {
+            const { message, cta, locale } = messages.activeOrderBlock;
+            toast.error(message, {
+              action: {
+                label: cta,
+                onClick: () => {
+                  router.push(
+                    withLocalePath(locale, `/orders/${activeOrder.displayId}`)
+                  );
+                },
+              },
+            });
+            return { status: "error", message };
+          }
+
           const message =
             (data && typeof data.error === "string" && data.error) ||
             messages.error;
@@ -70,7 +95,7 @@ export function useQuickAddToCart({ messages }: UseQuickAddOptions) {
         return { status: "error", message: fallback };
       }
     },
-    [messages.error, router]
+    [messages.activeOrderBlock, messages.error, router]
   );
 
   return {

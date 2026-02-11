@@ -42,6 +42,7 @@ export type OrderStatusChangedPayload = BaseEventPayload & {
   reason?: string | null;
   // Optional updated amounts (included when order totals change, e.g. accept with delivery fee)
   subtotal?: number;
+  vatAmount?: number;
   deliveryFee?: number | null;
   totalAmount?: number;
   // Optional refund info (included when order is cancelled with refund)
@@ -54,6 +55,9 @@ export type OrderSubmittedPayload = BaseEventPayload & {
   customerName: string;
   customerPhone: string;
   deliveryLabel: string;
+  foodSubtotal: number;
+  vatAmount: number;
+  foodTotal: number;
   totalAmount: number;
   status: OrderStatus;
 };

@@ -442,6 +442,9 @@ export const orders = pgTable(
     subtotal: numeric("subtotal", { precision: 10, scale: 0 })
       .default("0")
       .notNull(),
+    vatAmount: numeric("vat_amount", { precision: 10, scale: 0 })
+      .default("0")
+      .notNull(),
     deliveryFee: numeric("delivery_fee", { precision: 10, scale: 0 }),
     discountTotal: numeric("discount_total", { precision: 10, scale: 0 })
       .default("0")

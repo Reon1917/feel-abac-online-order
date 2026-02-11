@@ -37,6 +37,10 @@ import { OrderDetailModal } from "./order-detail-modal";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
 import { RejectOrderDialog, type CancelOrderData } from "./reject-order-dialog";
 import {
+  computeOrderTotals,
+  ORDER_VAT_PERCENT_LABEL,
+} from "@/lib/orders/totals";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -788,7 +792,8 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         refundAmount: null,
         customerName: payload.customerName,
         customerPhone: payload.customerPhone,
-        subtotal: payload.totalAmount,
+        subtotal: payload.foodSubtotal,
+        vatAmount: payload.vatAmount,
         deliveryFee: null,
         totalAmount: payload.totalAmount,
         deliveryLabel: payload.deliveryLabel,
@@ -811,6 +816,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                 status: payload.toStatus,
                 // Update amounts if provided (e.g. when order is accepted with delivery fee)
                 ...(payload.subtotal !== undefined && { subtotal: payload.subtotal }),
+                ...(payload.vatAmount !== undefined && { vatAmount: payload.vatAmount }),
                 ...(payload.deliveryFee !== undefined && { deliveryFee: payload.deliveryFee }),
                 ...(payload.totalAmount !== undefined && { totalAmount: payload.totalAmount }),
                 // Mark payment as verified when transitioning to order_in_kitchen (payment was just verified)
@@ -1090,17 +1096,33 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="text-right">
-            <p className="text-base font-bold text-slate-900">
-              {formatCurrency(order.totalAmount)}
-            </p>
-            {order.deliveryFee != null && order.deliveryFee > 0 && (
-              <p className="text-xs text-slate-500">
-                {dictionary.subtotalLabel ?? "Subtotal"}: {formatCurrency(order.subtotal)} + {dictionary.deliveryFeeLabel ?? "Delivery"}: {formatCurrency(order.deliveryFee)}
-              </p>
-            )}
-          </div>
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="text-right">
+          {(() => {
+            const totals = computeOrderTotals({
+              foodSubtotal: order.subtotal,
+              vatAmount: order.vatAmount,
+              deliveryFee: order.deliveryFee,
+            });
+            return (
+              <>
+                <p className="text-base font-bold text-slate-900">
+                  {formatCurrency(totals.totalAmount)}
+                </p>
+                {totals.deliveryFee > 0 && (
+                  <p className="text-xs text-slate-500">
+                    {dictionary.subtotalLabel ?? "Subtotal"}:{" "}
+                    {formatCurrency(totals.foodSubtotal)} +{" "}
+                    {dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}:{" "}
+                    {formatCurrency(totals.vatAmount)} +{" "}
+                    {dictionary.deliveryFeeLabel ?? "Delivery"}:{" "}
+                    {formatCurrency(totals.deliveryFee)}
+                  </p>
+                )}
+              </>
+            );
+          })()}
+        </div>
 
           <div className="flex items-center gap-2">
             {renderPrimaryAction(order)}
@@ -1217,6 +1239,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         hasVerifiedPayment={rejectTarget?.hasVerifiedPayment ?? false}
         orderAmounts={rejectTarget ? {
           subtotal: rejectTarget.subtotal,
+          vatAmount: rejectTarget.vatAmount,
           deliveryFee: rejectTarget.deliveryFee,
           totalAmount: rejectTarget.totalAmount,
         } : undefined}
@@ -1265,12 +1288,39 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                       {acceptTarget.deliveryLabel}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-slate-200">
-                    <span className="text-slate-500">Food Total</span>
-                    <span className="font-semibold text-slate-900">
-                      {formatCurrency(acceptTarget.totalAmount)}
-                    </span>
-                  </div>
+                  {(() => {
+                    const totals = computeOrderTotals({
+                      foodSubtotal: acceptTarget.subtotal,
+                      vatAmount: acceptTarget.vatAmount,
+                      deliveryFee: acceptTarget.deliveryFee,
+                    });
+                    return (
+                      <>
+                        <div className="flex justify-between pt-2 border-t border-slate-200">
+                          <span className="text-slate-500">{dictionary.subtotalLabel ?? "Subtotal"}</span>
+                          <span className="font-semibold text-slate-900">
+                            {formatCurrency(totals.foodSubtotal)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">
+                            {dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}
+                          </span>
+                          <span className="font-semibold text-slate-900">
+                            {formatCurrency(totals.vatAmount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">
+                            {dictionary.foodTotalLabel ?? "Food Total"}
+                          </span>
+                          <span className="font-semibold text-slate-900">
+                            {formatCurrency(totals.foodTotal)}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1301,7 +1351,11 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                   </span>
                   <span className="text-lg font-bold text-emerald-800">
                     {formatCurrency(
-                      acceptTarget.totalAmount + (Number(deliveryFeeInput) || 0)
+                      computeOrderTotals({
+                        foodSubtotal: acceptTarget.subtotal,
+                        vatAmount: acceptTarget.vatAmount,
+                        deliveryFee: Number(deliveryFeeInput) || 0,
+                      }).totalAmount
                     )}
                   </span>
                 </div>

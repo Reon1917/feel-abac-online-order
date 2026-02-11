@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createOrderFromCart } from "@/lib/orders/create";
+import { isActiveOrderBlockError } from "@/lib/orders/active-order";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { resolveUserId } from "@/lib/api/require-user";
 import { getShopStatus } from "@/lib/shop/queries";
@@ -59,6 +60,19 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ order: result });
   } catch (error) {
+    if (isActiveOrderBlockError(error)) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          activeOrder: {
+            displayId: error.activeOrder.displayId,
+            status: error.activeOrder.status,
+          },
+        },
+        { status: 409 }
+      );
+    }
     if (process.env.NODE_ENV !== "production") {
       console.error("[api/orders] failed to create order", error);
     }

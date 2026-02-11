@@ -15,6 +15,7 @@ import { buildPromptPayPayload } from "@/lib/payments/promptpay";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
 import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
 import { getOrderEmailDetails } from "@/lib/orders/queries";
+import { computeOrderTotals } from "@/lib/orders/totals";
 
 type Params = {
   displayId: string;
@@ -178,6 +179,7 @@ export async function PATCH(
   let emailTotalAmount: number | string | null = null;
   // Track updated amounts for broadcasting (set when accept action updates totals)
   let updatedSubtotal: number | undefined;
+  let updatedVatAmount: number | undefined;
   let updatedDeliveryFee: number | null | undefined;
   let updatedTotalAmount: number | undefined;
 
@@ -215,29 +217,41 @@ export async function PATCH(
       );
     }
 
-    // Calculate combined total (food + delivery fee)
-    const foodTotal = Number(order.subtotal ?? 0);
-    const combinedTotal = foodTotal + Math.round(deliveryFee);
-    emailTotalAmount = combinedTotal;
+    const foodSubtotal = Number(order.subtotal ?? 0);
+    const parsedVatAmount =
+      order.vatAmount == null ? Number.NaN : Number(order.vatAmount);
+    const shouldRecomputeVat =
+      !Number.isFinite(parsedVatAmount) ||
+      (parsedVatAmount <= 0 && foodSubtotal > 0);
+
+    const totals = computeOrderTotals({
+      foodSubtotal,
+      vatAmount: shouldRecomputeVat ? undefined : parsedVatAmount,
+      deliveryFee,
+      discountTotal: Number(order.discountTotal ?? 0),
+    });
+    emailTotalAmount = totals.totalAmount;
 
     // Track updated amounts for broadcasting
-    updatedSubtotal = foodTotal;
-    updatedDeliveryFee = Math.round(deliveryFee);
-    updatedTotalAmount = combinedTotal;
+    updatedSubtotal = totals.foodSubtotal;
+    updatedVatAmount = totals.vatAmount;
+    updatedDeliveryFee = totals.deliveryFee;
+    updatedTotalAmount = totals.totalAmount;
 
     // Update order with delivery fee and new total amount
     await db
       .update(orders)
       .set({
-        deliveryFee: String(Math.round(deliveryFee)),
-        totalAmount: String(combinedTotal),
+        vatAmount: String(totals.vatAmount),
+        deliveryFee: String(totals.deliveryFee),
+        totalAmount: String(totals.totalAmount),
         updatedAt: now,
       })
       .where(eq(orders.id, order.id));
 
     const { payload, normalizedPhone, amount } = buildPromptPayPayload({
       phoneNumber: activeAccount.phoneNumber,
-      amount: combinedTotal,
+      amount: totals.totalAmount,
     });
 
     const promptParseData = JSON.stringify({
@@ -489,6 +503,7 @@ export async function PATCH(
     at: now.toISOString(),
     // Include updated amounts when they change (e.g. accept action)
     ...(updatedSubtotal !== undefined && { subtotal: updatedSubtotal }),
+    ...(updatedVatAmount !== undefined && { vatAmount: updatedVatAmount }),
     ...(updatedDeliveryFee !== undefined && { deliveryFee: updatedDeliveryFee }),
     ...(updatedTotalAmount !== undefined && { totalAmount: updatedTotalAmount }),
     // Include refund info when cancelling

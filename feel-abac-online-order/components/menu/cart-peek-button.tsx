@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { CartSummary } from "@/lib/cart/types";
+import { computeOrderTotals } from "@/lib/orders/totals";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -34,7 +35,9 @@ export function CartPeekButton({
   const baseQuantity = summary?.totalQuantity ?? 0;
   const baseSubtotal = summary?.subtotal ?? 0;
   const displayQuantity = baseQuantity + optimisticQuantity;
-  const displaySubtotal = baseSubtotal + optimisticSubtotal;
+  const displaySubtotal = computeOrderTotals({
+    foodSubtotal: baseSubtotal + optimisticSubtotal,
+  }).foodTotal;
   const showSummary = displayQuantity > 0;
 
   if (!showSummary) {

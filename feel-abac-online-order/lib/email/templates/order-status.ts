@@ -9,6 +9,7 @@ import {
   renderInfoTable,
   renderLayout,
 } from "@/lib/email/templates/ui";
+import { computeOrderTotals, ORDER_VAT_PERCENT_LABEL } from "@/lib/orders/totals";
 
 function getAppBaseUrl() {
   const explicit =
@@ -51,6 +52,7 @@ export type OrderEmailDetails = {
   deliveryNotes?: string | null;
   orderNote?: string | null;
   subtotal: number;
+  vatAmount: number;
   deliveryFee: number | null;
   items: OrderEmailItem[];
 };
@@ -164,16 +166,31 @@ function renderOrderDetailsHtml(details: OrderEmailDetails): string {
   );
 
   // Totals
-  const subtotalFormatted = `฿${details.subtotal.toLocaleString()}`;
-  const deliveryFeeFormatted = details.deliveryFee != null ? `฿${details.deliveryFee.toLocaleString()}` : "Free";
-  const total = details.subtotal + (details.deliveryFee ?? 0);
-  const totalFormatted = `฿${total.toLocaleString()}`;
+  const totals = computeOrderTotals({
+    foodSubtotal: details.subtotal,
+    vatAmount: details.vatAmount,
+    deliveryFee: details.deliveryFee,
+  });
+  const subtotalFormatted = `฿${totals.foodSubtotal.toLocaleString()}`;
+  const vatFormatted = `฿${totals.vatAmount.toLocaleString()}`;
+  const foodTotalFormatted = `฿${totals.foodTotal.toLocaleString()}`;
+  const deliveryFeeFormatted =
+    totals.deliveryFee > 0 ? `฿${totals.deliveryFee.toLocaleString()}` : "Free";
+  const totalFormatted = `฿${totals.totalAmount.toLocaleString()}`;
 
   sections.push(
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin-top:8px;">`,
     `<tr>`,
     `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:13px;">Subtotal</td>`,
     `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.textColor};font-size:13px;text-align:right;">${subtotalFormatted}</td>`,
+    `</tr>`,
+    `<tr>`,
+    `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:13px;">VAT (${ORDER_VAT_PERCENT_LABEL})</td>`,
+    `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.textColor};font-size:13px;text-align:right;">${vatFormatted}</td>`,
+    `</tr>`,
+    `<tr>`,
+    `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:13px;">Food Total</td>`,
+    `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.textColor};font-size:13px;text-align:right;">${foodTotalFormatted}</td>`,
     `</tr>`,
     `<tr>`,
     `<td style="padding:6px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:13px;">Delivery Fee</td>`,
@@ -207,10 +224,16 @@ function renderOrderDetailsText(details: OrderEmailDetails): string {
     lines.push(itemLine);
   }
   lines.push("");
-  lines.push(`Subtotal: ฿${details.subtotal.toLocaleString()}`);
-  lines.push(`Delivery Fee: ${details.deliveryFee != null ? `฿${details.deliveryFee.toLocaleString()}` : "Free"}`);
-  const total = details.subtotal + (details.deliveryFee ?? 0);
-  lines.push(`Total: ฿${total.toLocaleString()}`);
+  const totals = computeOrderTotals({
+    foodSubtotal: details.subtotal,
+    vatAmount: details.vatAmount,
+    deliveryFee: details.deliveryFee,
+  });
+  lines.push(`Subtotal: ฿${totals.foodSubtotal.toLocaleString()}`);
+  lines.push(`VAT (${ORDER_VAT_PERCENT_LABEL}): ฿${totals.vatAmount.toLocaleString()}`);
+  lines.push(`Food Total: ฿${totals.foodTotal.toLocaleString()}`);
+  lines.push(`Delivery Fee: ${totals.deliveryFee > 0 ? `฿${totals.deliveryFee.toLocaleString()}` : "Free"}`);
+  lines.push(`Total: ฿${totals.totalAmount.toLocaleString()}`);
 
   return lines.join("\n");
 }

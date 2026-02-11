@@ -17,6 +17,7 @@ import {
 import { emitCartChange } from "@/lib/cart/events";
 import { SetMenuBuilder, type SetMenuBuilderSelection } from "./set-menu-builder";
 import { AddToCartFooter } from "./add-to-cart-footer";
+import { extractActiveOrderBlock } from "@/lib/orders/active-order";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
 
@@ -27,6 +28,7 @@ type MenuItemDetailProps = {
     nameMm: string | null;
   };
   detail: MenuDictionary["detail"];
+  activeOrderBlock: MenuDictionary["activeOrderBlock"];
   locale: Locale;
 };
 
@@ -75,6 +77,7 @@ export function MenuItemDetail({
   item,
   category,
   detail,
+  activeOrderBlock,
   locale,
 }: MenuItemDetailProps) {
   const { menuLocale } = useMenuLocale();
@@ -211,6 +214,28 @@ export function MenuItemDetail({
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
+        const activeOrder = extractActiveOrderBlock(data);
+
+        if (activeOrder) {
+          const message =
+            activeOrderBlock?.message ??
+            "You can place a new order after payment for your current order is verified.";
+          const ctaLabel = activeOrderBlock?.cta ?? "View order";
+
+          toast.error(message, {
+            action: {
+              label: ctaLabel,
+              onClick: () => {
+                router.push(
+                  withLocalePath(locale, `/orders/${activeOrder.displayId}`)
+                );
+              },
+            },
+          });
+          setQueuedRequest(false);
+          return;
+        }
+
         const errorMessage =
           (data && typeof data.error === "string" && data.error) ||
           detail.addToCartError;
@@ -284,6 +309,27 @@ export function MenuItemDetail({
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
+        const activeOrder = extractActiveOrderBlock(data);
+
+        if (activeOrder) {
+          const message =
+            activeOrderBlock?.message ??
+            "You can place a new order after payment for your current order is verified.";
+          const ctaLabel = activeOrderBlock?.cta ?? "View order";
+
+          toast.error(message, {
+            action: {
+              label: ctaLabel,
+              onClick: () => {
+                router.push(
+                  withLocalePath(locale, `/orders/${activeOrder.displayId}`)
+                );
+              },
+            },
+          });
+          return;
+        }
+
         const errorMessage =
           (data && typeof data.error === "string" && data.error) ||
           detail.addToCartError;

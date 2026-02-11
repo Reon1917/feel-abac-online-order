@@ -1,7 +1,8 @@
 {
   "header": {
     "title": "Menu",
-    "description": "Browse dishes and start your order."
+    "description": "Browse dishes and start your order.",
+    "vatNotice": "VAT 7% will be added at checkout."
   },
   "browser": {
     "title": "Discover the menu",
@@ -75,7 +76,11 @@
       "one": "1 item",
       "other": "{{count}} items"
     },
-    "totalLabel": "Subtotal"
+    "totalLabel": "Food total"
+  },
+  "activeOrderBlock": {
+    "message": "You can place a new order after payment for your current order is verified.",
+    "cta": "View order"
   },
   "resumeOrder": {
     "title": "Return to your order",

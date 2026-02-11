@@ -6,6 +6,7 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import type { OrderRecord, OrderPaymentRecord } from "@/lib/orders/types";
 import { ReceiptUploadButton } from "./receipt-upload-button";
 import { RejectionBanner } from "./rejection-banner";
+import { computeOrderTotals, ORDER_VAT_PERCENT_LABEL } from "@/lib/orders/totals";
 
 function WavingDots() {
   return (
@@ -28,6 +29,8 @@ type PaymentDictionary = {
   underReview: string;
   confirmed: string;
   foodLabel?: string;
+  vatLabel?: string;
+  foodTotalLabel?: string;
   deliveryFeeLabel?: string;
   totalLabel?: string;
 };
@@ -57,11 +60,13 @@ export function PaymentQrSection({
       );
     }
 
-    // Calculate breakdown for combined payment display
-    const foodAmount = Number(order.subtotal ?? 0);
-    const deliveryFee = Number(order.deliveryFee ?? 0);
+    const totals = computeOrderTotals({
+      foodSubtotal: order.subtotal,
+      vatAmount: order.vatAmount,
+      deliveryFee: order.deliveryFee,
+      discountTotal: order.discountTotal,
+    });
     const totalAmount = payment.amount;
-    const showBreakdown = deliveryFee > 0;
 
     return (
       <div className="space-y-4">
@@ -81,26 +86,32 @@ export function PaymentQrSection({
         </div>
 
         {/* Payment Breakdown */}
-        {showBreakdown ? (
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-600">{dictionary.foodLabel ?? "Food"}</span>
-              <span className="text-slate-900">฿{foodAmount.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">{dictionary.deliveryFeeLabel ?? "Delivery Fee"}</span>
-              <span className="text-slate-900">฿{deliveryFee.toLocaleString()}</span>
-            </div>
-            <div className="border-t border-slate-200 pt-2 flex justify-between font-bold">
-              <span className="text-slate-900">{dictionary.totalLabel ?? "Total"}</span>
-              <span className="text-emerald-600 text-lg">฿{totalAmount.toLocaleString()}</span>
-            </div>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-slate-600">{dictionary.foodLabel ?? "Food"}</span>
+            <span className="text-slate-900">฿{totals.foodSubtotal.toLocaleString()}</span>
           </div>
-        ) : (
-          <p className="text-2xl font-bold text-center text-slate-900">
-            ฿{totalAmount.toLocaleString()}
-          </p>
-        )}
+          <div className="flex justify-between">
+            <span className="text-slate-600">
+              {dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}
+            </span>
+            <span className="text-slate-900">฿{totals.vatAmount.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-600">
+              {dictionary.foodTotalLabel ?? "Food Total"}
+            </span>
+            <span className="text-slate-900">฿{totals.foodTotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-600">{dictionary.deliveryFeeLabel ?? "Delivery Fee"}</span>
+            <span className="text-slate-900">฿{totals.deliveryFee.toLocaleString()}</span>
+          </div>
+          <div className="border-t border-slate-200 pt-2 flex justify-between font-bold">
+            <span className="text-slate-900">{dictionary.totalLabel ?? "Total"}</span>
+            <span className="text-emerald-600 text-lg">฿{totalAmount.toLocaleString()}</span>
+          </div>
+        </div>
 
         {/* Step-by-step instructions */}
         <div className="text-xs text-slate-600 space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -156,4 +167,3 @@ export function PaymentQrSection({
 
   return null;
 }
-

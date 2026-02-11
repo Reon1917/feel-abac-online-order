@@ -24,6 +24,10 @@ import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import { toast } from "sonner";
 import { statusLabel } from "@/lib/orders/format";
+import {
+  computeOrderTotals,
+  ORDER_VAT_PERCENT_LABEL,
+} from "@/lib/orders/totals";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -100,6 +104,16 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
   const currentStep = useMemo(
     () => resolveStep(order.status),
     [order.status]
+  );
+  const totals = useMemo(
+    () =>
+      computeOrderTotals({
+        foodSubtotal: order.subtotal,
+        vatAmount: order.vatAmount,
+        deliveryFee: order.deliveryFee,
+        discountTotal: order.discountTotal,
+      }),
+    [order.subtotal, order.vatAmount, order.deliveryFee, order.discountTotal]
   );
 
   // Find combined payment
@@ -606,6 +620,13 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
               uploading: dictionary.uploading ?? "Uploading...",
               underReview: dictionary.underReview ?? "Payment Under Review",
               confirmed: dictionary.confirmed ?? "Payment Confirmed",
+              foodLabel: dictionary.foodLabel ?? "Food",
+              vatLabel:
+                dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`,
+              foodTotalLabel: dictionary.foodTotalLabel ?? "Food Total",
+              deliveryFeeLabel:
+                dictionary.deliveryFeeBreakdownLabel ?? "Delivery Fee",
+              totalLabel: dictionary.totalBreakdownLabel ?? "Total",
             }}
             onReceiptUploaded={refreshOrder}
           />
@@ -674,8 +695,16 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
           <div className="flex items-center justify-between">
             <span>{dictionary.subtotalLabel}</span>
             <span className="font-semibold">
-              {formatCurrency(order.subtotal)}
+              {formatCurrency(totals.foodSubtotal)}
             </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>{dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}</span>
+            <span className="font-semibold">{formatCurrency(totals.vatAmount)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>{dictionary.foodTotalLabel ?? "Food total"}</span>
+            <span className="font-semibold">{formatCurrency(totals.foodTotal)}</span>
           </div>
           <div className="flex items-center justify-between">
             <span>{dictionary.deliveryFeeLabel}</span>
@@ -685,7 +714,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
                   {dictionary.calculatingLabel ?? "Calculating..."}
                 </span>
               ) : (
-                formatCurrency(order.deliveryFee)
+                formatCurrency(totals.deliveryFee)
               )}
             </span>
           </div>
@@ -697,7 +726,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
                   {dictionary.calculatingLabel ?? "Calculating..."}
                 </span>
               ) : (
-                formatCurrency(order.totalAmount)
+                formatCurrency(totals.totalAmount)
               )}
             </span>
           </div>

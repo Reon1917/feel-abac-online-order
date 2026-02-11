@@ -25,6 +25,7 @@ import type {
   OrderPaymentStatus,
   OrderPaymentType,
 } from "./types";
+import { UNPAID_ORDER_STATUSES } from "./active-order";
 import { pgDateToString } from "@/lib/timezone";
 import { numericToNumber } from "@/lib/db/numeric";
 
@@ -115,6 +116,7 @@ function mapOrder(
     adminNote: row.adminNote,
     deliveryNotes: row.deliveryNotes,
     subtotal: numericToNumber(row.subtotal),
+    vatAmount: numericToNumber(row.vatAmount),
     deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : null,
     discountTotal: numericToNumber(row.discountTotal),
     totalAmount: numericToNumber(row.totalAmount),
@@ -142,6 +144,13 @@ function mapOrder(
     payments,
   };
 }
+
+export type ActiveUnpaidOrderSummary = {
+  id: string;
+  displayId: string;
+  status: OrderStatus;
+  createdAt: string;
+};
 
 async function loadOrderItems(orderId: string): Promise<OrderItemRecord[]> {
   const items = await db
@@ -236,6 +245,39 @@ export async function getOrderByDisplayId(
   return mapOrder(row, items, payments);
 }
 
+export async function getLatestUnpaidOrderForUser(
+  userId: string
+): Promise<ActiveUnpaidOrderSummary | null> {
+  const [row] = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      status: orders.status,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.userId, userId),
+        eq(orders.isClosed, false),
+        inArray(orders.status, UNPAID_ORDER_STATUSES)
+      )
+    )
+    .orderBy(desc(orders.createdAt))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    displayId: row.displayId,
+    status: row.status as OrderStatus,
+    createdAt: dateToIso(row.createdAt) ?? "",
+  };
+}
+
 export async function appendOrderEvent(input: {
   orderId: string;
   actorType: "admin" | "user" | "system";
@@ -271,6 +313,7 @@ const adminSummarySelect = {
   customerName: orders.customerName,
   customerPhone: orders.customerPhone,
   subtotal: orders.subtotal,
+  vatAmount: orders.vatAmount,
   deliveryFee: orders.deliveryFee,
   totalAmount: orders.totalAmount,
   createdAt: orders.createdAt,
@@ -301,6 +344,7 @@ type AdminSummaryRow = {
   customerName: string;
   customerPhone: string;
   subtotal: string | null;
+  vatAmount: string | null;
   deliveryFee: string | null;
   totalAmount: string | null;
   createdAt: Date | null;
@@ -334,6 +378,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     subtotal: numericToNumber(row.subtotal),
+    vatAmount: numericToNumber(row.vatAmount),
     deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : null,
     totalAmount: numericToNumber(row.totalAmount),
     deliveryLabel,
@@ -651,6 +696,7 @@ export async function getOrderEmailDetails(displayId: string) {
     deliveryNotes: order.deliveryNotes,
     orderNote: order.orderNote,
     subtotal: order.subtotal,
+    vatAmount: order.vatAmount,
     deliveryFee: order.deliveryFee,
     items,
   };

@@ -83,6 +83,7 @@ export type OrderRecord = {
   adminNote: string | null;
   deliveryNotes: string | null;
   subtotal: number;
+  vatAmount: number;
   deliveryFee: number | null;
   discountTotal: number;
   totalAmount: number;
@@ -124,6 +125,7 @@ export type OrderAdminSummary = {
   customerName: string;
   customerPhone: string;
   subtotal: number;
+  vatAmount: number;
   deliveryFee: number | null;
   totalAmount: number;
   deliveryLabel: string;

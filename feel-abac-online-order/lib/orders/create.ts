@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import { dbTx } from "@/src/db/tx-client";
@@ -21,7 +21,11 @@ import { getActiveCartForUser } from "@/lib/cart/queries";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { getUserProfile } from "@/lib/user-profile";
 import type { OrderStatus } from "./types";
-import { broadcastOrderSubmitted } from "./realtime";
+import {
+  createActiveOrderBlockError,
+  UNPAID_ORDER_STATUSES,
+} from "./active-order";
+import { computeOrderTotals } from "./totals";
 import type { OrderSubmittedPayload } from "./events";
 import { getPusherServer } from "@/lib/pusher/server";
 import {
@@ -217,15 +221,43 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   // (PG DATE extracts the UTC date, not local date)
   const displayDayDate = new Date(`${displayDay}T00:00:00Z`);
 
-  const subtotalValue = cart.subtotal;
-  const subtotalString = toNumericString(subtotalValue);
-  const totalAmountString = subtotalString;
+  const totals = computeOrderTotals({
+    foodSubtotal: cart.subtotal,
+  });
+  const subtotalString = toNumericString(totals.foodSubtotal);
+  const vatAmountString = toNumericString(totals.vatAmount);
+  const totalAmountString = toNumericString(totals.totalAmount);
   const status: OrderStatus = "order_processing";
 
   const deliveryLabel = await formatDeliveryLabel(deliverySelection);
   const isCustom = deliverySelection.mode === "custom";
   const result = await dbTx.transaction(
     async (tx): Promise<{ orderId: string; displayId: string; submittedPayload: OrderSubmittedPayload }> => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${userId} FOR UPDATE`);
+
+      const [activeOrder] = await tx
+        .select({
+          displayId: orders.displayId,
+          status: orders.status,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.userId, userId),
+            eq(orders.isClosed, false),
+            inArray(orders.status, UNPAID_ORDER_STATUSES)
+          )
+        )
+        .orderBy(desc(orders.createdAt))
+        .limit(1);
+
+      if (activeOrder) {
+        throw createActiveOrderBlockError({
+          displayId: activeOrder.displayId,
+          status: activeOrder.status as OrderStatus,
+        });
+      }
+
       let orderId: string | null = null;
       let displayId: string | null = null;
       let displayCounter: number | null = null;
@@ -247,6 +279,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
               status,
               total_items,
               subtotal,
+              vat_amount,
               discount_total,
               total_amount,
               customer_name,
@@ -273,6 +306,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
               ${status},
               ${cart.items.length},
               ${subtotalString},
+              ${vatAmountString},
               '0.00',
               ${totalAmountString},
               ${userName},
@@ -430,6 +464,9 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         customerName: userName,
         customerPhone: profile.phoneNumber,
         deliveryLabel,
+        foodSubtotal: totals.foodSubtotal,
+        vatAmount: totals.vatAmount,
+        foodTotal: totals.foodTotal,
         totalAmount: Number(totalAmountString),
         status,
         at: bangkokNow.toISOString(),

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { addSetMenuToCart, summarizeCartRecord } from "@/lib/cart/queries";
 import { resolveUserId } from "@/lib/api/require-user";
 import { getShopStatus } from "@/lib/shop/queries";
+import { getLatestUnpaidOrderForUser } from "@/lib/orders/queries";
+import { ACTIVE_ORDER_BLOCK_CODE } from "@/lib/orders/active-order";
 
 const setMenuSelectionSchema = z.object({
   poolLinkId: z.string().uuid(),
@@ -27,6 +29,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: shopStatus.closedMessageEn ?? "Shop is currently closed" },
       { status: 403 }
+    );
+  }
+
+  const unpaidOrder = await getLatestUnpaidOrderForUser(userId);
+  if (unpaidOrder) {
+    return NextResponse.json(
+      {
+        error:
+          "You can place a new order after payment for your current order is verified.",
+        code: ACTIVE_ORDER_BLOCK_CODE,
+        activeOrder: {
+          displayId: unpaidOrder.displayId,
+          status: unpaidOrder.status,
+        },
+      },
+      { status: 409 }
     );
   }
 
