@@ -101,7 +101,7 @@ export function AdminSidebar({
           {
             href: "/admin/stock",
             icon: Package,
-            label: "Stock Control",
+            label: "Availability",
           },
         ],
       },

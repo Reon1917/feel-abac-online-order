@@ -82,8 +82,8 @@ export default async function AdminDashboard({ params }: PageProps) {
     },
     {
       icon: Package,
-      label: "Stock Control",
-      description: "Mark items as in stock or out of stock.",
+      label: "Availability",
+      description: "Mark items as available or unavailable.",
       href: "/admin/stock",
       variant: "default" as const,
     },

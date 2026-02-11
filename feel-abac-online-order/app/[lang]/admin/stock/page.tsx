@@ -40,8 +40,8 @@ export default async function StockControlPage({ params }: PageProps) {
     <AdminLayoutShell locale={locale}>
       <AdminHeader
         locale={locale}
-        title="Stock Control"
-        subtitle="Toggle items in stock or out of stock"
+        title="Availability"
+        subtitle="Toggle items as available or unavailable"
         languageLabels={common.languageSwitcher}
       />
 

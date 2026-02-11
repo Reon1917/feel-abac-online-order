@@ -111,7 +111,7 @@ export function RejectOrderDialog({
 
     switch (refundType) {
       case "full":
-        return totals.totalAmount;
+        return orderAmounts.totalAmount;
       case "food_only":
         return totals.foodTotal;
       case "delivery_fee_only":
