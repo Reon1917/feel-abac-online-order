@@ -21,6 +21,15 @@
     "message": "You can place a new order after payment for your current order is verified.",
     "cta": "View order"
   },
+  "stockGuard": {
+    "title": "Some items are unavailable right now",
+    "subtitle": "The restaurant marked these items out of stock. Please remove or edit them before sending your order.",
+    "indicatorLabel": "Restaurant update",
+    "itemsLabel": "Unavailable items",
+    "itemBadge": "Out of stock",
+    "tip": "Tip: Swipe left on an item card to remove it quickly.",
+    "actionLabel": "Review cart"
+  },
   "delivery": {
     "label": "Delivery location",
     "chooseCta": "Choose location",

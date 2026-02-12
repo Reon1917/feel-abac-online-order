@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { createOrderFromCart } from "@/lib/orders/create";
+import {
+  createOrderFromCart,
+  isOrderItemsUnavailableError,
+} from "@/lib/orders/create";
 import { isActiveOrderBlockError } from "@/lib/orders/active-order";
 import type { DeliverySelection } from "@/lib/delivery/types";
 import { resolveUserId } from "@/lib/api/require-user";
@@ -69,6 +72,16 @@ export async function POST(req: NextRequest) {
             displayId: error.activeOrder.displayId,
             status: error.activeOrder.status,
           },
+        },
+        { status: 409 }
+      );
+    }
+    if (isOrderItemsUnavailableError(error)) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          unavailableItems: error.unavailableItems,
         },
         { status: 409 }
       );

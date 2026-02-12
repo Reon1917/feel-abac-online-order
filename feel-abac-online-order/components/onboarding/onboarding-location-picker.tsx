@@ -349,7 +349,14 @@ export function OnboardingLocationPicker({
               >
                 <SelectValue placeholder={dictionary.modal.condoPlaceholder} />
               </SelectTrigger>
-              <SelectContent className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)" position="popper" sideOffset={4}>
+              <SelectContent
+                className="w-(--radix-select-trigger-width) max-h-[40svh] sm:max-h-[50vh] overscroll-contain"
+                position="popper"
+                side="bottom"
+                align="start"
+                sideOffset={6}
+                avoidCollisions={false}
+              >
                 {locations.map((location) => (
                   <SelectItem
                     key={location.id}
@@ -378,7 +385,14 @@ export function OnboardingLocationPicker({
                 <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 min-h-14 disabled:opacity-50 disabled:cursor-not-allowed">
                   <SelectValue placeholder={dictionary.modal.buildingPlaceholder} />
                 </SelectTrigger>
-                <SelectContent className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)" position="popper" sideOffset={4}>
+                <SelectContent
+                  className="w-(--radix-select-trigger-width) max-h-[40svh] sm:max-h-[50vh] overscroll-contain"
+                  position="popper"
+                  side="bottom"
+                  align="start"
+                  sideOffset={6}
+                  avoidCollisions={false}
+                >
                   {activeLocation?.buildings.map((building) => (
                     <SelectItem
                       key={building.id}
@@ -513,4 +527,3 @@ export function OnboardingLocationPicker({
     </section>
   );
 }
-

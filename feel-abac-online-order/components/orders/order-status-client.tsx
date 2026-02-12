@@ -351,6 +351,10 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
             <p className="text-sm text-slate-500">
               {dictionary.lastUpdated}: {formatTimestamp(order.updatedAt)}
             </p>
+            <p className="inline-flex w-fit items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-200">
+              {dictionary.emailUpdatesNotice ??
+                "Order updates will be sent to your account email."}
+            </p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <span

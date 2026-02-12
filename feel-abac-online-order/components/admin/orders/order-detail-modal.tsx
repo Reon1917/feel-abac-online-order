@@ -99,14 +99,16 @@ export function OrderDetailModal({
     return null;
   }
 
+  const customDeliveryLabel = [order.customCondoName, order.customBuildingName]
+    .filter((value): value is string => Boolean(value && value.trim().length > 0))
+    .join(", ");
+  const presetDeliveryLabel = [order.deliveryLocationName, order.deliveryBuildingLabel]
+    .filter((value): value is string => Boolean(value && value.trim().length > 0))
+    .join(", ");
   const deliveryLabel =
     order.deliveryMode === "custom"
-      ? `${order.customCondoName ?? "Custom Location"}${
-          order.customBuildingName ? `, ${order.customBuildingName}` : ""
-        }`
-        : order.deliveryLocationId
-        ? "Preset Location"
-        : "-";
+      ? customDeliveryLabel || "Custom Location"
+      : presetDeliveryLabel || (order.deliveryLocationId ? "Preset location" : "-");
 
   const hasDeliveryInfo =
     Boolean(order.courierTrackingUrl) || typeof order.deliveryFee === "number";

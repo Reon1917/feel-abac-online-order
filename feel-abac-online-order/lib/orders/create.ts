@@ -39,6 +39,39 @@ type CreateOrderInput = {
   deliverySelection: DeliverySelection;
 };
 
+export type UnavailableOrderItem = {
+  id: string;
+  nameEn: string;
+  nameMm: string | null;
+};
+
+export class OrderItemsUnavailableError extends Error {
+  readonly code = "ORDER_ITEMS_UNAVAILABLE" as const;
+  readonly unavailableItems: UnavailableOrderItem[];
+
+  constructor(unavailableItems: UnavailableOrderItem[]) {
+    const itemCount = unavailableItems.length;
+    const intro =
+      itemCount === 1
+        ? "1 item in your cart is no longer available."
+        : `${itemCount} items in your cart are no longer available.`;
+    const action =
+      itemCount === 1
+        ? "Please remove it and try again."
+        : "Please remove them and try again.";
+
+    super(`${intro} ${action}`);
+    this.name = "OrderItemsUnavailableError";
+    this.unavailableItems = unavailableItems;
+  }
+}
+
+export function isOrderItemsUnavailableError(
+  error: unknown
+): error is OrderItemsUnavailableError {
+  return error instanceof OrderItemsUnavailableError;
+}
+
 function toNumericString(value: number) {
   return value.toFixed(2);
 }
@@ -186,7 +219,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
   );
 
   const menuCodesByItemId = new Map<string, string | null>();
-  const unavailableItems: string[] = [];
+  const unavailableItems: UnavailableOrderItem[] = [];
   if (uniqueMenuItemIds.length > 0) {
     const menuRows = await db
       .select({
@@ -194,6 +227,7 @@ export async function createOrderFromCart(input: CreateOrderInput) {
         menuCode: menuItems.menuCode,
         isAvailable: menuItems.isAvailable,
         nameEn: menuItems.nameEn,
+        nameMm: menuItems.nameMm,
       })
       .from(menuItems)
       .where(inArray(menuItems.id, uniqueMenuItemIds));
@@ -201,18 +235,18 @@ export async function createOrderFromCart(input: CreateOrderInput) {
     for (const row of menuRows) {
       menuCodesByItemId.set(row.id, row.menuCode ?? null);
       if (!row.isAvailable) {
-        unavailableItems.push(row.nameEn);
+        unavailableItems.push({
+          id: row.id,
+          nameEn: row.nameEn,
+          nameMm: row.nameMm ?? null,
+        });
       }
     }
   }
 
   // Reject order if any cart items are now out of stock
   if (unavailableItems.length > 0) {
-    const itemList = unavailableItems.slice(0, 3).join(", ");
-    const suffix = unavailableItems.length > 3 ? ` and ${unavailableItems.length - 3} more` : "";
-    throw new Error(
-      `Some items in your cart are no longer available: ${itemList}${suffix}. Please remove them and try again.`
-    );
+    throw new OrderItemsUnavailableError(unavailableItems);
   }
 
   const bangkokNow = nowUtc();

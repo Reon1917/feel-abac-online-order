@@ -90,6 +90,8 @@ export type OrderRecord = {
   deliveryMode: "preset" | "custom" | null;
   deliveryLocationId?: string | null;
   deliveryBuildingId?: string | null;
+  deliveryLocationName?: string | null;
+  deliveryBuildingLabel?: string | null;
   customCondoName?: string | null;
   customBuildingName?: string | null;
   customerName: string;

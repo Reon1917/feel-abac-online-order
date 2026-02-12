@@ -641,9 +641,12 @@ export function DeliveryLocationPicker({
                     <SelectValue placeholder={dictionary.modal.condoPlaceholder} />
                   </SelectTrigger>
                   <SelectContent
-                    className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
+                    className="w-(--radix-select-trigger-width) max-h-[40svh] sm:max-h-[50vh] overscroll-contain"
                     position="popper"
-                    sideOffset={4}
+                    side="bottom"
+                    align="start"
+                    sideOffset={6}
+                    avoidCollisions={false}
                   >
                     {locations.map((location) => (
                       <SelectItem
@@ -680,9 +683,12 @@ export function DeliveryLocationPicker({
                       <SelectValue placeholder={dictionary.modal.buildingPlaceholder} />
                     </SelectTrigger>
                     <SelectContent
-                      className="max-h-[60vh] sm:max-h-[50vh] w-(--radix-select-trigger-width)"
+                      className="w-(--radix-select-trigger-width) max-h-[40svh] sm:max-h-[50vh] overscroll-contain"
                       position="popper"
-                      sideOffset={4}
+                      side="bottom"
+                      align="start"
+                      sideOffset={6}
+                      avoidCollisions={false}
                     >
                       {activeLocation?.buildings.map((building) => (
                         <SelectItem

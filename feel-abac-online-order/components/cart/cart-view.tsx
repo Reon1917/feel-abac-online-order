@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MapPin } from "lucide-react";
+import { AlertTriangle, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -37,6 +37,11 @@ type CartViewProps = {
 };
 
 type CartItemRecord = CartRecord["items"][number];
+type OutOfStockItemPayload = {
+  id: string;
+  nameEn: string;
+  nameMm: string | null;
+};
 
 function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
@@ -64,6 +69,8 @@ export function CartView({
   const [locationValidationError, setLocationValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [unavailableItemsModalOpen, setUnavailableItemsModalOpen] = useState(false);
+  const [unavailableItems, setUnavailableItems] = useState<string[]>([]);
   const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(
     () => {
       if (!defaultDeliverySelection) {
@@ -289,6 +296,27 @@ export function CartView({
           return;
         }
 
+        if (
+          payload?.code === "ORDER_ITEMS_UNAVAILABLE" &&
+          Array.isArray(payload?.unavailableItems)
+        ) {
+          const names = (payload.unavailableItems as OutOfStockItemPayload[])
+            .map((item) =>
+              menuLocale === "my"
+                ? item.nameMm?.trim() || item.nameEn
+                : item.nameEn
+            )
+            .filter(
+              (name): name is string =>
+                Boolean(name && name.trim().length > 0)
+            );
+
+          setSubmitError(null);
+          setUnavailableItems(names);
+          setUnavailableItemsModalOpen(true);
+          return;
+        }
+
         throw new Error(payload?.error ?? "Unable to place order");
       }
 
@@ -454,6 +482,22 @@ export function CartView({
     selectedDeliveryLocation?.maxFee != null
       ? `฿${selectedDeliveryLocation.minFee}–${selectedDeliveryLocation.maxFee}`
       : null;
+  const unavailableTitle =
+    dictionary.stockGuard?.title ?? "Some items are unavailable right now";
+  const unavailableSubtitle =
+    dictionary.stockGuard?.subtitle ??
+    "The restaurant marked these items out of stock. Please remove or edit them before sending your order.";
+  const unavailableIndicator =
+    dictionary.stockGuard?.indicatorLabel ?? "Restaurant update";
+  const unavailableItemsLabel =
+    dictionary.stockGuard?.itemsLabel ?? "Unavailable items";
+  const unavailableAction =
+    dictionary.stockGuard?.actionLabel ?? "Review cart";
+  const unavailableTip =
+    dictionary.stockGuard?.tip ??
+    "Tip: Swipe left on an item card to remove it quickly.";
+  const unavailableBadge =
+    dictionary.stockGuard?.itemBadge ?? "Out of stock";
 
   return (
     <>
@@ -850,6 +894,88 @@ export function CartView({
                 className="flex-1 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {editingPending ? editModalSaving : editPrimaryLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    ) : null}
+    {unavailableItemsModalOpen ? (
+      <>
+        <div
+          className="fixed inset-0 z-[70] bg-slate-900/45 backdrop-blur-[1px]"
+          aria-hidden="true"
+          onClick={() => setUnavailableItemsModalOpen(false)}
+        />
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setUnavailableItemsModalOpen(false);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={unavailableTitle}
+            className="w-full max-w-md rounded-3xl border border-amber-200 bg-gradient-to-b from-amber-50 via-white to-white p-5 shadow-2xl"
+          >
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setUnavailableItemsModalOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-white text-amber-700 transition hover:bg-amber-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+                <AlertTriangle className="h-5 w-5" />
+              </span>
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                  {unavailableIndicator}
+                </p>
+                <h3 className="text-lg font-semibold leading-tight text-slate-900">
+                  {unavailableTitle}
+                </h3>
+                <p className="text-sm text-slate-600">{unavailableSubtitle}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-amber-100 bg-white/90 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {unavailableItemsLabel}
+              </p>
+              <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">
+                {unavailableItems.map((itemName, index) => (
+                  <li
+                    key={`${itemName}-${index}`}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2"
+                  >
+                    <span className="text-sm font-medium text-slate-800">
+                      {itemName}
+                    </span>
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                      {unavailableBadge}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-600">{unavailableTip}</p>
+
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setUnavailableItemsModalOpen(false)}
+                className="flex w-full items-center justify-center rounded-full bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600"
+              >
+                {unavailableAction}
               </button>
             </div>
           </div>
