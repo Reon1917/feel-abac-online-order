@@ -1,67 +1,131 @@
 # AGENTS Guide
 
 ## High-Level Structure
-- `app/` – App Router entry point with locale segment `[lang]`. Admin surfaces live under `app/[lang]/admin`, diner-facing flows under `app/[lang]/menu`, public landing in `app/[lang]/page.tsx`, and onboarding in `app/[lang]/onboarding`.
-- `components/` – Feature components. Admin builder pieces sit in `components/admin/menu`, diner browsers (desktop + mobile) and the new detail UI live in `components/menu`. Shared UI primitives and i18n toggles are colocated here as well.
-- `lib/` – Cross-cutting helpers: menu queries (`lib/menu/queries.ts`), data validators, storage helpers, session and auth utilities, and locale plumbing (`lib/i18n/*`).
-- `src/db/schema.ts` – Drizzle table definitions; SQL migrations in `drizzle/`. Static assets (including `public/menu-placeholders/`) sit under `public/`. Copy dictionaries live in `dictionaries/`.
+- `app/` - App Router entry point with locale segment `[lang]`.
+  - Diner flows: `menu`, `menu/items/[itemId]`, `cart`, `orders`, `profile`, `onboarding`.
+  - Admin flows: `admin/dashboard`, `admin/menu/*`, `admin/orders`, `admin/orders/archived`, `admin/delivery`, `admin/stock`, `admin/settings/*`.
+- `components/` - Feature UI modules.
+  - Admin: `components/admin/{menu,orders,delivery,promptpay,shop}`.
+  - Diner: `components/{menu,cart,orders,payments,onboarding,profile}`.
+  - Shared: `components/ui`, locale providers/toggles in `components/i18n`.
+- `lib/` - Cross-cutting helpers for menu/cart/orders/delivery/auth/session/email/pusher/i18n.
+- `src/db/schema.ts` - Drizzle table definitions; SQL migrations in `drizzle/`.
+- `dictionaries/` - Locale copy (`en`, `my`).
+- `public/` - Static assets and placeholders.
 
 ## Key App Routes
-- `app/[lang]/layout.tsx` and `app/[lang]/page.tsx` – bootstrap locale-aware landing plus shared shells (admin bar, language controls).
-- `app/[lang]/menu/page.tsx` – Authenticated diner browser that renders `ResponsiveMenuBrowser` with cart peek (desktop) and shared diner navigation (bottom bar on mobile, side rail on desktop) once a user finishes onboarding.
-- `app/[lang]/menu/items/[itemId]/page.tsx` – **New detail page**. Fetches a single item via `getPublicMenuItemById`, keeps locale-aware copy via `getDictionary`, and renders `MenuItemDetail` with category context and sticky totals.
-- `app/[lang]/admin/menu/page.tsx` & `app/[lang]/admin/dashboard/page.tsx` – Primary admin workspace for managing menu hierarchy and analytics.
-- `app/[lang]/onboarding/page.tsx` – Phone verification and restaurant setup flow guarding menu access.
-- `app/[lang]/orders/page.tsx` – Diner order history list. Tabs ongoing/completed/cancelled orders using `OrdersClient` with `getOrdersForUser` summaries.
-- `app/[lang]/profile/page.tsx` – Diner profile surface. Shows account info, inline phone edit, app/menu language preferences, order history shortcut, and sign-out.
+- `app/[lang]/layout.tsx`, `app/[lang]/page.tsx` - Locale shell and landing.
+- `app/[lang]/menu/page.tsx` - Main menu browser (`ResponsiveMenuBrowser`).
+- `app/[lang]/menu/items/[itemId]/page.tsx` - Menu item detail page.
+- `app/[lang]/cart/page.tsx` - Cart + delivery selection + submit order.
+- `app/[lang]/orders/[displayId]/page.tsx` - Customer order status and payment state.
+- `app/[lang]/orders/[displayId]/receipt/page.tsx` - Customer receipt view/PDF.
+- `app/[lang]/orders/page.tsx` - Order history tabs.
+- `app/[lang]/onboarding/page.tsx` - Verification + delivery setup.
+- `app/[lang]/profile/page.tsx` - Account/profile/settings.
+- `app/[lang]/admin/orders/page.tsx` - Live admin order board.
+- `app/[lang]/admin/orders/archived/page.tsx` - Archived orders with filtering.
+- `app/[lang]/admin/delivery/page.tsx` - Delivery zone/building management.
+- `app/[lang]/admin/stock/page.tsx` - Item availability control.
+- `app/[lang]/admin/settings/{team,promptpay,shop}/page.tsx` - Admin settings surfaces.
 
 ## Important API Routes
-- Diner menu feed: `app/api/menu/route.ts`.
-- Item detail feed: `app/api/menu/items/[itemId]/route.ts` (returns a single item plus its category for the detail UI).
-- Admin CRUD: `app/api/admin/menu/{categories,items,choice-groups,choice-options}/route.ts` plus `/tree` for nested builders and `/images` for uploads.
-- User/account endpoints: `app/api/admin/{add,remove}`, `app/api/admin/list`, `app/api/user/phone`, and `app/api/auth/[...all]`.
+- Public menu:
+  - `app/api/menu/route.ts`
+  - `app/api/menu/items/[itemId]/route.ts`
+- Cart and customer order APIs:
+  - `app/api/cart/route.ts`
+  - `app/api/cart/items/[itemId]/route.ts`
+  - `app/api/orders/route.ts`
+  - `app/api/orders/[displayId]/route.ts`
+  - `app/api/orders/[displayId]/cancel/route.ts`
+  - `app/api/orders/[displayId]/payment/route.ts`
+- Admin order APIs:
+  - `app/api/admin/orders/[displayId]/status/route.ts`
+  - `app/api/admin/orders/[displayId]/verify-payment/route.ts`
+  - `app/api/admin/orders/[displayId]/reject-payment/route.ts`
+- Admin menu APIs:
+  - `app/api/admin/menu/{categories,items,choice-groups,choice-options}/...`
+  - `app/api/admin/menu/tree/route.ts`
+  - `app/api/admin/menu/images/route.ts`
+  - `app/api/admin/menu/items/[itemId]/availability/route.ts`
+  - Pools/recommended/reorder APIs under `app/api/admin/menu/*`.
+- Delivery + user defaults:
+  - `app/api/admin/delivery-locations/route.ts`
+  - `app/api/admin/delivery-locations/[locationId]/route.ts`
+  - `app/api/user/delivery-location/route.ts`
+- Auth/user/admin helpers:
+  - `app/api/auth/[...all]/route.ts`, forgot/reset password routes
+  - `app/api/sign-{in,out,up}/route.ts`
+  - `app/api/admin/{add,remove,list}/route.ts`
+  - `app/api/user/{phone,has-password,delete-account}/route.ts`
+- Realtime/upload/ops:
+  - `app/api/pusher/auth/route.ts`
+  - `app/api/uploadthing/route.ts`
+  - `app/api/cron/cleanup-orders/route.ts`
 
 ## Feature Highlights
-- Public menu cards and list rows now deep-link into the detail page (`components/menu/menu-browser.tsx`, `components/menu/mobile/mobile-menu-browser.tsx`), letting diners tap/click to review descriptions, choices, and pricing.
-- `MenuItemDetail` (`components/menu/menu-item-detail.tsx`) handles localized copy, optional notes, choice group validation (single vs multi-select), and live total computation across desktop/mobile layouts.
-- `ResponsiveMenuBrowser` switches between desktop (`MenuBrowser`) and the touch-optimized `MobileMenuBrowser`, both honoring the `MenuLanguageToggle` and search/filter UX.
-- Shared diner navigation lives in `components/menu/mobile-bottom-nav.tsx`: a fixed bottom bar on mobile and a compact left-side rail on desktop for Home/Menu, Cart, Orders, and Profile across menu, cart, order status, onboarding, and profile routes.
-- Profile & history: `ProfileClient` (`components/profile/profile-client.tsx`) centralizes phone edits, app/menu language toggles, and sign-out; `OrdersClient` (`components/orders/orders-client.tsx`) renders the diner’s order history with localized status chips and tabbed filtering.
-- Admin builder, onboarding, and menu experiences share locale + session providers via `components/i18n/menu-locale-provider` and `lib/session`.
+- Menu browsing is locale-aware and responsive (desktop + mobile) with deep links to item detail.
+- Cart supports preset/custom delivery selection (Google Places search + map pin), item editing, and swipe-to-remove.
+- Out-of-stock cart guard is server-validated at submit time and surfaced as a dedicated customer modal (scales for multiple unavailable items).
+- Customer order status supports realtime updates (Pusher), payment QR/upload flow, refund messaging, and receipt download.
+- Admin orders support realtime updates, accept/cancel/handoff/delivered actions, payment verify/reject, and archived history view.
+- Admin order detail displays actual preset location name/building (not generic label fallback).
+- Delivery locations, stock availability, promptpay accounts, and shop open/closed state are managed in dedicated admin surfaces.
 
 ## Build, Test, and Development Commands
-- `npm run dev` – Launch the Next.js dev server (Turbopack).
-- `npm run lint` – Run ESLint with the project rules.
-- `npm run build` – Create the production bundle.
-- `npm run start` – Serve the production bundle.
-- `npx drizzle-kit push` – Apply pending migrations against `DATABASE_URL`.
+- `npm run dev` - Launch Next.js dev server (Turbopack).
+- `npm run lint` - Run ESLint.
+- `npm run build` - Build production bundle.
+- `npm run start` - Run production server.
+- `npx drizzle-kit push` - Apply migrations to `DATABASE_URL`.
 
 ## Coding Style & Naming Conventions
-- TypeScript everywhere with 2-space indentation. camelCase functions/variables, PascalCase React components, kebab-case feature folders.
-- Keep admin copy conversational (“Choices section”, “Add menu item”). All remote images must go through `next/image` and have hosts whitelisted in `next.config.ts`.
+- TypeScript everywhere, 2-space indentation.
+- `camelCase` for functions/variables, `PascalCase` for components, kebab-case folders.
+- Keep admin copy concise and task-oriented.
+- Remote images must use `next/image` with host allowlist in `next.config.ts`.
 
 ## Testing Guidelines
-- Automated suites are not wired up yet—run `npm run lint` and manually validate key flows.
-- After schema/migration tweaks, run `npx drizzle-kit push`, restart `npm run dev`, and manually confirm draft autosave, choice CRUD, image uploads, menu browsing, and the new detail view.
-- Add future automated tests under `tests/`, mirroring feature directories (Jest/Playwright ready).
+- Run `npm run lint` plus manual flow verification.
+- If full lint is blocked by unrelated pre-existing issues, run targeted lint on touched files and report residual failures explicitly.
+- After schema/migration changes: run `npx drizzle-kit push`, restart dev server, and manually verify core flows:
+  - menu browse + item detail
+  - onboarding + delivery selection (preset/custom)
+  - cart submit + out-of-stock modal behavior
+  - payment upload/verify/reject
+  - admin order actions + archived list
 
 ## Commit & Pull Request Guidelines
-- Use concise, conventional commits (`feat:`, `fix:`, `chore:`) in present tense.
-- PRs should summarize the change, list verification steps (`npm run lint`, migrations applied), attach screenshots/GIFs for UI updates, and link the tracking ticket. Rebase before opening and prefer squash merges unless told otherwise.
+- Use conventional commits (`feat:`, `fix:`, `chore:`), present tense.
+- PRs should include:
+  - scope summary
+  - verification steps (`npm run lint`, manual checks, migrations if any)
+  - screenshots/GIFs for UI changes
+  - linked ticket
+- Rebase before opening; prefer squash merges unless instructed otherwise.
 
 ## Agent-Specific Notes
-- Trim and validate IDs before invoking Drizzle helpers to avoid “not found” errors.
-- When touching menu flows, keep admin builder (`components/admin/menu`) and public browser (`components/menu`) in sync so experiences match.
-- Provide fallbacks for any new image surfaces to keep `next/image` happy when assets are missing or hosts unapproved.
-- Respect the active `[lang]` segment—route via `withLocalePath` and hydrate UI copy through `getDictionary` so English/Burmese stay aligned.
-- Always expose the menu-language toggle around menu data; persist updates through the `menuLocale` cookie/provider.
+- Trim and validate IDs before calling Drizzle helpers.
+- Dynamic route handlers receive `params` as a Promise; always `await params` before property access.
+- Respect active `[lang]` segment:
+  - route using `withLocalePath`
+  - hydrate UI copy with `getDictionary`
+  - keep English/Burmese dictionaries in sync when adding keys.
+- Always keep menu language toggle behavior intact via `menuLocale` provider/cookie.
 - Database clients:
-  - `src/db/client.ts` uses the Neon HTTP driver (`drizzle-orm/neon-http`) for regular queries; keep these single-statement or idempotent with retry/on-conflict patterns when you need atomicity.
-  - `src/db/tx-client.ts` uses the Neon serverless WebSocket driver (`drizzle-orm/neon-serverless` + `@neondatabase/serverless` `Pool`) and is safe for interactive `dbTx.transaction(...)` usage.
-  - The cart → order path (`lib/orders/create.ts:createOrderFromCart`) is the canonical example of an ACID-style transaction: order header, items, choices, cart status, cart cleanup, and `orderEvents` are all written inside a single `dbTx.transaction` with retry-on-conflict for daily order counters. Prefer following that pattern for any future multi-table writes that must succeed or fail together.
-- Dynamic API routes receive `params` as a Promise; always `await params` before accessing properties in route handlers to avoid Next.js “params is a Promise” errors.
-- Order system (in progress):
-  - DB tables: `orders`, `order_items`, `order_item_choices`, `order_payments`, `order_events`. Orders use Bangkok day-based OR counters (`display_day`, `display_counter`, `display_id`) and THB-only amounts.
-  - Public order tracking page: `app/[lang]/orders/[displayId]/page.tsx` (customer view only). Last order ID is stored in localStorage to surface a “Return to your order” banner on the menu page and the history list at `app/[lang]/orders/page.tsx` shows recent orders grouped by status.
-  - Admin order list: `app/[lang]/admin/orders/page.tsx` with realtime Pusher updates and inline accept/cancel actions hitting `/api/admin/orders/[displayId]/status`.
-  - Pusher auth uses BetterAuth + `admins` table lookup (`resolveUserId`); server envs must include `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER` and client envs `NEXT_PUBLIC_PUSHER_KEY`, `NEXT_PUBLIC_PUSHER_CLUSTER`.
+  - `src/db/client.ts` (`drizzle-orm/neon-http`) for regular single-statement/idempotent operations.
+  - `src/db/tx-client.ts` (`drizzle-orm/neon-serverless`) for ACID transactions.
+  - `lib/orders/create.ts:createOrderFromCart` is the canonical transaction pattern for multi-table writes.
+- Out-of-stock submit guard:
+  - `createOrderFromCart` throws `OrderItemsUnavailableError` (`code: ORDER_ITEMS_UNAVAILABLE`) with structured unavailable items.
+  - `app/api/orders/route.ts` maps that to HTTP `409` with payload `{ code, unavailableItems }`.
+  - `components/cart/cart-view.tsx` displays that payload in a modal; avoid adding extra fetches for this UI.
+- Admin delivery label accuracy:
+  - `getOrderByDisplayId` and `getOrderDetailForAdmin` join delivery location/building names into `OrderRecord`.
+  - Do not regress to hardcoded `"Preset location"` when preset IDs are present.
+- Delivery picker mobile UX:
+  - Keep `SelectContent` anchored with contained scroll to prevent viewport-jump issues on small screens (`components/cart/delivery-location-picker.tsx`, `components/onboarding/onboarding-location-picker.tsx`).
+- Realtime order envs:
+  - Server: `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER`
+  - Client: `NEXT_PUBLIC_PUSHER_KEY`, `NEXT_PUBLIC_PUSHER_CLUSTER`
