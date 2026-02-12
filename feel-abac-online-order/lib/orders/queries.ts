@@ -104,7 +104,11 @@ function mapOrderPayment(
 function mapOrder(
   row: typeof orders.$inferSelect,
   items: OrderItemRecord[],
-  payments: OrderPaymentRecord[]
+  payments: OrderPaymentRecord[],
+  locationContext?: {
+    deliveryLocationName: string | null;
+    deliveryBuildingLabel: string | null;
+  }
 ): OrderRecord {
   return {
     id: row.id,
@@ -123,6 +127,8 @@ function mapOrder(
     deliveryMode: row.deliveryMode as "preset" | "custom" | null,
     deliveryLocationId: row.deliveryLocationId,
     deliveryBuildingId: row.deliveryBuildingId,
+    deliveryLocationName: locationContext?.deliveryLocationName ?? null,
+    deliveryBuildingLabel: locationContext?.deliveryBuildingLabel ?? null,
     customCondoName: row.customCondoName ?? null,
     customBuildingName: row.customBuildingName ?? null,
     customerName: row.customerName,
@@ -223,8 +229,20 @@ export async function getOrderByDisplayId(
   viewer: { userId?: string | null; isAdmin?: boolean }
 ): Promise<OrderRecord | null> {
   const [row] = await db
-    .select()
+    .select({
+      order: orders,
+      deliveryLocationName: deliveryLocations.condoName,
+      deliveryBuildingLabel: deliveryBuildings.label,
+    })
     .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
     .where(eq(orders.displayId, displayId))
     .orderBy(desc(orders.createdAt))
     .limit(1);
@@ -232,17 +250,21 @@ export async function getOrderByDisplayId(
   if (!row) {
     return null;
   }
+  const orderRow = row.order;
 
   const isAdmin = viewer.isAdmin ?? false;
   const userId = viewer.userId;
 
-  if (!isAdmin && row.userId && row.userId !== userId) {
+  if (!isAdmin && orderRow.userId && orderRow.userId !== userId) {
     return null;
   }
 
-  const items = await loadOrderItems(row.id);
-  const payments = await loadOrderPayments(row.id);
-  return mapOrder(row, items, payments);
+  const items = await loadOrderItems(orderRow.id);
+  const payments = await loadOrderPayments(orderRow.id);
+  return mapOrder(orderRow, items, payments, {
+    deliveryLocationName: row.deliveryLocationName ?? null,
+    deliveryBuildingLabel: row.deliveryBuildingLabel ?? null,
+  });
 }
 
 export async function getLatestUnpaidOrderForUser(
@@ -557,8 +579,20 @@ export async function getOrderDetailForAdmin(
   displayId: string
 ): Promise<OrderRecord | null> {
   const [row] = await db
-    .select()
+    .select({
+      order: orders,
+      deliveryLocationName: deliveryLocations.condoName,
+      deliveryBuildingLabel: deliveryBuildings.label,
+    })
     .from(orders)
+    .leftJoin(
+      deliveryLocations,
+      eq(orders.deliveryLocationId, deliveryLocations.id)
+    )
+    .leftJoin(
+      deliveryBuildings,
+      eq(orders.deliveryBuildingId, deliveryBuildings.id)
+    )
     .where(eq(orders.displayId, displayId))
     .orderBy(desc(orders.createdAt))
     .limit(1);
@@ -566,10 +600,14 @@ export async function getOrderDetailForAdmin(
   if (!row) {
     return null;
   }
+  const orderRow = row.order;
 
-  const items = await loadOrderItems(row.id);
-  const payments = await loadOrderPayments(row.id);
-  return mapOrder(row, items, payments);
+  const items = await loadOrderItems(orderRow.id);
+  const payments = await loadOrderPayments(orderRow.id);
+  return mapOrder(orderRow, items, payments, {
+    deliveryLocationName: row.deliveryLocationName ?? null,
+    deliveryBuildingLabel: row.deliveryBuildingLabel ?? null,
+  });
 }
 
 /**

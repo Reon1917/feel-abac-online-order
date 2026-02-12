@@ -11,6 +11,7 @@
   "statusClosed": "Closed",
   "statusCancelled": "Cancelled",
   "lastUpdated": "Last updated",
+  "emailUpdatesNotice": "အော်ဒါအပ်ဒိတ်များကို သင့်အကောင့် email သို့ ပို့ပေးပါမည်။",
   "howToPay": "ငွေပေးချေနည်း:",
   "step1": "ဤ QR code ကို screenshot သိမ်းပါ",
   "step2": "Mobile banking app ကိုဖွင့်ပါ",
