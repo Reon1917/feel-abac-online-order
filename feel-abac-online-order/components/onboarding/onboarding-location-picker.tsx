@@ -135,7 +135,7 @@ export function OnboardingLocationPicker({
         void fetchPlaceCoordinates(prediction.place_id);
       }
     },
-    [fetchPlaceCoordinates, placePredictions]
+    [fetchPlaceCoordinates]
   );
 
   const handleClearAddress = useCallback(() => {
@@ -222,6 +222,9 @@ export function OnboardingLocationPicker({
       if (!locationId) {
         return { selection: null, error: dictionary.errors.locationRequired };
       }
+      if (hasBuildings && !buildingId) {
+        return { selection: null, error: dictionary.errors.buildingRequired };
+      }
       const payload: PresetDeliverySelection = {
         mode: "preset",
         locationId,
@@ -252,7 +255,9 @@ export function OnboardingLocationPicker({
     customBuilding,
     selectedPlaceId,
     customCoordinates,
+    hasBuildings,
     dictionary.errors.locationRequired,
+    dictionary.errors.buildingRequired,
     dictionary.errors.customRequired,
   ]);
 
@@ -260,16 +265,26 @@ export function OnboardingLocationPicker({
     setError(null);
     setIsSubmitting(true);
 
-    const { selection, error: selectionError } = buildSelection();
-    if (selectionError || !selection) {
-      setError(selectionError ?? dictionary.errorGeneric);
-      setIsSubmitting(false);
-      return;
-    }
+    try {
+      const { selection, error: selectionError } = buildSelection();
+      if (selectionError || !selection) {
+        setError(selectionError ?? dictionary.errorGeneric);
+        if (selectionError === dictionary.errors.buildingRequired) {
+          toast.error(selectionError);
+        }
+        return;
+      }
 
-    onSelectionConfirmed(selection);
-    toast.success(dictionary.rememberSuccess);
-    setIsSubmitting(false);
+      onSelectionConfirmed(selection);
+      toast.success(dictionary.rememberSuccess);
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to confirm onboarding delivery selection", error);
+      }
+      setError(dictionary.errorGeneric);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selectionSummary = useMemo(() => {

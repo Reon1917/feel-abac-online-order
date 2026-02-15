@@ -46,6 +46,7 @@
     "errorGeneric": "Failed to update delivery location",
     "errors": {
       "locationRequired": "Pick a location before continuing.",
+      "buildingRequired": "Choose a building before continuing.",
       "customRequired": "Enter your address to continue."
     },
     "modal": {
