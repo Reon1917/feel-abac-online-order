@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useActionState } from "react";
 import { toast } from "sonner";
 import { OnboardingWelcome } from "@/components/onboarding/onboarding-welcome";
@@ -44,13 +44,11 @@ export function OnboardingWizard({
     return selection ? JSON.stringify(selection) : "";
   }, [selection]);
 
-  const handleLocationSubmit = (formData: FormData) => {
+  const handleLocationSubmit = (event: FormEvent<HTMLFormElement>) => {
     if (!selection) {
+      event.preventDefault();
       toast.error(deliveryDictionary.errors.locationRequired);
-      return;
     }
-    formData.set("selection", selectionJson);
-    locationAction(formData);
   };
 
   const stepIndicator = (
@@ -78,7 +76,7 @@ export function OnboardingWizard({
       {stage === 1 && <OnboardingPhone defaultPhone={defaultPhone} onSuccess={() => setStage(2)} />}
 
       {stage === 2 && (
-        <form action={handleLocationSubmit} className="flex flex-col gap-4">
+        <form action={locationAction} onSubmit={handleLocationSubmit} className="flex flex-col gap-4">
           <OnboardingLocationPicker
             locations={deliveryLocations}
             initialSelection={selection}
@@ -109,7 +107,6 @@ export function OnboardingWizard({
     </div>
   );
 }
-
 
 
 
