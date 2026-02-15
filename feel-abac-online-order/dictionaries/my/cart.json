@@ -46,6 +46,7 @@
     "errorGeneric": "ပို့ဆောင်နေရာကို မပြင်ဆင်နိုင်ပါ",
     "errors": {
       "locationRequired": "နေရာတစ်ခုကို ရွေးပါ။",
+      "buildingRequired": "ဆက်လက်မလုပ်မီ အဆောက်အအုံကို ရွေးပါ။",
       "customRequired": "လိပ်စာကို ထည့်ပါ။"
     },
     "modal": {
