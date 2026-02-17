@@ -1,21 +1,34 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
-  import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { signInSchema, signUpSchema } from "@/lib/validations";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { cn } from "@/lib/utils";
 
 type AuthView = "sign-in" | "sign-up";
 
+type ButtonVariant = ComponentProps<typeof Button>["variant"];
+
 type LoginModalProps = {
   locale: Locale;
+  defaultView?: AuthView;
+  ctaLabel?: string;
+  ctaVariant?: ButtonVariant;
+  ctaClassName?: string;
 };
 
-export function LoginModal({ locale }: LoginModalProps) {
+export function LoginModal({
+  locale,
+  defaultView = "sign-in",
+  ctaLabel = "Log in / Sign up",
+  ctaVariant = "outline",
+  ctaClassName,
+}: LoginModalProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<AuthView>("sign-in");
@@ -123,11 +136,19 @@ export function LoginModal({ locale }: LoginModalProps) {
   return (
     <>
       <Button
-        onClick={() => setIsOpen(true)}
-        className="rounded-full border-emerald-200 bg-white px-5 py-2 text-emerald-900 shadow-sm hover:bg-emerald-50"
-        variant="outline"
+        onClick={() => {
+          setView(defaultView);
+          setValidationErrors({});
+          setIsOpen(true);
+        }}
+        className={cn(
+          "rounded-full px-5 py-2 shadow-sm",
+          ctaVariant === "outline" && "border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-50",
+          ctaClassName
+        )}
+        variant={ctaVariant}
       >
-        Log in / Sign up
+        {ctaLabel}
       </Button>
 
       {isOpen ? (

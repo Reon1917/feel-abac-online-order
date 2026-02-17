@@ -1,31 +1,47 @@
 {
   "hero": {
-    "eyebrow": "Feel ABAC online ordering",
-    "headline": "Welcome to Feel ABAC online order platform",
-    "subheadline": "Below is how to use our menu and ordering tools so you can get your meal with zero hassle.",
-    "signInCta": "Sign in"
-  },
-  "instructions": {
-    "title": "Getting started",
-    "steps": [
-      "Sign in with your student account to unlock the daily menu.",
-      "Review each category, pick your dishes, and select Burmese names if you prefer.",
-      "Reserve a pickup slot or head straight to the counter when your order is ready."
+    "eyebrow": "Feel ABAC Online Order",
+    "headline": "Order from Feel ABAC in minutes.",
+    "subheadline": "View today's menu, place your order quickly, and pick up fresh food without the wait.",
+    "primaryCta": "Log in",
+    "secondaryCta": "Sign up",
+    "kicker": "Simple online ordering for campus meals",
+    "pills": [
+      "Realtime order status",
+      "Fast pickup flow",
+      "Built for ABAC"
     ]
   },
-  "pwa": {
-    "title": "Install as an app",
-    "iosLabel": "For iOS",
-    "iosSteps": [
-      "Open Feel ABAC in Safari",
-      "Tap share → Add to Home Screen",
-      "Confirm name, then add"
-    ],
-    "androidLabel": "Android & desktop",
-    "androidSteps": [
-      "Open in Chrome",
-      "Use Install prompt in menu",
-      "Launch from home screen"
+  "gallery": {
+    "title": "Selected menu highlights",
+    "subtitle": "Popular dishes customers keep coming back to.",
+    "imageAlt": "Menu highlight from Feel ABAC",
+    "featuredLabel": "Featured",
+    "cardLabel": "Menu pick",
+    "cards": [
+      "Kyay Oh",
+      "Mala Mao Cai",
+      "Chicken Curry Rice Salad Bowl",
+      "Nann Gyi Thoke",
+      "Pickled Tea Leaves Rice Salad",
+      "Mok Hin Khar"
+    ]
+  },
+  "flow": {
+    "title": "How ordering works",
+    "items": [
+      {
+        "title": "Choose your dishes",
+        "description": "Browse categories and pick what you want from today's menu."
+      },
+      {
+        "title": "Confirm your order",
+        "description": "Log in once, review your cart, and place your order in a few taps."
+      },
+      {
+        "title": "Pick up fresh",
+        "description": "Track order updates and collect your meal when it is ready."
+      }
     ]
   }
 }
