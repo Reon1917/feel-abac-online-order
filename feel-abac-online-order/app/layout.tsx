@@ -15,6 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://cdn.feelabac.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://cdn.feelabac.com" />
+      </head>
       <body className="bg-white antialiased text-slate-900">
         {children}
         <Toaster />

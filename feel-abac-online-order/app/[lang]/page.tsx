@@ -38,6 +38,15 @@ const MENU_IMAGE_ITEMS = [
   },
 ] as const;
 
+const SHOWCASE_ASPECT_CLASSES = [
+  "aspect-[4/5]",
+  "aspect-[5/4]",
+  "aspect-[4/4.5]",
+  "aspect-[5/4]",
+  "aspect-[4/4.8]",
+  "aspect-[4/3.8]",
+] as const;
+
 export default async function Home({ params }: PageProps) {
   const { lang } = await params;
   const locale = lang as Locale;
@@ -104,65 +113,37 @@ export default async function Home({ params }: PageProps) {
             </div>
           </header>
 
-          <aside className="rounded-3xl border border-emerald-100 bg-white/95 p-4 shadow-[0_28px_75px_-55px_rgba(6,95,70,0.45)] sm:p-5">
+          <aside className="rounded-3xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/60 via-white to-white p-4 shadow-[0_30px_70px_-52px_rgba(6,95,70,0.4)] sm:p-5">
             <div className="mb-4 space-y-1">
               <h2 className="text-lg font-semibold text-emerald-950 sm:text-xl">
                 {dict.gallery.title}
               </h2>
               <p className="text-sm text-slate-600">{dict.gallery.subtitle}</p>
             </div>
-
-            <div className="sm:hidden">
-              <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {menuCards.map((item, index) => (
-                  <article
-                    key={item.id}
-                    className="w-[74%] shrink-0 snap-center overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"
-                  >
-                    <div className="relative aspect-[4/3]">
-                      <Image
-                        src={item.src}
-                        alt={`${dict.gallery.imageAlt}: ${item.label}`}
-                        fill
-                        sizes="74vw"
-                        className="object-cover"
-                        priority={index === 0}
-                      />
-                    </div>
-                    <div className="space-y-1 p-3">
-                      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-emerald-700">
-                        {index === 0 ? dict.gallery.featuredLabel : dict.gallery.cardLabel}
-                      </p>
-                      <p className="text-sm font-semibold leading-snug text-slate-900">{item.label}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="hidden grid-cols-2 gap-3 sm:grid xl:grid-cols-3">
+            <div className="columns-2 gap-3 sm:columns-3">
               {menuCards.map((item, index) => (
-                <article
+                <figure
                   key={item.id}
-                  className="group overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition-transform duration-300 hover:-translate-y-1"
+                  className="group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl"
                 >
-                  <div className="relative aspect-[4/3]">
+                  <div className={`relative ${SHOWCASE_ASPECT_CLASSES[index % SHOWCASE_ASPECT_CLASSES.length]}`}>
                     <Image
                       src={item.src}
                       alt={`${dict.gallery.imageAlt}: ${item.label}`}
                       fill
-                      sizes="(max-width: 1279px) 28vw, 18vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      priority={index < 2}
+                      sizes="(max-width: 639px) 46vw, (max-width: 1023px) 30vw, 22vw"
+                      quality={82}
+                      className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                      priority={index < 3}
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/52 via-emerald-900/8 to-transparent" />
+                    <figcaption className="absolute inset-x-2.5 bottom-2.5">
+                      <span className="line-clamp-2 text-xs font-semibold uppercase tracking-[0.12em] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] sm:text-[0.68rem]">
+                        {item.label}
+                      </span>
+                    </figcaption>
                   </div>
-                  <div className="space-y-1 p-3">
-                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-emerald-700">
-                      {index === 0 ? dict.gallery.featuredLabel : dict.gallery.cardLabel}
-                    </p>
-                    <p className="text-sm font-semibold leading-snug text-slate-900">{item.label}</p>
-                  </div>
-                </article>
+                </figure>
               ))}
             </div>
           </aside>
