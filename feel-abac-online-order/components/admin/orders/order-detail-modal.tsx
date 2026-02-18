@@ -396,16 +396,22 @@ export function OrderDetailModal({
             {/* Table Body */}
             <div className="max-h-80 overflow-y-auto divide-y divide-slate-200 scrollbar-thin scrollbar-thumb-slate-200">
               {order.items.map((item) => {
-                const choicesStr =
-                  item.choices.length > 0
-                    ? item.choices
-                        .map((choice) =>
-                          menuLocale === "my"
-                            ? choice.optionNameMm ?? choice.optionName
-                            : choice.optionName
-                        )
-                        .join(", ")
-                    : null;
+                const baseChoices = item.choices.filter(
+                  (choice) => choice.selectionRole === "base"
+                );
+                const addonChoices = item.choices.filter(
+                  (choice) => choice.selectionRole === "addon"
+                );
+                const neutralChoices = item.choices.filter(
+                  (choice) => choice.selectionRole == null
+                );
+                const hasSetMenuHierarchy =
+                  baseChoices.length > 0 || addonChoices.length > 0;
+
+                const formatChoiceName = (choice: (typeof item.choices)[number]) =>
+                  menuLocale === "my"
+                    ? choice.optionNameMm ?? choice.optionName
+                    : choice.optionName;
 
                 const primaryName =
                   menuLocale === "my"
@@ -437,9 +443,52 @@ export function OrderDetailModal({
                           {secondaryName}
                         </p>
                       )}
-                      {choicesStr && (
+                      {hasSetMenuHierarchy && baseChoices.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                            Base
+                          </p>
+                          {baseChoices.map((choice) => (
+                            <p
+                              key={choice.id}
+                              className="text-xs text-slate-700 wrap-break-word sm:text-sm"
+                            >
+                              {choice.menuCode ? (
+                                <span className="mr-1 font-mono text-[11px] text-slate-500">
+                                  {choice.menuCode}
+                                </span>
+                              ) : null}
+                              {formatChoiceName(choice)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {hasSetMenuHierarchy && addonChoices.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                            Add-ons
+                          </p>
+                          {addonChoices.map((choice) => (
+                            <p
+                              key={choice.id}
+                              className="text-xs text-slate-700 wrap-break-word sm:text-sm"
+                            >
+                              <span className="mr-1 text-slate-400">+</span>
+                              {choice.menuCode ? (
+                                <span className="mr-1 font-mono text-[11px] text-slate-500">
+                                  {choice.menuCode}
+                                </span>
+                              ) : null}
+                              {formatChoiceName(choice)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {neutralChoices.length > 0 && (
                         <p className="text-xs text-slate-600 wrap-break-word sm:text-sm">
-                          {choicesStr}
+                          {neutralChoices
+                            .map((choice) => formatChoiceName(choice))
+                            .join(", ")}
                         </p>
                       )}
                       {item.note && (

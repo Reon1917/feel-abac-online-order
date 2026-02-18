@@ -1,7 +1,11 @@
 "use client";
 
 import { defaultHeaders, fetchJSON } from "./api-client";
-import type { ChoicePool, ChoicePoolOption } from "@/lib/menu/pool-types";
+import type {
+  ChoicePool,
+  ChoicePoolOption,
+  ChoicePoolWithOptions,
+} from "@/lib/menu/pool-types";
 
 export type CreatePoolPayload = {
   nameEn: string;
@@ -10,6 +14,7 @@ export type CreatePoolPayload = {
 };
 
 export type UpdatePoolPayload = Partial<CreatePoolPayload>;
+export type DuplicatePoolPayload = Partial<CreatePoolPayload>;
 
 export type CreatePoolOptionPayload = {
   menuCode?: string | null;
@@ -57,6 +62,22 @@ export async function deletePool(poolId: string): Promise<void> {
   });
 }
 
+export async function duplicatePool(
+  poolId: string,
+  data: DuplicatePoolPayload = {}
+): Promise<ChoicePoolWithOptions> {
+  const response = await fetchJSON<{ pool: ChoicePoolWithOptions }>(
+    `/api/admin/menu/pools/${poolId}/duplicate`,
+    {
+      method: "POST",
+      headers: defaultHeaders,
+      body: JSON.stringify(data),
+    }
+  );
+
+  return response.pool;
+}
+
 export async function createPoolOption(
   poolId: string,
   data: CreatePoolOptionPayload
@@ -102,4 +123,3 @@ export async function deletePoolOption(
     }
   );
 }
-

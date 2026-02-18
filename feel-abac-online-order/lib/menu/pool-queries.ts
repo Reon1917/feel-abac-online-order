@@ -26,6 +26,9 @@ export type CreatePoolInput = {
 };
 
 export type UpdatePoolInput = Partial<CreatePoolInput>;
+export type DuplicatePoolInput = Partial<
+  Pick<CreatePoolInput, "nameEn" | "nameMm" | "isActive">
+>;
 
 export type CreatePoolOptionInput = {
   menuCode?: string | null;
@@ -215,6 +218,65 @@ export async function deleteChoicePool(poolId: string): Promise<boolean> {
     .returning({ id: choicePools.id });
 
   return result.length > 0;
+}
+
+export async function duplicateChoicePool(
+  sourcePoolId: string,
+  data: DuplicatePoolInput = {}
+): Promise<ChoicePoolWithOptions | null> {
+  return dbTx.transaction(async (tx) => {
+    const [sourcePool] = await tx
+      .select()
+      .from(choicePools)
+      .where(eq(choicePools.id, sourcePoolId))
+      .limit(1);
+
+    if (!sourcePool) {
+      return null;
+    }
+
+    const sourceOptions = await tx
+      .select()
+      .from(choicePoolOptions)
+      .where(eq(choicePoolOptions.poolId, sourcePoolId))
+      .orderBy(
+        asc(choicePoolOptions.displayOrder),
+        asc(choicePoolOptions.createdAt)
+      );
+
+    const [duplicatedPool] = await tx
+      .insert(choicePools)
+      .values({
+        nameEn: data.nameEn ?? `${sourcePool.nameEn} (Copy)`,
+        nameMm: data.nameMm ?? sourcePool.nameMm,
+        isActive: data.isActive ?? sourcePool.isActive,
+        displayOrder: sourcePool.displayOrder,
+      })
+      .returning();
+
+    let duplicatedOptions: typeof choicePoolOptions.$inferSelect[] = [];
+    if (sourceOptions.length > 0) {
+      duplicatedOptions = await tx
+        .insert(choicePoolOptions)
+        .values(
+          sourceOptions.map((option) => ({
+            poolId: duplicatedPool.id,
+            menuCode: option.menuCode,
+            nameEn: option.nameEn,
+            nameMm: option.nameMm,
+            price: option.price,
+            isAvailable: option.isAvailable,
+            displayOrder: option.displayOrder,
+          }))
+        )
+        .returning();
+    }
+
+    return {
+      ...mapPool(duplicatedPool),
+      options: duplicatedOptions.map(mapPoolOption),
+    };
+  });
 }
 
 export async function reorderPools(

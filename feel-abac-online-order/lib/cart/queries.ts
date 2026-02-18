@@ -12,7 +12,6 @@ import {
   AddToCartInput,
   AddToCartSelection,
   AddSetMenuToCartInput,
-  SetMenuSelection,
   CartItemChoice,
   CartItemRecord,
   CartRecord,
@@ -735,7 +734,7 @@ export async function addSetMenuToCart(
   };
 
   const normalizedSelections: NormalizedSetMenuSelection[] = [];
-  const selectedLinkIds = new Set<string>();
+  const selectedOptionsByLinkId = new Map<string, Set<string>>();
   const hashSelections: { kind: "base" | "addon"; optionId: string }[] = [];
 
   // Normalize selections against pool links and options from the DB.
@@ -755,7 +754,13 @@ export async function addSetMenuToCart(
       throw new Error("Selected option is not available.");
     }
 
-    selectedLinkIds.add(link.id);
+    const selectedOptionsForLink = selectedOptionsByLinkId.get(link.id) ?? new Set<string>();
+    if (selectedOptionsForLink.has(option.id)) {
+      throw new Error("Duplicate option selected for the same set menu group.");
+    }
+    selectedOptionsForLink.add(option.id);
+    selectedOptionsByLinkId.set(link.id, selectedOptionsForLink);
+
     const selectionKind: "base" | "addon" = link.isPriceDetermining
       ? "base"
       : "addon";
@@ -775,13 +780,28 @@ export async function addSetMenuToCart(
     });
   }
 
-  // Validate required selections using server-derived roles
-  const requiredLinks = poolLinks.filter((link) => link.isRequired);
-  for (const requiredLink of requiredLinks) {
-    if (!selectedLinkIds.has(requiredLink.id)) {
+  // Validate required/min/max constraints from server configuration.
+  for (const link of poolLinks) {
+    const selectedCount = selectedOptionsByLinkId.get(link.id)?.size ?? 0;
+    const minRequired = Math.max(link.minSelect, link.isRequired ? 1 : 0);
+    const maxAllowed =
+      link.maxSelect > 0 ? link.maxSelect : Number.MAX_SAFE_INTEGER;
+    const label = link.labelEn ?? link.pool.nameEn;
+
+    if (selectedCount < minRequired) {
       throw new Error(
-        `Required selection missing: ${requiredLink.labelEn ?? requiredLink.id}`
+        `Please select at least ${minRequired} option(s) for ${label}.`
       );
+    }
+
+    if (selectedCount > maxAllowed) {
+      throw new Error(
+        `Please select no more than ${maxAllowed} option(s) for ${label}.`
+      );
+    }
+
+    if (link.isPriceDetermining && selectedCount !== 1) {
+      throw new Error(`Base selection must include exactly one option for ${label}.`);
     }
   }
 
