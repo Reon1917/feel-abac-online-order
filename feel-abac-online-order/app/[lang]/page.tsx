@@ -98,19 +98,6 @@ export default async function Home({ params }: PageProps) {
                 ctaClassName="h-11 w-full rounded-full border-emerald-300 bg-white px-6 text-emerald-700 hover:bg-emerald-50 sm:w-auto"
               />
             </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              {dict.hero.kicker}
-            </p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {dict.hero.pills.map((pill) => (
-                <div
-                  key={pill}
-                  className="rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-slate-700"
-                >
-                  {pill}
-                </div>
-              ))}
-            </div>
           </header>
 
           <aside className="rounded-3xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/60 via-white to-white p-4 shadow-[0_30px_70px_-52px_rgba(6,95,70,0.4)] sm:p-5">
@@ -151,20 +138,26 @@ export default async function Home({ params }: PageProps) {
 
         <section className="mt-7">
           <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-emerald-950">{dict.flow.title}</h3>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {dict.flow.items.map((item, index) => (
-                <article
-                  key={item.title}
-                  className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"
-                >
-                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700">
-                    {index + 1}
-                  </span>
-                  <h4 className="mt-3 text-sm font-semibold text-emerald-950">{item.title}</h4>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600">{item.description}</p>
-                </article>
-              ))}
+            <h3 className="text-lg font-semibold text-emerald-950">{dict.info.title}</h3>
+            <p className="mt-1 text-sm text-slate-600">{dict.info.subtitle}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <article className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                  {dict.info.locationLabel}
+                </p>
+                <p className="mt-2 text-base font-semibold text-emerald-950">
+                  {dict.info.locationValue}
+                </p>
+              </article>
+              <article className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                  {dict.info.contactLabel}
+                </p>
+                <p className="mt-2 text-base font-semibold text-emerald-950">
+                  {dict.info.contactValue}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">{dict.info.contactNote}</p>
+              </article>
             </div>
           </div>
         </section>
