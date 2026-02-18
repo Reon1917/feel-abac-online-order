@@ -399,7 +399,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
                 </p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                Open
+                {dictionary.openLink ?? "Open"}
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
             </a>

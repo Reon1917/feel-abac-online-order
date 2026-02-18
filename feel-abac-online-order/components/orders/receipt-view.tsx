@@ -42,6 +42,8 @@ type ReceiptContentProps = {
   useBurmeseName?: boolean;
 };
 
+type ReceiptItemChoice = OrderRecord["items"][number]["choices"][number];
+
 // Use inline styles with hex colors for html2canvas compatibility (avoids lab() color parsing errors)
 const styles = {
   paper: {
@@ -152,6 +154,9 @@ const styles = {
 function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: ReceiptContentProps) {
   const safeDeliveryAddress =
     deliveryAddress || dictionary.receiptDeliveryFallback || "See order for details";
+  const baseLabel = dictionary.receiptBase ?? "Base";
+  const formatChoiceName = (choice: ReceiptItemChoice) =>
+    useBurmeseName ? (choice.optionNameMm || choice.optionName) : choice.optionName;
   const totals = computeOrderTotals({
     foodSubtotal: order.subtotal,
     vatAmount: order.vatAmount,
@@ -202,8 +207,6 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
           <p style={{ color: "#64748b", padding: "8px 0" }}>{dictionary.receiptNoItems ?? "No items"}</p>
         ) : (
           order.items.map((item, idx) => {
-            const formatChoiceName = (choice: (typeof item.choices)[number]) =>
-              useBurmeseName ? (choice.optionNameMm || choice.optionName) : choice.optionName;
             const baseChoices = item.choices.filter(
               (choice) => choice.selectionRole === "base"
             );
@@ -213,8 +216,6 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
             const neutralChoices = item.choices.filter(
               (choice) => choice.selectionRole == null
             );
-            const hasSetMenuHierarchy =
-              baseChoices.length > 0 || addonChoices.length > 0;
 
             const itemName = useBurmeseName
               ? (item.menuItemNameMm || item.menuItemName)
@@ -235,9 +236,9 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
                       {menuCode && <span style={styles.menuCode}>{menuCode} </span>}
                       {itemName}
                     </span>
-                    {hasSetMenuHierarchy && baseChoices.length > 0 && (
+                    {baseChoices.length > 0 && (
                       <div style={styles.extras}>
-                        └ Base:{" "}
+                        └ {baseLabel}:{" "}
                         {baseChoices
                           .map((choice) =>
                             `${choice.menuCode ? `[${choice.menuCode}] ` : ""}${formatChoiceName(choice)}`
@@ -245,7 +246,7 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
                           .join(", ")}
                       </div>
                     )}
-                    {hasSetMenuHierarchy && addonChoices.length > 0 && (
+                    {addonChoices.length > 0 && (
                       addonChoices.map((choice) => (
                         <div key={choice.id} style={styles.extras}>
                           └ + {choice.menuCode ? `[${choice.menuCode}] ` : ""}

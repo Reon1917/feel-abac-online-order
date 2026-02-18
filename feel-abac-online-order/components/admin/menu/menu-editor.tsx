@@ -2915,7 +2915,7 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
       {loadError ? (
         <p className="text-xs text-rose-600">{loadError}</p>
       ) : null}
-      {pools.length === 0 ? (
+      {pools.length === 0 && !loadError && !isLoading ? (
         <p className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600">
           No choice pools found. Create pools under{" "}
           <span className="font-semibold">Admin → Menu → Choice pools</span>{" "}
