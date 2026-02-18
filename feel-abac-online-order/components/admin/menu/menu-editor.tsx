@@ -594,9 +594,9 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       return selectedItem;
     });
 
-    const selectedItemId = selectedItem.id?.trim();
+    const trimmedSelectedItemId = selectedItem.id?.trim();
     const shouldHydratePoolLinks =
-      Boolean(selectedItemId) &&
+      Boolean(trimmedSelectedItemId) &&
       selectedItem.isSetMenu &&
       selectedItem.poolLinks === undefined;
 
@@ -606,7 +606,7 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
       };
     }
 
-    fetchJSON<{ item: MenuItemRecord }>(`/api/admin/menu/items/${selectedItemId}`, {
+    fetchJSON<{ item: MenuItemRecord }>(`/api/admin/menu/items/${trimmedSelectedItemId}`, {
       method: "GET",
       cache: "no-store",
     })
