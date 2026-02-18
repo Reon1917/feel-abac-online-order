@@ -1,31 +1,33 @@
 {
   "hero": {
-    "eyebrow": "Feel ABAC online ordering",
-    "headline": "Welcome to Feel ABAC online order platform",
-    "subheadline": "Below is how to use our menu and ordering tools so you can get your meal with zero hassle.",
-    "signInCta": "Sign in"
+    "eyebrow": "Feel ABAC Online Order",
+    "headline": "Order from Feel ABAC in minutes.",
+    "subheadline": "View today's menu, place your order quickly, and pick up fresh food without the wait.",
+    "primaryCta": "Log in",
+    "secondaryCta": "Sign up"
   },
-  "instructions": {
-    "title": "Getting started",
-    "steps": [
-      "Sign in with your student account to unlock the daily menu.",
-      "Review each category, pick your dishes, and select Burmese names if you prefer.",
-      "Reserve a pickup slot or head straight to the counter when your order is ready."
+  "gallery": {
+    "title": "Selected menu highlights",
+    "subtitle": "Popular dishes customers keep coming back to.",
+    "imageAlt": "Menu highlight from Feel ABAC",
+    "featuredLabel": "Featured",
+    "cardLabel": "Menu pick",
+    "cards": [
+      "Kyay Oh",
+      "Mala Mao Cai",
+      "Chicken Curry Rice Salad Bowl",
+      "Nann Gyi Thoke",
+      "Pickled Tea Leaves Rice Salad",
+      "Mok Hin Khar"
     ]
   },
-  "pwa": {
-    "title": "Install as an app",
-    "iosLabel": "For iOS",
-    "iosSteps": [
-      "Open Feel ABAC in Safari",
-      "Tap share → Add to Home Screen",
-      "Confirm name, then add"
-    ],
-    "androidLabel": "Android & desktop",
-    "androidSteps": [
-      "Open in Chrome",
-      "Use Install prompt in menu",
-      "Launch from home screen"
-    ]
+  "info": {
+    "title": "Visit & contact",
+    "subtitle": "Need help or want to pick up in person?",
+    "locationLabel": "Location",
+    "locationValue": "AU Mall, 2nd Floor",
+    "contactLabel": "Contact us",
+    "contactValue": "+95 9 123 456 789",
+    "contactNote": "Placeholder number - update with your official hotline."
   }
 }

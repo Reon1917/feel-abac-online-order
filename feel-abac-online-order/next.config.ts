@@ -72,10 +72,14 @@ function registerRemotePattern(raw?: string | null) {
 registerRemotePattern(process.env.R2_PUBLIC_BUCKET_URL);
 registerRemotePattern(process.env.R2_S3_ENDPOINT);
 
+const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns,
-    unoptimized: true,
+    minimumCacheTTL: ONE_YEAR_IN_SECONDS,
+    formats: ["image/avif", "image/webp"],
+    qualities: [75, 82],
   },
 };
 
