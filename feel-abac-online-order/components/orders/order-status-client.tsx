@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
+import { ExternalLink } from "lucide-react";
 
 import type orderDictionary from "@/dictionaries/en/order.json";
 import { PaymentQrSection } from "@/components/payments/payment-qr-section";
@@ -28,6 +29,7 @@ import {
   computeOrderTotals,
   ORDER_VAT_PERCENT_LABEL,
 } from "@/lib/orders/totals";
+import { normalizeExternalUrl } from "@/lib/url/normalize-external-url";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -120,6 +122,10 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
   const combinedPayment = useMemo(
     () => order.payments?.find((payment) => payment.type === "combined") ?? null,
     [order.payments]
+  );
+  const deliveryTrackingUrl = useMemo(
+    () => normalizeExternalUrl(order.courierTrackingUrl),
+    [order.courierTrackingUrl]
   );
 
   const canCancel = useMemo(() => {
@@ -373,20 +379,31 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
               />
               {statusText}
             </span>
-            {!isClosed &&
-              order.status === "order_out_for_delivery" &&
-              order.courierTrackingUrl && (
-                <a
-                  href={order.courierTrackingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100"
-                >
-                  {dictionary.trackDelivery ?? "Track delivery"}
-                </a>
-              )}
           </div>
         </div>
+        {!isClosed &&
+          order.status === "order_out_for_delivery" &&
+          deliveryTrackingUrl && (
+            <a
+              href={deliveryTrackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900 shadow-sm ring-1 ring-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-100"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  {dictionary.trackDelivery ?? "Delivery Tracking Link"}
+                </p>
+                <p className="truncate text-sm font-medium text-emerald-900">
+                  {deliveryTrackingUrl}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                Open
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </span>
+            </a>
+          )}
         <div className="mt-5 space-y-3">
           <p className="text-sm font-semibold text-slate-700">
             {dictionary.trackerLabel}

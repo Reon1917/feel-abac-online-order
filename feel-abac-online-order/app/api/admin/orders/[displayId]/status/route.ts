@@ -16,6 +16,7 @@ import { getActivePromptPayAccount } from "@/lib/payments/queries";
 import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
 import { getOrderEmailDetails } from "@/lib/orders/queries";
 import { computeOrderTotals } from "@/lib/orders/totals";
+import { normalizeExternalUrl } from "@/lib/url/normalize-external-url";
 
 type Params = {
   displayId: string;
@@ -298,14 +299,15 @@ export async function PATCH(
       );
     }
 
-    const courierTrackingUrl =
+    const courierTrackingUrlInput =
       typeof body?.courierTrackingUrl === "string"
-        ? body.courierTrackingUrl.trim()
+        ? body.courierTrackingUrl
         : "";
+    const courierTrackingUrl = normalizeExternalUrl(courierTrackingUrlInput);
 
     if (!courierTrackingUrl) {
       return NextResponse.json(
-        { error: "Delivery tracking link is required" },
+        { error: "A valid delivery tracking link is required" },
         { status: 400 }
       );
     }
