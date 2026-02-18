@@ -582,10 +582,14 @@ export function MenuEditor({ refreshMenu, onDirtyChange, onPreviewChange }: Menu
     setEditorItem((previous) => {
       if (
         previous?.id === selectedItem.id &&
+        selectedItem.isSetMenu &&
         previous.poolLinks !== undefined &&
         selectedItem.poolLinks === undefined
       ) {
-        return previous;
+        return {
+          ...selectedItem,
+          poolLinks: previous.poolLinks,
+        };
       }
       return selectedItem;
     });
