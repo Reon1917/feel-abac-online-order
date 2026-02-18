@@ -163,7 +163,6 @@ const STATUS_BADGE_STYLES: Record<MenuItemStatus, string> = {
 };
 
 const NO_POOL_VALUE = "__none__";
-const ADD_POOL_PLACEHOLDER = "__select_pool__";
 
 const PRIMARY_BUTTON_CLASS =
   "border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500";
@@ -2530,8 +2529,7 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
 
   const [pools, setPools] = useState<ChoicePoolSummary[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [pendingBasePoolId, setPendingBasePoolId] = useState<string | null>(null);
-  const [pendingAddonPoolId, setPendingAddonPoolId] = useState<string | null>(null);
+  const [poolPickerVariant, setPoolPickerVariant] = useState<"base" | "addon" | null>(null);
 
   useEffect(() => {
     if (!isSetMenu) return;
@@ -2624,14 +2622,20 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
     append(link);
   };
 
-  const handleAddBaseLink = () => {
-    addPoolLink("base", pendingBasePoolId);
-    setPendingBasePoolId(null);
+  const openPoolPicker = (variant: "base" | "addon") => {
+    if (availablePools.length === 0) return;
+    if (variant === "base" && hasBase) return;
+    setPoolPickerVariant(variant);
   };
 
-  const handleAddAddonLink = () => {
-    addPoolLink("addon", pendingAddonPoolId);
-    setPendingAddonPoolId(null);
+  const closePoolPicker = () => {
+    setPoolPickerVariant(null);
+  };
+
+  const handleAttachPoolFromPicker = (poolId: string) => {
+    if (!poolPickerVariant) return;
+    addPoolLink(poolPickerVariant, poolId);
+    closePoolPicker();
   };
 
   const renderPoolSelectItems = (poolIdsUsedByOthers: Set<string>) => (
@@ -2923,51 +2927,19 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
               Exactly one base pool sets the set-menu starting price.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={pendingBasePoolId ?? ADD_POOL_PLACEHOLDER}
-              onValueChange={(value) =>
-                setPendingBasePoolId(
-                  value === ADD_POOL_PLACEHOLDER ? null : value
-                )
-              }
-            >
-              <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
-                <SelectValue
-                  placeholder={
-                    hasBase ? "Base pool already selected" : "Choose base pool"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePools.length === 0 ? (
-                  <SelectItem value="__no_base_pools__" disabled>
-                    <span className="text-slate-500">No unlinked pools available</span>
-                  </SelectItem>
-                ) : (
-                  availablePools.map((pool) => (
-                    <SelectItem key={pool.id} value={pool.id}>
-                      <span className="font-medium text-slate-900">{pool.nameEn}</span>
-                      {pool.nameMm ? (
-                        <span className="ml-1 text-xs text-slate-500">
-                          ({pool.nameMm})
-                        </span>
-                      ) : null}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              className={PRIMARY_BUTTON_CLASS}
-              disabled={!pendingBasePoolId || hasBase}
-              onClick={handleAddBaseLink}
-            >
-              Attach base pool
-            </Button>
-          </div>
+          <Button
+            type="button"
+            size="sm"
+            className={PRIMARY_BUTTON_CLASS}
+            disabled={hasBase || availablePools.length === 0}
+            onClick={() => openPoolPicker("base")}
+          >
+            {hasBase
+              ? "Base pool attached"
+              : availablePools.length === 0
+                ? "All menu pools attached"
+                : "Add menu pool"}
+          </Button>
         </div>
         {baseEntries.length === 0 ? (
           <p className="rounded-lg border border-dashed border-emerald-300 bg-white px-3 py-2 text-xs text-emerald-700">
@@ -2988,47 +2960,15 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
               Attach as many add-on pools as you need. Each pool can be linked once.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={pendingAddonPoolId ?? ADD_POOL_PLACEHOLDER}
-              onValueChange={(value) =>
-                setPendingAddonPoolId(
-                  value === ADD_POOL_PLACEHOLDER ? null : value
-                )
-              }
-            >
-              <SelectTrigger className={COMPACT_SELECT_TRIGGER_CLASS}>
-                <SelectValue placeholder="Choose add-on pool" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePools.length === 0 ? (
-                  <SelectItem value="__no_addon_pools__" disabled>
-                    <span className="text-slate-500">No unlinked pools available</span>
-                  </SelectItem>
-                ) : (
-                  availablePools.map((pool) => (
-                    <SelectItem key={pool.id} value={pool.id}>
-                      <span className="font-medium text-slate-900">{pool.nameEn}</span>
-                      {pool.nameMm ? (
-                        <span className="ml-1 text-xs text-slate-500">
-                          ({pool.nameMm})
-                        </span>
-                      ) : null}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              className={PRIMARY_BUTTON_CLASS}
-              disabled={!pendingAddonPoolId}
-              onClick={handleAddAddonLink}
-            >
-              Add add-on pool
-            </Button>
-          </div>
+          <Button
+            type="button"
+            size="sm"
+            className={PRIMARY_BUTTON_CLASS}
+            disabled={availablePools.length === 0}
+            onClick={() => openPoolPicker("addon")}
+          >
+            {availablePools.length === 0 ? "All menu pools attached" : "Add menu pool"}
+          </Button>
         </div>
         {addonEntries.length === 0 ? (
           <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 px-3 py-2 text-xs text-slate-600">
@@ -3049,6 +2989,56 @@ function SetMenuPoolsPanel({ form }: SetMenuPoolsPanelProps) {
           duplicate that pool in <span className="font-semibold">Choice pools</span>.
         </p>
       ) : null}
+
+      <Dialog
+        open={poolPickerVariant !== null}
+        onOpenChange={(open) => {
+          if (!open) closePoolPicker();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {poolPickerVariant === "base" ? "Add base menu pool" : "Add menu pool"}
+            </DialogTitle>
+            <DialogDescription>
+              {availablePools.length === 0
+                ? "All menu pools are attached."
+                : "Choose one pool to attach."}
+            </DialogDescription>
+          </DialogHeader>
+          {availablePools.length === 0 ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              All menu pools attached.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {availablePools.map((pool) => (
+                <button
+                  key={pool.id}
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm transition hover:border-emerald-300 hover:bg-emerald-50/40"
+                  onClick={() => handleAttachPoolFromPicker(pool.id)}
+                >
+                  <span className="font-medium text-slate-900">
+                    {pool.nameEn}
+                    {pool.nameMm ? (
+                      <span className="ml-1 text-xs font-normal text-slate-500">
+                        ({pool.nameMm})
+                      </span>
+                    ) : null}
+                  </span>
+                  {!pool.isActive ? (
+                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                      Inactive
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -615,7 +615,11 @@ export function CartView({
                                 className="flex items-center justify-between"
                               >
                                 <span>{option.label}</span>
-                                {option.extraPrice > 0 ? (
+                                {option.selectionRole === "base" ? (
+                                  <span className="text-xs font-semibold text-emerald-600">
+                                    +฿{formatPrice(item.basePrice)}
+                                  </span>
+                                ) : option.extraPrice > 0 ? (
                                   <span className="text-xs font-semibold text-emerald-600">
                                     +฿{formatPrice(option.extraPrice)}
                                   </span>
@@ -992,7 +996,18 @@ function groupChoices(
 ) {
   const map = new Map<
     string,
-    { id: string; label: string; isSetMenu: boolean; options: Array<{ id: string; label: string; extraPrice: number; menuCode: string | null }> }
+    {
+      id: string;
+      label: string;
+      isSetMenu: boolean;
+      options: Array<{
+        id: string;
+        label: string;
+        extraPrice: number;
+        menuCode: string | null;
+        selectionRole: "base" | "addon" | null;
+      }>;
+    }
   >();
 
   for (const choice of choices) {
@@ -1020,6 +1035,7 @@ function groupChoices(
       label: optionLabel,
       extraPrice: choice.extraPrice,
       menuCode: choice.menuCode,
+      selectionRole: choice.selectionRole,
     });
 
     map.set(groupKey, group);

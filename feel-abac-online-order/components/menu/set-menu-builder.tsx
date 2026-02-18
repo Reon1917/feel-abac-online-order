@@ -174,19 +174,22 @@ export function SetMenuBuilder({
     (poolLinkId: string, link: PublicSetMenuPoolLink, optionId: string) => {
       setSelectedOptions((prev) => {
         const next = new Map(prev);
-        const currentSet = next.get(poolLinkId) ?? new Set();
+        const currentSet = new Set(next.get(poolLinkId) ?? []);
+        const maxSelectable =
+          link.maxSelect > 0 ? link.maxSelect : Number.MAX_SAFE_INTEGER;
+        const isSingle = maxSelectable === 1;
 
         if (currentSet.has(optionId)) {
           // Deselect
           currentSet.delete(optionId);
         } else {
           // Select
-          if (link.maxSelect === 1) {
+          if (isSingle) {
             // Single select - replace
             currentSet.clear();
-          } else if (currentSet.size >= link.maxSelect) {
+          } else if (currentSet.size >= maxSelectable) {
             // Max reached
-            toast.error(`Maximum ${link.maxSelect} selections allowed`);
+            toast.error(`Maximum ${maxSelectable} selections allowed`);
             return prev;
           }
           currentSet.add(optionId);

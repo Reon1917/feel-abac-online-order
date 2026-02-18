@@ -202,16 +202,19 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
           <p style={{ color: "#64748b", padding: "8px 0" }}>{dictionary.receiptNoItems ?? "No items"}</p>
         ) : (
           order.items.map((item, idx) => {
-            const extras: string[] = [];
-            item.choices.forEach((c) => {
-              if (c.selectionRole !== "base") {
-                extras.push(useBurmeseName ? (c.optionNameMm || c.optionName) : c.optionName);
-              }
-            });
-            if (item.note) {
-              extras.push(`"${item.note}"`);
-            }
-            const extrasStr = extras.length > 0 ? extras.join(", ") : null;
+            const formatChoiceName = (choice: (typeof item.choices)[number]) =>
+              useBurmeseName ? (choice.optionNameMm || choice.optionName) : choice.optionName;
+            const baseChoices = item.choices.filter(
+              (choice) => choice.selectionRole === "base"
+            );
+            const addonChoices = item.choices.filter(
+              (choice) => choice.selectionRole === "addon"
+            );
+            const neutralChoices = item.choices.filter(
+              (choice) => choice.selectionRole == null
+            );
+            const hasSetMenuHierarchy =
+              baseChoices.length > 0 || addonChoices.length > 0;
 
             const itemName = useBurmeseName
               ? (item.menuItemNameMm || item.menuItemName)
@@ -232,8 +235,38 @@ function ReceiptContent({ order, deliveryAddress, dictionary, useBurmeseName }: 
                       {menuCode && <span style={styles.menuCode}>{menuCode} </span>}
                       {itemName}
                     </span>
-                    {extrasStr && (
-                      <div style={styles.extras}>└ {extrasStr}</div>
+                    {hasSetMenuHierarchy && baseChoices.length > 0 && (
+                      <div style={styles.extras}>
+                        └ Base:{" "}
+                        {baseChoices
+                          .map((choice) =>
+                            `${choice.menuCode ? `[${choice.menuCode}] ` : ""}${formatChoiceName(choice)}`
+                          )
+                          .join(", ")}
+                      </div>
+                    )}
+                    {hasSetMenuHierarchy && addonChoices.length > 0 && (
+                      addonChoices.map((choice) => (
+                        <div key={choice.id} style={styles.extras}>
+                          └ + {choice.menuCode ? `[${choice.menuCode}] ` : ""}
+                          {formatChoiceName(choice)}
+                        </div>
+                      ))
+                    )}
+                    {neutralChoices.length > 0 && (
+                      <div style={styles.extras}>
+                        └{" "}
+                        {neutralChoices
+                          .map((choice) =>
+                            `${choice.menuCode ? `[${choice.menuCode}] ` : ""}${formatChoiceName(choice)}`
+                          )
+                          .join(", ")}
+                      </div>
+                    )}
+                    {item.note && (
+                      <div style={styles.extras}>
+                        └ &quot;{item.note}&quot;
+                      </div>
                     )}
                   </div>
                   <span style={{ width: "32px", textAlign: "center", color: "#334155" }}>{item.quantity}</span>
