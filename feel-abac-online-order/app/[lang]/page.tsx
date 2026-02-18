@@ -38,15 +38,6 @@ const MENU_IMAGE_ITEMS = [
   },
 ] as const;
 
-const SHOWCASE_ASPECT_CLASSES = [
-  "aspect-[4/5]",
-  "aspect-[5/4]",
-  "aspect-[4/4.5]",
-  "aspect-[5/4]",
-  "aspect-[4/4.8]",
-  "aspect-[4/3.8]",
-] as const;
-
 export default async function Home({ params }: PageProps) {
   const { lang } = await params;
   const locale = lang as Locale;
@@ -107,29 +98,26 @@ export default async function Home({ params }: PageProps) {
               </h2>
               <p className="text-sm text-slate-600">{dict.gallery.subtitle}</p>
             </div>
-            <div className="columns-2 gap-3 sm:columns-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {menuCards.map((item, index) => (
                 <figure
                   key={item.id}
-                  className="group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl"
+                  className="group space-y-2"
                 >
-                  <div className={`relative ${SHOWCASE_ASPECT_CLASSES[index % SHOWCASE_ASPECT_CLASSES.length]}`}>
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-emerald-100/80">
                     <Image
                       src={item.src}
                       alt={`${dict.gallery.imageAlt}: ${item.label}`}
                       fill
-                      sizes="(max-width: 639px) 46vw, (max-width: 1023px) 30vw, 22vw"
+                      sizes="(max-width: 639px) 46vw, (max-width: 1023px) 31vw, 22vw"
                       quality={82}
-                      className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                      className="object-contain transition-transform duration-500 group-hover:scale-[1.015]"
                       priority={index < 3}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/52 via-emerald-900/8 to-transparent" />
-                    <figcaption className="absolute inset-x-2.5 bottom-2.5">
-                      <span className="line-clamp-2 text-xs font-semibold uppercase tracking-[0.12em] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] sm:text-[0.68rem]">
-                        {item.label}
-                      </span>
-                    </figcaption>
                   </div>
+                  <figcaption className="line-clamp-2 px-1 text-sm font-semibold leading-snug text-emerald-950">
+                    {item.label}
+                  </figcaption>
                 </figure>
               ))}
             </div>
