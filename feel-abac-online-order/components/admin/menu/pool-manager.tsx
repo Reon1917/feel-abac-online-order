@@ -6,6 +6,7 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
+  CopyIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   GripVerticalIcon,
@@ -56,6 +57,7 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
     pools,
     isSubmitting,
     createPool,
+    duplicatePool,
     updatePool,
     deletePool,
     createOption,
@@ -123,6 +125,32 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
       }
     },
     [deletePool, router]
+  );
+
+  const handleDuplicatePool = useCallback(
+    async (pool: ChoicePoolWithOptions) => {
+      const normalizedNames = new Set(
+        pools.map((item) => item.nameEn.trim().toLowerCase())
+      );
+      let suffix = 1;
+      let nextName = `${pool.nameEn} (Copy)`;
+      while (normalizedNames.has(nextName.trim().toLowerCase())) {
+        suffix += 1;
+        nextName = `${pool.nameEn} (Copy ${suffix})`;
+      }
+
+      try {
+        await duplicatePool(pool.id, {
+          nameEn: nextName,
+          nameMm: pool.nameMm ?? undefined,
+          isActive: pool.isActive,
+        });
+        router.refresh();
+      } catch {
+        // Error handling is performed in useChoicePools
+      }
+    },
+    [duplicatePool, pools, router]
   );
 
   // Option CRUD
@@ -255,6 +283,14 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                           onClick={() => setPoolDialog({ mode: "edit", pool })}
                         >
                           <PencilIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void handleDuplicatePool(pool)}
+                          disabled={isSubmitting}
+                        >
+                          <CopyIcon className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

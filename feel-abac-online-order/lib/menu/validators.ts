@@ -77,6 +77,25 @@ export const setMenuPoolLinkSchema = z.object({
 export const setMenuPoolLinksArraySchema = z
   .array(setMenuPoolLinkSchema)
   .superRefine((links, ctx) => {
+    const poolIndexes = new Map<string, number[]>();
+    links.forEach((link, index) => {
+      const existing = poolIndexes.get(link.poolId) ?? [];
+      existing.push(index);
+      poolIndexes.set(link.poolId, existing);
+    });
+
+    for (const indexes of poolIndexes.values()) {
+      if (indexes.length < 2) continue;
+      for (const index of indexes) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "A pool can only be attached once per set menu. Duplicate the pool for another role.",
+          path: [index, "poolId"],
+        });
+      }
+    }
+
     const priceDeterminers = links
       .map((link, index) => ({ link, index }))
       .filter(({ link }) => link.isPriceDetermining);
@@ -106,6 +125,14 @@ export const setMenuPoolLinksArraySchema = z
             code: z.ZodIssueCode.custom,
             message: "Base pool must require at least one selection",
             path: [index, "minSelect"],
+          });
+        }
+        const maxSelect = link.maxSelect ?? 1;
+        if (maxSelect !== 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Base pool must allow exactly one selection",
+            path: [index, "maxSelect"],
           });
         }
       }

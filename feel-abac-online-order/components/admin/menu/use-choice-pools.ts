@@ -10,11 +10,13 @@ import {
   createPool,
   createPoolOption,
   deletePool,
+  duplicatePool,
   deletePoolOption,
   updatePool,
   updatePoolOption,
   type CreatePoolPayload,
   type CreatePoolOptionPayload,
+  type DuplicatePoolPayload,
   type UpdatePoolPayload,
   type UpdatePoolOptionPayload,
 } from "./pool-api-client";
@@ -23,6 +25,7 @@ type UseChoicePoolsResult = {
   pools: ChoicePoolWithOptions[];
   isSubmitting: boolean;
   createPool: (data: CreatePoolPayload) => Promise<void>;
+  duplicatePool: (poolId: string, data?: DuplicatePoolPayload) => Promise<void>;
   updatePool: (poolId: string, data: UpdatePoolPayload) => Promise<void>;
   deletePool: (poolId: string) => Promise<void>;
   createOption: (
@@ -115,6 +118,22 @@ export function useChoicePools(
     [handleError, withSubmitting]
   );
 
+  const handleDuplicatePool = useCallback(
+    async (poolId: string, data: DuplicatePoolPayload = {}) => {
+      await withSubmitting(async () => {
+        try {
+          const duplicated = await duplicatePool(poolId, data);
+          setPools((prev) => [...prev, duplicated]);
+          toast.success("Pool duplicated");
+        } catch (error) {
+          handleError(error, "Failed to duplicate pool");
+          throw error;
+        }
+      });
+    },
+    [handleError, withSubmitting]
+  );
+
   const handleCreateOption = useCallback(
     async (poolId: string, data: CreatePoolOptionPayload) => {
       await withSubmitting(async () => {
@@ -195,6 +214,7 @@ export function useChoicePools(
     pools,
     isSubmitting,
     createPool: handleCreatePool,
+    duplicatePool: handleDuplicatePool,
     updatePool: handleUpdatePool,
     deletePool: handleDeletePool,
     createOption: handleCreateOption,
@@ -202,4 +222,3 @@ export function useChoicePools(
     deleteOption: handleDeleteOption,
   };
 }
-
