@@ -34,7 +34,7 @@ export function AddToCartFooter({
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-20 overflow-x-clip border-t bg-white px-4 py-4 shadow-lg sm:bottom-0 sm:px-6">
-      <div className="mx-auto flex max-w-lg min-w-0 items-center gap-4">
+      <div className="mx-auto flex max-w-lg items-center gap-4">
         <div className="shrink-0 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
           <button
             type="button"
@@ -72,7 +72,7 @@ export function AddToCartFooter({
             <>
               <span
                 aria-hidden="true"
-                className="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
+                className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
               />
               <span className="truncate">{busyLabel}</span>
             </>
