@@ -79,7 +79,7 @@ export function AddToCartFooter({
           ) : (
             <>
               <span className="min-w-0 truncate italic">{label}</span>
-              <span>- {priceLabel}</span>
+              <span className="shrink-0">- {priceLabel}</span>
             </>
           )}
         </button>
