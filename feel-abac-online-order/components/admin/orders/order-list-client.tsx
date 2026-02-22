@@ -568,15 +568,25 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        const nextStatus = (payload?.status as OrderStatus) ?? ("cancelled" as OrderStatus);
+        const nextRefundStatus = payload?.refundStatus ?? order.refundStatus ?? null;
+        const nextRefundType = payload?.refundType ?? data.refundType ?? order.refundType ?? null;
+        const nextRefundAmount = payload?.refundAmount ?? data.refundAmount ?? order.refundAmount ?? null;
+        const nextIsClosed =
+          typeof payload?.isClosed === "boolean"
+            ? payload.isClosed
+            : nextRefundStatus !== "requested";
+
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
               ? {
                   ...item,
-                  status: "cancelled" as OrderStatus,
-                  refundStatus: payload?.refundStatus ?? item.refundStatus ?? null,
-                  refundType: payload?.refundType ?? data.refundType ?? null,
-                  refundAmount: payload?.refundAmount ?? data.refundAmount ?? null,
+                  status: nextStatus,
+                  isClosed: nextIsClosed,
+                  refundStatus: nextRefundStatus,
+                  refundType: nextRefundType,
+                  refundAmount: nextRefundAmount,
                 }
               : item
           )
