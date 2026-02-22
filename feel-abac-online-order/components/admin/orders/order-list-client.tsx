@@ -127,6 +127,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
+  const orderDetailCacheRef = useRef<Map<string, OrderRecord>>(new Map());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioQueueRef = useRef<string[]>([]);
@@ -258,18 +259,34 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     return messages[key];
   };
 
+  const fetchOrderDetail = useCallback(
+    async (displayId: string): Promise<OrderRecord> => {
+      const cached = orderDetailCacheRef.current.get(displayId);
+      if (cached) {
+        return cached;
+      }
+
+      const response = await fetch(`/api/orders/${displayId}`, {
+        cache: "no-store",
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.order) {
+        throw new Error(dictionary.errorLoading);
+      }
+
+      const orderData = json.order as OrderRecord;
+      orderDetailCacheRef.current.set(displayId, orderData);
+      return orderData;
+    },
+    [dictionary.errorLoading]
+  );
+
   const handleViewOrder = useCallback(
     async (order: OrderAdminSummary) => {
       setLoadingOrderId(order.id);
       try {
-        const response = await fetch(`/api/orders/${order.displayId}`, {
-          cache: "no-store",
-        });
-        const json = await response.json().catch(() => null);
-        if (!response.ok || !json?.order) {
-          throw new Error(dictionary.errorLoading);
-        }
-        setSelectedOrder(json.order as OrderRecord);
+        const orderData = await fetchOrderDetail(order.displayId);
+        setSelectedOrder(orderData);
         setModalOpen(true);
       } catch {
         toast.error(dictionary.errorLoading);
@@ -277,35 +294,30 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setLoadingOrderId(null);
       }
     },
-    [dictionary.errorLoading]
+    [dictionary.errorLoading, fetchOrderDetail]
   );
 
   // Fetch payment details for verification modal
   const fetchPaymentDetails = useCallback(async (order: OrderAdminSummary) => {
     try {
-      const response = await fetch(`/api/orders/${order.displayId}`, {
-        cache: "no-store",
-      });
-      const json = await response.json().catch(() => null);
-      if (response.ok && json?.order) {
-        const orderData = json.order as OrderRecord;
-        // Get payment receipt from the order's payment records
-        if (orderData.payments && orderData.payments.length > 0) {
-          const payment = orderData.payments.find(
-            (p: OrderPaymentRecord) => p.type === "combined" && p.receiptUrl
-          );
-          if (payment) {
-            setPaymentReceipt({
-              receiptUrl: payment.receiptUrl,
-              amount: payment.amount,
-            });
-          }
+      const orderData = await fetchOrderDetail(order.displayId);
+
+      // Get payment receipt from the order's payment records
+      if (orderData.payments && orderData.payments.length > 0) {
+        const payment = orderData.payments.find(
+          (p: OrderPaymentRecord) => p.type === "combined" && p.receiptUrl
+        );
+        if (payment) {
+          setPaymentReceipt({
+            receiptUrl: payment.receiptUrl,
+            amount: payment.amount,
+          });
         }
       }
     } catch {
       // Ignore errors, we'll show the modal without the receipt
     }
-  }, []);
+  }, [fetchOrderDetail]);
 
   // WORKFLOW ACTIONS
 
