@@ -43,6 +43,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -120,6 +121,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   // Slip rejection modal state (separate from order rejection)
   const [slipRejectTarget, setSlipRejectTarget] = useState<OrderAdminSummary | null>(null);
   const [slipRejectModalOpen, setSlipRejectModalOpen] = useState(false);
+  const [slipRejectConfirmOpen, setSlipRejectConfirmOpen] = useState(false);
   const [slipRejectReason, setSlipRejectReason] = useState("");
   const [slipRejectSubmitting, setSlipRejectSubmitting] = useState(false);
 
@@ -755,6 +757,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     const success = await handleRejectSlip(slipRejectTarget, slipRejectReason);
     setSlipRejectSubmitting(false);
     if (success) {
+      setSlipRejectConfirmOpen(false);
       setSlipRejectModalOpen(false);
       setSlipRejectTarget(null);
       setSlipRejectReason("");
@@ -1127,7 +1130,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           <div className="flex items-center gap-2">
             {renderPrimaryAction(order)}
 
-            {!isTerminal && order.status !== "awaiting_payment" && (
+            {!isTerminal && (
               <Button
                 size="sm"
                 variant="outline"
@@ -1473,6 +1476,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                     // Open slip rejection modal (NOT order rejection)
                     if (verifyTarget) {
                       setSlipRejectTarget(verifyTarget);
+                      setSlipRejectConfirmOpen(false);
                       setSlipRejectReason("");
                       setSlipRejectModalOpen(true);
                     }
@@ -1501,6 +1505,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         onOpenChange={(open) => {
           setSlipRejectModalOpen(open);
           if (!open) {
+            setSlipRejectConfirmOpen(false);
             setSlipRejectTarget(null);
             setSlipRejectReason("");
           }
@@ -1540,7 +1545,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
               </Button>
               <Button
                 disabled={slipRejectSubmitting}
-                onClick={() => void handleSlipRejectSubmit()}
+                onClick={() => setSlipRejectConfirmOpen(true)}
                 className="bg-amber-600 hover:bg-amber-700"
               >
                 {slipRejectSubmitting
@@ -1548,6 +1553,44 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
                   : (dictionary.slipRejectSubmit ?? "Reject Slip")}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={slipRejectConfirmOpen}
+        onOpenChange={(open) => {
+          if (slipRejectSubmitting) return;
+          setSlipRejectConfirmOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-amber-700">Are you sure?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reject this payment slip? The customer will need to upload a new slip.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              disabled={slipRejectSubmitting}
+              onClick={() => setSlipRejectConfirmOpen(false)}
+            >
+              {dictionary.slipRejectCancel ?? "Close"}
+            </Button>
+            <Button
+              disabled={slipRejectSubmitting}
+              onClick={() => {
+                setSlipRejectConfirmOpen(false);
+                void handleSlipRejectSubmit();
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {slipRejectSubmitting
+                ? (dictionary.slipRejectSubmitting ?? "Rejecting...")
+                : (dictionary.slipRejectSubmit ?? "Reject Slip")}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

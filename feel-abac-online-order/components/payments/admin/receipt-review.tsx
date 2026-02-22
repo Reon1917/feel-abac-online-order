@@ -63,6 +63,10 @@ export function ReceiptReviewSection({
   };
 
   const handleReject = () => {
+    if (!window.confirm("Are you sure you want to reject this payment receipt?")) {
+      return;
+    }
+
     startReject(async () => {
       try {
         const response = await fetch(
@@ -238,4 +242,3 @@ export function ReceiptReviewSection({
     </div>
   );
 }
-
