@@ -22,7 +22,6 @@ import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { QuickAddHandler } from "./use-quick-add";
-import { useMenuImageCache } from "./menu-image-cache";
 import { rememberMenuScrollPosition } from "./menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
@@ -560,8 +559,7 @@ function MenuItemCard({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
-  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
-  const shouldPreloadImage = Boolean(priority || isFirstInstance);
+  const shouldPreloadImage = Boolean(priority);
   const badgeText =
     typeof badgeLabel === "string" && badgeLabel.trim().length > 0
       ? badgeLabel.trim()
@@ -600,6 +598,7 @@ function MenuItemCard({
               : "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"}
             priority={shouldPreloadImage}
             loading={shouldPreloadImage ? "eager" : undefined}
+            unoptimized
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-4xl">
@@ -754,8 +753,7 @@ function MenuItemRow({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
-  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
-  const shouldPreloadImage = Boolean(priority || isFirstInstance);
+  const shouldPreloadImage = Boolean(priority);
 
   const rowContent = (
     <article
@@ -776,6 +774,7 @@ function MenuItemRow({
             sizes="(max-width: 768px) 40vw, 200px"
             priority={shouldPreloadImage}
             loading={shouldPreloadImage ? "eager" : undefined}
+            unoptimized
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-3xl">

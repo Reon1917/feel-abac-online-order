@@ -15,7 +15,6 @@ import {
 } from "@/lib/menu/types";
 import type { Locale } from "@/lib/i18n/config";
 import type { CartSummary } from "@/lib/cart/types";
-import { MenuImageCacheProvider } from "./menu-image-cache";
 import {
   clearMenuReturnState,
   consumeMenuRefreshFlag,
@@ -157,7 +156,7 @@ export function ResponsiveMenuBrowser({
   );
 
   return (
-    <MenuImageCacheProvider>
+    <>
       {isMobile ? (
         <MobileMenuBrowser
           categories={categories}
@@ -190,6 +189,6 @@ export function ResponsiveMenuBrowser({
         />
       </div>
       <CartAddAnimationOverlay />
-    </MenuImageCacheProvider>
+    </>
   );
 }

@@ -18,7 +18,6 @@ import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { QuickAddHandler } from "../use-quick-add";
-import { useMenuImageCache } from "../menu-image-cache";
 import { rememberMenuScrollPosition } from "../menu-scroll";
 
 type MenuDictionary = typeof import("@/dictionaries/en/menu.json");
@@ -353,8 +352,7 @@ function MobileRecommendedCard({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
-  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
-  const shouldPreloadImage = Boolean(priority || isFirstInstance);
+  const shouldPreloadImage = Boolean(priority);
 
   const content = (
     <div
@@ -373,6 +371,7 @@ function MobileRecommendedCard({
             sizes="(max-width: 640px) 70vw, 240px"
             priority={shouldPreloadImage}
             loading={shouldPreloadImage ? "eager" : undefined}
+            unoptimized
           />
         ) : (
           <div className={styles.placeholderIcon}>
@@ -478,8 +477,7 @@ function MobileMenuListItem({
   const isOutOfStock = !item.isAvailable;
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const buttonDisabled = isOutOfStock || !onQuickAdd;
-  const { isFirstInstance } = useMenuImageCache(item.imageUrl);
-  const shouldPreloadImage = Boolean(isFirstInstance);
+  const shouldPreloadImage = false;
 
   const content = (
     <>
@@ -493,6 +491,7 @@ function MobileMenuListItem({
             className="object-cover"
             priority={shouldPreloadImage}
             loading={shouldPreloadImage ? "eager" : undefined}
+            unoptimized
           />
         ) : (
           <div className={styles.placeholderIcon}>{item.placeholderIcon ?? "🍽️"}</div>
