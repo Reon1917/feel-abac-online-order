@@ -427,6 +427,7 @@ export function MenuItemDetail({
                 sizes="(max-width: 1024px) 100vw, 640px"
                 loading="eager"
                 priority
+                unoptimized
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-5xl sm:text-6xl">
