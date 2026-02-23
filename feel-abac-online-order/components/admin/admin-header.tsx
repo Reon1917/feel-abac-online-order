@@ -48,7 +48,11 @@ export function AdminHeader({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <UiLanguageSwitcher locale={locale} labels={languageLabels} />
+          <UiLanguageSwitcher
+            locale={locale}
+            labels={languageLabels}
+            className="**:data-[slot='select-trigger']:text-slate-900 **:data-[slot='select-value']:text-slate-900"
+          />
           {actions}
         </div>
       </div>

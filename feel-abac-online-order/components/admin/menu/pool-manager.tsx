@@ -426,10 +426,10 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
         <DialogContent>
           <form onSubmit={handleSavePool}>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-slate-900">
                 {poolDialog?.mode === "create" ? "Create Pool" : "Edit Pool"}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-slate-600">
                 {poolDialog?.mode === "create"
                   ? "Create a new choice pool for set menus"
                   : "Update pool details"}
@@ -437,10 +437,11 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="nameEn">Name (English) *</Label>
+                <Label htmlFor="nameEn" className="text-slate-800">Name (English) *</Label>
                 <Input
                   id="nameEn"
                   name="nameEn"
+                  className="text-slate-900"
                   placeholder="e.g., Base Curry, Add-on Vegetables"
                   defaultValue={
                     poolDialog?.mode === "edit" ? poolDialog.pool.nameEn : ""
@@ -449,10 +450,11 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nameMm">Name (Burmese)</Label>
+                <Label htmlFor="nameMm" className="text-slate-800">Name (Burmese)</Label>
                 <Input
                   id="nameMm"
                   name="nameMm"
+                  className="text-slate-900"
                   placeholder="Optional Burmese name"
                   defaultValue={
                     poolDialog?.mode === "edit"
@@ -471,7 +473,7 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                       : true
                   }
                 />
-                <Label htmlFor="isActive">Active</Label>
+                <Label htmlFor="isActive" className="text-slate-800">Active</Label>
               </div>
             </div>
             <DialogFooter>

@@ -139,11 +139,13 @@ export function MenuLayoutEditor({ initialMenu, labels }: MenuLayoutEditorProps)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 6 },
     }),
     useSensor(TouchSensor, {
-      pressDelay: 120,
-      activationConstraint: { distance: 8 },
+      activationConstraint: {
+        delay: 160,
+        tolerance: 10,
+      },
     })
   );
 
@@ -484,7 +486,7 @@ export function MenuLayoutEditor({ initialMenu, labels }: MenuLayoutEditorProps)
                   }}
                   disabled={menu.length === 0}
                 >
-                  <SelectTrigger className="min-w-[240px]">
+                  <SelectTrigger className="min-w-60">
                     <SelectValue placeholder={labels.categorySelectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
@@ -720,7 +722,8 @@ function SortableRow({
     >
       <button
         type="button"
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 focus:outline-none"
+        className="touch-none select-none flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 focus:outline-none"
+        style={{ touchAction: "none" }}
         {...attributes}
         {...listeners}
       >
