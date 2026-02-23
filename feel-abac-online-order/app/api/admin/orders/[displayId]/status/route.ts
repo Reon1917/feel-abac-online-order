@@ -563,6 +563,7 @@ export async function PATCH(
 
   return NextResponse.json({
     status: nextStatus,
+    isClosed: Boolean(updatePayload.isClosed ?? order.isClosed),
     refundStatus: updatePayload.refundStatus ?? order.refundStatus ?? null,
     refundType: updatePayload.refundType ?? order.refundType ?? null,
     refundAmount:

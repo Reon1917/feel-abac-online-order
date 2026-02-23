@@ -88,6 +88,8 @@ export function MenuBrowser({
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
+  const setMenuFromLabel = dictionary.detail.setMenu.fromPrice ?? "from";
+  const setMenuBuildLabel = dictionary.detail.setMenu.buildButton ?? "Build";
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
   const deferredSearch = useDeferredValue(searchTerm);
 
@@ -334,6 +336,8 @@ export function MenuBrowser({
           copy={recommendedDictionary}
           actionLabel={browser.viewDetails}
           outOfStockLabel={outOfStockLabel}
+          setMenuFromLabel={setMenuFromLabel}
+          setMenuBuildLabel={setMenuBuildLabel}
           onQuickAdd={onQuickAdd}
         />
       ) : null}
@@ -354,6 +358,8 @@ export function MenuBrowser({
                 compact={isCompact}
                 actionLabel={browser.viewDetails}
                 outOfStockLabel={outOfStockLabel}
+                setMenuFromLabel={setMenuFromLabel}
+                setMenuBuildLabel={setMenuBuildLabel}
                 priorityItemId={prioritizedItemId}
                 onQuickAdd={onQuickAdd}
               />
@@ -383,6 +389,8 @@ function RecommendedItemsSection({
   copy,
   actionLabel,
   outOfStockLabel,
+  setMenuFromLabel,
+  setMenuBuildLabel,
   onQuickAdd,
 }: {
   recommended: PublicRecommendedMenuItem[];
@@ -391,6 +399,8 @@ function RecommendedItemsSection({
   copy: RecommendationCopy;
   actionLabel: string;
   outOfStockLabel: string;
+  setMenuFromLabel: string;
+  setMenuBuildLabel: string;
   onQuickAdd?: QuickAddHandler;
 }) {
   if (recommended.length === 0) {
@@ -422,6 +432,8 @@ function RecommendedItemsSection({
             appLocale={appLocale}
             actionLabel={actionLabel}
             outOfStockLabel={outOfStockLabel}
+            fromPriceLabel={setMenuFromLabel}
+            buildLabel={setMenuBuildLabel}
             priority={index === 0}
             variant="recommended"
             badgeLabel={entry.badgeLabel ?? fallbackBadge}
@@ -440,6 +452,8 @@ function MenuCategorySection({
   compact,
   actionLabel,
   outOfStockLabel,
+  setMenuFromLabel,
+  setMenuBuildLabel,
   priorityItemId = null,
   onQuickAdd,
 }: {
@@ -449,6 +463,8 @@ function MenuCategorySection({
   compact?: boolean;
   actionLabel: string;
   outOfStockLabel: string;
+  setMenuFromLabel: string;
+  setMenuBuildLabel: string;
   priorityItemId?: string | null;
   onQuickAdd?: QuickAddHandler;
 }) {
@@ -481,6 +497,8 @@ function MenuCategorySection({
                 appLocale={appLocale}
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
+                fromPriceLabel={setMenuFromLabel}
+                buildLabel={setMenuBuildLabel}
                 priority={priorityItemId === item.id}
                 onQuickAdd={onQuickAdd}
               />
@@ -496,6 +514,8 @@ function MenuCategorySection({
                 appLocale={appLocale}
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
+                fromPriceLabel={setMenuFromLabel}
+                buildLabel={setMenuBuildLabel}
                 priority={priorityItemId === item.id}
                 onQuickAdd={onQuickAdd}
               />
@@ -512,6 +532,8 @@ function MenuItemCard({
   appLocale,
   actionLabel,
   outOfStockLabel,
+  fromPriceLabel,
+  buildLabel,
   priority,
   variant = "default",
   badgeLabel,
@@ -522,6 +544,8 @@ function MenuItemCard({
   appLocale: Locale;
   actionLabel: string;
   outOfStockLabel: string;
+  fromPriceLabel: string;
+  buildLabel: string;
   priority?: boolean;
   variant?: "default" | "recommended";
   badgeLabel?: string | null;
@@ -608,13 +632,15 @@ function MenuItemCard({
           </div>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-3">
-          <span className="text-base font-semibold text-emerald-600 sm:text-lg">
+        <div className="mt-auto flex min-w-0 items-center justify-between gap-3">
+          <span className="min-w-0 text-base font-semibold text-emerald-600 sm:text-lg">
             {item.isSetMenu ? (
-              <>
-                <span className="text-xs font-normal text-slate-500">from </span>
-                ฿{formatPrice(item.price)}
-              </>
+              <span className="inline-flex min-w-0 items-baseline gap-1">
+                <span className="shrink-0 text-xs font-normal text-slate-500">
+                  {fromPriceLabel}
+                </span>
+                <span className="truncate">฿{formatPrice(item.price)}</span>
+              </span>
             ) : (
               <>฿{formatPrice(item.price)}</>
             )}
@@ -622,12 +648,12 @@ function MenuItemCard({
           <button
             ref={addButtonRef}
             type="button"
-            aria-label={item.isSetMenu ? "Build" : actionLabel}
+            aria-label={item.isSetMenu ? buildLabel : actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
               "inline-flex items-center justify-center rounded-full bg-white font-bold text-emerald-600 shadow-md ring-1 ring-emerald-100 transition",
               item.isSetMenu
-                ? "h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+                ? "h-8 w-8 text-base sm:h-9 sm:w-9 sm:text-lg md:w-auto md:px-4 md:text-sm"
                 : "h-8 w-8 text-lg sm:h-9 sm:w-9 sm:text-xl",
               !isOutOfStock && "hover:bg-emerald-600 hover:text-white group-hover:bg-emerald-600 group-hover:text-white",
               buttonDisabled && "cursor-default opacity-60"
@@ -646,7 +672,14 @@ function MenuItemCard({
               });
             }}
           >
-            {item.isSetMenu ? "Build" : "+"}
+            {item.isSetMenu ? (
+              <>
+                <span className="md:hidden">+</span>
+                <span className="hidden md:inline">{buildLabel}</span>
+              </>
+            ) : (
+              "+"
+            )}
           </button>
         </div>
       </div>
@@ -696,6 +729,8 @@ function MenuItemRow({
   appLocale,
   actionLabel,
   outOfStockLabel,
+  fromPriceLabel,
+  buildLabel,
   priority,
   onQuickAdd,
 }: {
@@ -704,6 +739,8 @@ function MenuItemRow({
   appLocale: Locale;
   actionLabel: string;
   outOfStockLabel: string;
+  fromPriceLabel: string;
+  buildLabel: string;
   priority?: boolean;
   onQuickAdd?: QuickAddHandler;
 }) {
@@ -759,13 +796,15 @@ function MenuItemRow({
           ) : null}
         </div>
 
-        <div className="flex flex-col items-end gap-2 text-right">
-          <span className="text-base font-semibold text-emerald-600 sm:text-lg">
+        <div className="ml-auto flex shrink-0 flex-col items-end gap-2 text-right">
+          <span className="min-w-0 text-base font-semibold text-emerald-600 sm:text-lg">
             {item.isSetMenu ? (
-              <>
-                <span className="text-xs font-normal text-slate-500">from </span>
-                ฿{formatPrice(item.price)}
-              </>
+              <span className="inline-flex min-w-0 items-baseline gap-1">
+                <span className="shrink-0 text-xs font-normal text-slate-500">
+                  {fromPriceLabel}
+                </span>
+                <span className="truncate">฿{formatPrice(item.price)}</span>
+              </span>
             ) : (
               <>฿{formatPrice(item.price)}</>
             )}
@@ -773,12 +812,12 @@ function MenuItemRow({
           <button
             ref={addButtonRef}
             type="button"
-            aria-label={item.isSetMenu ? "Build" : actionLabel}
+            aria-label={item.isSetMenu ? buildLabel : actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
               "inline-flex items-center justify-center rounded-full bg-white font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition",
               item.isSetMenu
-                ? "h-7 px-2 text-xs sm:h-8 sm:px-3 sm:text-sm"
+                ? "h-7 w-7 text-sm sm:h-8 sm:w-8 sm:text-base md:w-auto md:px-3 md:text-sm"
                 : "h-7 w-7 text-base sm:h-8 sm:w-8 sm:text-lg",
               !isOutOfStock && "group-hover:bg-emerald-600 group-hover:text-white",
               buttonDisabled && "cursor-default opacity-60"
@@ -797,7 +836,14 @@ function MenuItemRow({
               });
             }}
           >
-            {item.isSetMenu ? "Build" : "+"}
+            {item.isSetMenu ? (
+              <>
+                <span className="md:hidden">+</span>
+                <span className="hidden md:inline">{buildLabel}</span>
+              </>
+            ) : (
+              "+"
+            )}
           </button>
         </div>
       </div>

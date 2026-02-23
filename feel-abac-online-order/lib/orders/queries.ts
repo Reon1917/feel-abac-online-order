@@ -323,6 +323,15 @@ export async function appendOrderEvent(input: {
 }
 
 // Optimized: Only select columns needed for admin summary
+const verifiedPaymentsByOrder = db
+  .select({
+    orderId: orderPayments.orderId,
+  })
+  .from(orderPayments)
+  .where(eq(orderPayments.status, "verified"))
+  .groupBy(orderPayments.orderId)
+  .as("verified_payments_by_order");
+
 const adminSummarySelect = {
   id: orders.id,
   displayId: orders.displayId,
@@ -344,14 +353,8 @@ const adminSummarySelect = {
   customBuildingName: orders.customBuildingName,
   locationCondoName: deliveryLocations.condoName,
   buildingLabel: deliveryBuildings.label,
-  // Subquery to check if order has verified payment
-  hasVerifiedPayment: sql<string>`(
-    SELECT CASE WHEN EXISTS (
-      SELECT 1 FROM order_payments op 
-      WHERE op.order_id = orders.id 
-      AND op.status = 'verified'
-    ) THEN 'true' ELSE 'false' END
-  )`.as("has_verified_payment"),
+  // Use a single grouped join instead of a correlated per-row EXISTS subquery.
+  hasVerifiedPayment: sql<boolean>`(${verifiedPaymentsByOrder.orderId} IS NOT NULL)`.as("has_verified_payment"),
 } as const;
 
 type AdminSummaryRow = {
@@ -375,7 +378,7 @@ type AdminSummaryRow = {
   customBuildingName: string | null;
   locationCondoName: string | null;
   buildingLabel: string | null;
-  hasVerifiedPayment: string;
+  hasVerifiedPayment: boolean;
 };
 
 function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
@@ -405,7 +408,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     totalAmount: numericToNumber(row.totalAmount),
     deliveryLabel,
     createdAt: dateToIso(row.createdAt) ?? "",
-    hasVerifiedPayment: row.hasVerifiedPayment === "true",
+    hasVerifiedPayment: row.hasVerifiedPayment,
   };
 }
 
@@ -413,6 +416,10 @@ export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSum
   const rows = await db
     .select(adminSummarySelect)
     .from(orders)
+    .leftJoin(
+      verifiedPaymentsByOrder,
+      eq(orders.id, verifiedPaymentsByOrder.orderId)
+    )
     .leftJoin(
       deliveryLocations,
       eq(orders.deliveryLocationId, deliveryLocations.id)
@@ -435,6 +442,10 @@ export async function getTodayOrdersForAdmin(): Promise<OrderAdminSummary[]> {
   const rows = await db
     .select(adminSummarySelect)
     .from(orders)
+    .leftJoin(
+      verifiedPaymentsByOrder,
+      eq(orders.id, verifiedPaymentsByOrder.orderId)
+    )
     .leftJoin(
       deliveryLocations,
       eq(orders.deliveryLocationId, deliveryLocations.id)
@@ -461,6 +472,10 @@ export async function getArchivedOrdersForAdmin(
   const rows = await db
     .select(adminSummarySelect)
     .from(orders)
+    .leftJoin(
+      verifiedPaymentsByOrder,
+      eq(orders.id, verifiedPaymentsByOrder.orderId)
+    )
     .leftJoin(
       deliveryLocations,
       eq(orders.deliveryLocationId, deliveryLocations.id)
@@ -558,6 +573,10 @@ export async function getArchivedOrdersForAdminFiltered(filters: {
   const rows = await db
     .select(adminSummarySelect)
     .from(orders)
+    .leftJoin(
+      verifiedPaymentsByOrder,
+      eq(orders.id, verifiedPaymentsByOrder.orderId)
+    )
     .leftJoin(
       deliveryLocations,
       eq(orders.deliveryLocationId, deliveryLocations.id)

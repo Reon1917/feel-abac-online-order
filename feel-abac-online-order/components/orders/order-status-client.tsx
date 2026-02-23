@@ -30,6 +30,15 @@ import {
   ORDER_VAT_PERCENT_LABEL,
 } from "@/lib/orders/totals";
 import { normalizeExternalUrl } from "@/lib/url/normalize-external-url";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 type OrderDictionary = typeof orderDictionary;
 
@@ -99,6 +108,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [cancelState, setCancelState] = useState<"idle" | "cancelling">("idle");
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   
   // Track seen event IDs to prevent duplicate processing on reconnect
   const seenEventsRef = useRef<Set<string>>(new Set());
@@ -274,9 +284,10 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
       channel.unbind(PAYMENT_REJECTED_EVENT, handlePaymentRejected);
       pusher.unsubscribe(channelName);
     };
-  }, [order.displayId, order.id, refreshOrder]);
+  }, [order.displayId, order.id, order.isClosed, order.status, refreshOrder]);
 
   const handleCancelOrder = useCallback(async () => {
+    setCancelConfirmOpen(false);
     setError(null);
     setCancelState("cancelling");
     try {
@@ -578,7 +589,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => void handleCancelOrder()}
+                onClick={() => setCancelConfirmOpen(true)}
                 disabled={cancelState === "cancelling"}
                 className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -593,6 +604,46 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
           )}
         </div>
       </header>
+
+      <Dialog
+        open={cancelConfirmOpen}
+        onOpenChange={(open) => {
+          if (cancelState === "cancelling") return;
+          setCancelConfirmOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">
+              {dictionary.cancelConfirmTitle ?? "Cancel order?"}
+            </DialogTitle>
+            <DialogDescription>
+              {dictionary.cancelConfirmDescription ??
+                "Are you sure you want to cancel this order? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCancelConfirmOpen(false)}
+              disabled={cancelState === "cancelling"}
+            >
+              {dictionary.cancelConfirmKeep ?? "Keep order"}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCancelOrder()}
+              disabled={cancelState === "cancelling"}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {cancelState === "cancelling"
+                ? dictionary.cancelling
+                : dictionary.cancelOrder}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Refund notice for cancelled orders with verified payment */}
       <RefundNoticeBanner order={order} />

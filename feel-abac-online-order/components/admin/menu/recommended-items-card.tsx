@@ -264,23 +264,23 @@ export function RecommendedItemsCard({
               <Button
                 type="button"
                 size="sm"
-                className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                className="gap-2 border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500"
                 disabled={categoryOptions.length === 0}
               >
                 <PlusCircleIcon className="size-4" />
                 {dictionary.addButton}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg **:data-[slot='select-trigger']:text-slate-900 **:data-[slot='select-value']:text-slate-900">
               <DialogHeader>
-                <DialogTitle>{dictionary.dialog.title}</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-slate-900">{dictionary.dialog.title}</DialogTitle>
+                <DialogDescription className="text-slate-600">
                   {dictionary.dialog.description}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-700">
                     {dictionary.dialog.categoryLabel}
                   </label>
                   <Select
@@ -306,7 +306,7 @@ export function RecommendedItemsCard({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-700">
                     {dictionary.dialog.itemLabel}
                   </label>
                   <Select
@@ -329,13 +329,14 @@ export function RecommendedItemsCard({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-700">
                     {dictionary.dialog.badgeLabel}
                   </label>
                   <Input
                     value={badgeInput}
                     onChange={(event) => setBadgeInput(event.target.value)}
                     placeholder={badgePlaceholder}
+                    className="text-slate-900"
                   />
                 </div>
               </div>

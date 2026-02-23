@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import type adminOrdersDictionary from "@/dictionaries/en/admin-orders.json";
 import type { RefundType } from "@/lib/orders/types";
@@ -75,6 +76,8 @@ export function RejectOrderDialog({
   const [selectedReason, setSelectedReason] = useState<QuickReasonKey | null>(null);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSubmission, setPendingSubmission] = useState<CancelOrderData | null>(null);
   
   // Refund state
   const [refundType, setRefundType] = useState<RefundType>("full");
@@ -88,6 +91,8 @@ export function RejectOrderDialog({
       setSelectedReason(null);
       setNotes("");
       setError(null);
+      setConfirmOpen(false);
+      setPendingSubmission(null);
       setRefundType("full");
       setRefundReason("");
     }, 0);
@@ -144,7 +149,7 @@ export function RejectOrderDialog({
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const fallbackReason = resolvedQuickReason.trim();
     const manualReason = notes.trim();
@@ -167,8 +172,14 @@ export function RejectOrderDialog({
         data.refundReason = refundReason.trim();
       }
     }
-    
-    await onSubmit(data);
+
+    setPendingSubmission(data);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!pendingSubmission) return;
+    await onSubmit(pendingSubmission);
   };
 
   const dialogTitle = hasVerifiedPayment 
@@ -180,132 +191,177 @@ export function RejectOrderDialog({
     : dictionary.rejectDialogSubtitle;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg md:max-h-[85vh] md:overflow-y-auto md:p-5 lg:max-h-none lg:p-6">
-        <DialogHeader>
-          <DialogTitle className="text-red-600">{dialogTitle}</DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
-            {dialogDescription}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-3 lg:space-y-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {dictionary.rejectQuickReasonsLabel}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {QUICK_REASON_KEYS.map((key) => {
-                const label = dictionary[key] as string;
-                const isActive = selectedReason === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => handleSelectQuickReason(key)}
-                    className={clsx(
-                      "rounded-full border px-3 py-1.5 text-sm font-medium transition",
-                      isActive
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-lg md:max-h-[85vh] md:overflow-y-auto md:p-5 lg:max-h-none lg:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">{dialogTitle}</DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              {dialogDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-3 lg:space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {dictionary.rejectQuickReasonsLabel}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {QUICK_REASON_KEYS.map((key) => {
+                  const label = dictionary[key] as string;
+                  const isActive = selectedReason === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleSelectQuickReason(key)}
+                      className={clsx(
+                        "rounded-full border px-3 py-1.5 text-sm font-medium transition",
+                        isActive
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-slate-700" htmlFor="reject-notes">
-              {dictionary.rejectNotesLabel}
-            </label>
-            <textarea
-              id="reject-notes"
-              className="min-h-[80px] w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-inner focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              placeholder={dictionary.rejectNotesPlaceholder ?? "Add detail"}
-              value={notes}
-              onChange={(event) => {
-                setNotes(event.target.value);
-                if (error) setError(null);
-              }}
-            />
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-700" htmlFor="reject-notes">
+                {dictionary.rejectNotesLabel}
+              </label>
+              <textarea
+                id="reject-notes"
+                className="min-h-[80px] w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-inner focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                placeholder={dictionary.rejectNotesPlaceholder ?? "Add detail"}
+                value={notes}
+                onChange={(event) => {
+                  setNotes(event.target.value);
+                  if (error) setError(null);
+                }}
+              />
+              {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            </div>
 
-          {/* Refund options - only shown when payment was verified */}
-          {hasVerifiedPayment && orderAmounts && (
-            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 md:space-y-2 md:p-2.5 lg:space-y-3 lg:p-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                  {dictionary.refundTypeLabel ?? "Refund Type"}
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-2 md:gap-1.5 lg:gap-2">
-                  {REFUND_TYPE_OPTIONS.map((type) => {
-                    const isActive = refundType === type;
-                    return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setRefundType(type)}
-                        className={clsx(
-                          "rounded-lg border px-3 py-2 text-sm font-medium transition text-left",
-                          isActive
-                            ? "border-amber-400 bg-amber-100 text-amber-800"
-                            : "border-amber-200 bg-white text-amber-700 hover:border-amber-300"
-                        )}
-                      >
-                        {getRefundTypeLabel(type)}
-                      </button>
-                    );
-                  })}
+            {/* Refund options - only shown when payment was verified */}
+            {hasVerifiedPayment && orderAmounts && (
+              <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 md:space-y-2 md:p-2.5 lg:space-y-3 lg:p-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    {dictionary.refundTypeLabel ?? "Refund Type"}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2 md:gap-1.5 lg:gap-2">
+                    {REFUND_TYPE_OPTIONS.map((type) => {
+                      const isActive = refundType === type;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setRefundType(type)}
+                          className={clsx(
+                            "rounded-lg border px-3 py-2 text-sm font-medium transition text-left",
+                            isActive
+                              ? "border-amber-400 bg-amber-100 text-amber-800"
+                              : "border-amber-200 bg-white text-amber-700 hover:border-amber-300"
+                          )}
+                        >
+                          {getRefundTypeLabel(type)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Refund amount display */}
+                <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-amber-200 md:px-2.5 md:py-1.5 lg:px-3 lg:py-2">
+                  <span className="text-sm text-amber-700">
+                    {dictionary.refundAmountLabel ?? "Refund Amount"}
+                  </span>
+                  <span className="text-lg font-bold text-amber-800 md:text-base lg:text-lg">
+                    {formatCurrency(calculatedRefundAmount)}
+                  </span>
+                </div>
+
+                {/* Refund notes */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-amber-700" htmlFor="refund-reason">
+                    {dictionary.refundReasonLabel ?? "Refund Notes (optional)"}
+                  </label>
+                  <textarea
+                    id="refund-reason"
+                    className="min-h-[60px] w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                    placeholder={dictionary.refundReasonPlaceholder ?? "e.g., Customer changed mind, order was delayed..."}
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                  />
                 </div>
               </div>
+            )}
 
-              {/* Refund amount display */}
-              <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 border border-amber-200 md:px-2.5 md:py-1.5 lg:px-3 lg:py-2">
-                <span className="text-sm text-amber-700">
-                  {dictionary.refundAmountLabel ?? "Refund Amount"}
-                </span>
-                <span className="text-lg font-bold text-amber-800 md:text-base lg:text-lg">
-                  {formatCurrency(calculatedRefundAmount)}
-                </span>
-              </div>
-
-              {/* Refund notes */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-amber-700" htmlFor="refund-reason">
-                  {dictionary.refundReasonLabel ?? "Refund Notes (optional)"}
-                </label>
-                <textarea
-                  id="refund-reason"
-                  className="min-h-[60px] w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                  placeholder={dictionary.refundReasonPlaceholder ?? "e.g., Customer changed mind, order was delayed..."}
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                />
-              </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                disabled={isSubmitting}
+              >
+                {dictionary.rejectCancel ?? "Cancel"}
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "..." : (hasVerifiedPayment ? (dictionary.cancelSubmit ?? "Cancel Order") : dictionary.rejectSubmit)}
+              </button>
             </div>
-          )}
+          </form>
+        </DialogContent>
+      </Dialog>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(nextOpen) => {
+          if (isSubmitting) return;
+          setConfirmOpen(nextOpen);
+          if (!nextOpen) {
+            setPendingSubmission(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Are you sure?</DialogTitle>
+            <DialogDescription>
+              {hasVerifiedPayment
+                ? "Are you sure you want to cancel this order? This action cannot be undone."
+                : "Are you sure you want to reject this order? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
             <button
               type="button"
-              onClick={() => onOpenChange(false)}
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+              onClick={() => {
+                setConfirmOpen(false);
+                setPendingSubmission(null);
+              }}
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={isSubmitting}
             >
               {dictionary.rejectCancel ?? "Cancel"}
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={() => void handleConfirmSubmit()}
               className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={isSubmitting}
             >
               {isSubmitting ? "..." : (hasVerifiedPayment ? (dictionary.cancelSubmit ?? "Cancel Order") : dictionary.rejectSubmit)}
             </button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

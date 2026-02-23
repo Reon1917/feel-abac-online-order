@@ -21,6 +21,8 @@ import {
   UpdateCartItemInput,
 } from "./types";
 import { getPoolLinksForMenuItem } from "@/lib/menu/pool-queries";
+import type { SetMenuPoolLinkWithPool } from "@/lib/menu/pool-types";
+import type { PublicSetMenuPoolLink } from "@/lib/menu/types";
 
 function toNumericString(value: number) {
   return value.toFixed(2);
@@ -134,16 +136,28 @@ export async function getActiveCartSummary(
   userId: string
 ): Promise<CartSummary | null> {
   const [cart] = await db
-    .select({ id: carts.id, subtotal: carts.subtotal })
+    .select({
+      id: carts.id,
+      subtotal: carts.subtotal,
+      itemCount: sql<number>`COUNT(${cartItems.id})`,
+      totalQuantity: sql<number>`COALESCE(SUM(${cartItems.quantity}), 0)`,
+    })
     .from(carts)
+    .leftJoin(cartItems, eq(cartItems.cartId, carts.id))
     .where(and(eq(carts.userId, userId), eq(carts.status, "active")))
+    .groupBy(carts.id, carts.subtotal)
     .limit(1);
 
   if (!cart) {
     return null;
   }
 
-  return buildCartSummaryFromRow(cart.id, cart.subtotal);
+  return {
+    id: cart.id,
+    subtotal: numericToNumber(cart.subtotal ?? "0"),
+    itemCount: Number(cart.itemCount ?? 0),
+    totalQuantity: Number(cart.totalQuantity ?? 0),
+  };
 }
 
 async function ensureActiveCart(userId: string) {
@@ -695,6 +709,82 @@ function generateSetMenuHash(
   return crypto.createHash("md5").update(parts.join("::")).digest("hex");
 }
 
+type NormalizedPoolLink = {
+  id: string;
+  isPriceDetermining: boolean;
+  usesOptionPrice: boolean;
+  flatPrice: number | null;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  labelEn: string | null;
+  labelMm: string | null;
+  pool: {
+    nameEn: string;
+    nameMm: string | null;
+    options: {
+      id: string;
+      menuCode: string | null;
+      nameEn: string;
+      nameMm: string | null;
+      price: number;
+      isAvailable: boolean;
+    }[];
+  };
+};
+
+function normalizePublicPoolLinks(poolLinks: PublicSetMenuPoolLink[]): NormalizedPoolLink[] {
+  return poolLinks.map((link) => ({
+    id: link.id,
+    isPriceDetermining: link.isPriceDetermining,
+    usesOptionPrice: link.usesOptionPrice,
+    flatPrice: link.flatPrice,
+    isRequired: link.isRequired,
+    minSelect: link.minSelect,
+    maxSelect: link.maxSelect,
+    labelEn: link.label,
+    labelMm: link.labelMm,
+    pool: {
+      nameEn: link.pool.name,
+      nameMm: link.pool.nameMm,
+      options: link.pool.options.map((option) => ({
+        id: option.id,
+        menuCode: option.menuCode,
+        nameEn: option.name,
+        nameMm: option.nameMm,
+        price: option.price,
+        isAvailable: option.isAvailable,
+      })),
+    },
+  }));
+}
+
+function normalizeDbPoolLinks(poolLinks: SetMenuPoolLinkWithPool[]): NormalizedPoolLink[] {
+  return poolLinks.map((link) => ({
+    id: link.id,
+    isPriceDetermining: link.isPriceDetermining,
+    usesOptionPrice: link.usesOptionPrice,
+    flatPrice: link.flatPrice,
+    isRequired: link.isRequired,
+    minSelect: link.minSelect,
+    maxSelect: link.maxSelect,
+    labelEn: link.labelEn,
+    labelMm: link.labelMm,
+    pool: {
+      nameEn: link.pool.nameEn,
+      nameMm: link.pool.nameMm,
+      options: link.pool.options.map((option) => ({
+        id: option.id,
+        menuCode: option.menuCode,
+        nameEn: option.nameEn,
+        nameMm: option.nameMm,
+        price: option.price,
+        isAvailable: option.isAvailable,
+      })),
+    },
+  }));
+}
+
 export async function addSetMenuToCart(
   input: AddSetMenuToCartInput
 ): Promise<CartRecord> {
@@ -718,8 +808,14 @@ export async function addSetMenuToCart(
     throw new Error("This item is currently out of stock.");
   }
 
-  // Get pool links to validate selections
-  const poolLinks = await getPoolLinksForMenuItem(menuItemId);
+  // Reuse pool links already loaded with getPublicMenuItemById when available.
+  let poolLinks = normalizePublicPoolLinks(itemData.item.poolLinks ?? []);
+
+  // Fallback for older data shapes where poolLinks might not be included.
+  if (poolLinks.length === 0) {
+    poolLinks = normalizeDbPoolLinks(await getPoolLinksForMenuItem(menuItemId));
+  }
+
   if (poolLinks.length === 0) {
     throw new Error("Set menu configuration is invalid.");
   }
