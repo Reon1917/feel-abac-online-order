@@ -723,7 +723,6 @@ function SortableRow({
       <button
         type="button"
         className="touch-none select-none flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 focus:outline-none"
-        style={{ touchAction: "none" }}
         {...attributes}
         {...listeners}
       >

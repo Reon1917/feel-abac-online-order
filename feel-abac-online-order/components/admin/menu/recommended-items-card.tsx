@@ -271,7 +271,7 @@ export function RecommendedItemsCard({
                 {dictionary.addButton}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg **:data-[slot='select-trigger']:text-slate-900 **:data-[slot='select-value']:text-slate-900 **:data-[slot='select-item']:text-slate-900">
+            <DialogContent className="max-w-lg **:data-[slot='select-trigger']:text-slate-900 **:data-[slot='select-value']:text-slate-900">
               <DialogHeader>
                 <DialogTitle className="text-slate-900">{dictionary.dialog.title}</DialogTitle>
                 <DialogDescription className="text-slate-600">

@@ -259,6 +259,10 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     return messages[key];
   };
 
+  const invalidateOrderDetailCache = useCallback((displayId: string) => {
+    orderDetailCacheRef.current.delete(displayId);
+  }, []);
+
   const fetchOrderDetail = useCallback(
     async (displayId: string): Promise<OrderRecord> => {
       const cached = orderDetailCacheRef.current.get(displayId);
@@ -285,6 +289,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     async (order: OrderAdminSummary) => {
       setLoadingOrderId(order.id);
       try {
+        invalidateOrderDetailCache(order.displayId);
         const orderData = await fetchOrderDetail(order.displayId);
         setSelectedOrder(orderData);
         setModalOpen(true);
@@ -294,12 +299,13 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setLoadingOrderId(null);
       }
     },
-    [dictionary.errorLoading, fetchOrderDetail]
+    [dictionary.errorLoading, fetchOrderDetail, invalidateOrderDetailCache]
   );
 
   // Fetch payment details for verification modal
   const fetchPaymentDetails = useCallback(async (order: OrderAdminSummary) => {
     try {
+      invalidateOrderDetailCache(order.displayId);
       const orderData = await fetchOrderDetail(order.displayId);
 
       // Get payment receipt from the order's payment records
@@ -317,7 +323,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     } catch {
       // Ignore errors, we'll show the modal without the receipt
     }
-  }, [fetchOrderDetail]);
+  }, [fetchOrderDetail, invalidateOrderDetailCache]);
 
   // WORKFLOW ACTIONS
 
@@ -338,6 +344,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -356,7 +363,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   // Verify payment: WAIT_FOR_PAYMENT → PAID
@@ -375,6 +382,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -393,7 +401,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   // Reject payment slip (customer can re-upload)
@@ -413,6 +421,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -431,7 +440,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.slipRejectedToast]
+    [dictionary.errorLoading, dictionary.slipRejectedToast, invalidateOrderDetailCache]
   );
 
   // Hand off to delivery: PAID → HAND_TO_DELIVERY
@@ -459,6 +468,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -477,7 +487,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   // Mark delivered: HAND_TO_DELIVERY → DELIVERED
@@ -497,6 +507,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -515,7 +526,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   // Close order: DELIVERED → CLOSED
@@ -535,6 +546,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         const nextStatus = (payload?.status as OrderStatus) ?? order.status;
         setOrders((prev) =>
           prev.map((item) =>
@@ -554,7 +566,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   // Cancel order
@@ -580,6 +592,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         const nextStatus = (payload?.status as OrderStatus) ?? ("cancelled" as OrderStatus);
         const nextRefundStatus = payload?.refundStatus ?? order.refundStatus ?? null;
         const nextRefundType = payload?.refundType ?? data.refundType ?? order.refundType ?? null;
@@ -614,7 +627,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   const handleMarkRefundPaid = useCallback(
@@ -633,6 +646,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -654,7 +668,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   const handleMarkRefundRequested = useCallback(
@@ -673,6 +687,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
+        invalidateOrderDetailCache(order.displayId);
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
@@ -694,7 +709,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
   // Modal handlers
@@ -714,11 +729,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     setAcceptSubmitting(false);
 
     if (success) {
+      invalidateOrderDetailCache(acceptTarget.displayId);
       setAcceptModalOpen(false);
       setAcceptTarget(null);
       setDeliveryFeeInput("");
     }
-  }, [acceptTarget, deliveryFeeInput, handleAcceptOrder]);
+  }, [acceptTarget, deliveryFeeInput, handleAcceptOrder, invalidateOrderDetailCache]);
 
   const handleHandoffSubmit = useCallback(async () => {
     if (!handoffTarget) return;
@@ -737,12 +753,13 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     setHandoffSubmitting(false);
 
     if (success) {
+      invalidateOrderDetailCache(handoffTarget.displayId);
       setHandoffModalOpen(false);
       setHandoffTarget(null);
       setHandoffVendor("");
       setHandoffTrackingUrl("");
     }
-  }, [handoffTarget, handoffVendor, handoffTrackingUrl, handleHandoff]);
+  }, [handoffTarget, handoffVendor, handoffTrackingUrl, handleHandoff, invalidateOrderDetailCache]);
 
   const handleVerifySubmit = useCallback(async () => {
     if (!verifyTarget) return;
@@ -752,11 +769,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     setVerifySubmitting(false);
 
     if (success) {
+      invalidateOrderDetailCache(verifyTarget.displayId);
       setVerifyModalOpen(false);
       setVerifyTarget(null);
       setPaymentReceipt(null);
     }
-  }, [verifyTarget, handleVerifyPayment]);
+  }, [verifyTarget, handleVerifyPayment, invalidateOrderDetailCache]);
 
   const handleRejectSubmit = useCallback(
     async (data: CancelOrderData) => {
@@ -765,11 +783,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       const success = await handleCancelOrder(rejectTarget, data);
       setRejectSubmitting(false);
       if (success) {
+        invalidateOrderDetailCache(rejectTarget.displayId);
         setRejectDialogOpen(false);
         setRejectTarget(null);
       }
     },
-    [rejectTarget, handleCancelOrder]
+    [rejectTarget, handleCancelOrder, invalidateOrderDetailCache]
   );
 
   // Handle slip rejection modal submit
@@ -779,6 +798,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     const success = await handleRejectSlip(slipRejectTarget, slipRejectReason);
     setSlipRejectSubmitting(false);
     if (success) {
+      invalidateOrderDetailCache(slipRejectTarget.displayId);
       setSlipRejectConfirmOpen(false);
       setSlipRejectModalOpen(false);
       setSlipRejectTarget(null);
@@ -788,7 +808,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       setVerifyTarget(null);
       setPaymentReceipt(null);
     }
-  }, [slipRejectTarget, slipRejectReason, handleRejectSlip]);
+  }, [slipRejectTarget, slipRejectReason, handleRejectSlip, invalidateOrderDetailCache]);
 
   // Pusher realtime events
   useEffect(() => {
@@ -832,6 +852,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     const handleStatusChanged = (payload: OrderStatusChangedPayload) => {
       if (seenEvents.has(payload.eventId)) return;
       seenEvents.add(payload.eventId);
+      orderDetailCacheRef.current.delete(payload.displayId);
 
       setOrders((prev) =>
         prev.map((order) =>
@@ -860,6 +881,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     const handleClosed = (payload: OrderClosedPayload) => {
       if (seenEvents.has(payload.eventId)) return;
       seenEvents.add(payload.eventId);
+      orderDetailCacheRef.current.delete(payload.displayId);
 
       setOrders((prev) =>
         prev.map((order) =>
@@ -875,6 +897,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     ) => {
       if (seenEvents.has(payload.eventId)) return;
       seenEvents.add(payload.eventId);
+      orderDetailCacheRef.current.delete(payload.displayId);
 
       toast.message("Payment slip received!");
       enqueueSound(PAYMENT_SOUND_SRC);
@@ -1588,9 +1611,12 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-amber-700">Are you sure?</DialogTitle>
+            <DialogTitle className="text-amber-700">
+              {dictionary.slipRejectConfirmTitle ?? "Reject payment slip?"}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to reject this payment slip? The customer will need to upload a new slip.
+              {dictionary.slipRejectConfirmDescription ??
+                "Customer must upload a new slip."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">

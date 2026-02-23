@@ -615,6 +615,9 @@ export const orderPayments = pgTable(
   (table) => ({
     orderIdx: index("order_payments_order_id_idx").on(table.orderId),
     typeIdx: index("order_payments_type_idx").on(table.type),
+    verifiedOrderIdx: index("order_payments_verified_order_id_idx")
+      .on(table.orderId)
+      .where(sql`${table.status} = 'verified'`),
     orderTypeIdx: uniqueIndex("order_payments_order_type_unique").on(
       table.orderId,
       table.type

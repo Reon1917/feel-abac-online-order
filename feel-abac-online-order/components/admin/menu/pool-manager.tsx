@@ -504,12 +504,12 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
         <DialogContent>
           <form onSubmit={handleSaveOption}>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="text-slate-900">
                 {optionDialog?.mode === "create"
                   ? "Add Option"
                   : "Edit Option"}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-slate-600">
                 {optionDialog?.mode === "create"
                   ? "Add a new option to this pool"
                   : "Update option details"}
@@ -517,10 +517,11 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="menuCode">Menu Code</Label>
+                <Label htmlFor="menuCode" className="text-slate-900">Menu Code</Label>
                 <Input
                   id="menuCode"
                   name="menuCode"
+                  className="text-slate-900"
                   placeholder="e.g., RS1, AD5, AV3"
                   defaultValue={
                     optionDialog?.mode === "edit"
@@ -533,10 +534,11 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nameEn">Name (English) *</Label>
+                <Label htmlFor="nameEn" className="text-slate-900">Name (English) *</Label>
                 <Input
                   id="nameEn"
                   name="nameEn"
+                  className="text-slate-900"
                   placeholder="e.g., Chicken Curry"
                   defaultValue={
                     optionDialog?.mode === "edit"
@@ -547,10 +549,11 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nameMm">Name (Burmese)</Label>
+                <Label htmlFor="nameMm" className="text-slate-900">Name (Burmese)</Label>
                 <Input
                   id="nameMm"
                   name="nameMm"
+                  className="text-slate-900"
                   placeholder="Optional Burmese name"
                   defaultValue={
                     optionDialog?.mode === "edit"
@@ -560,11 +563,12 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price (THB) *</Label>
+                <Label htmlFor="price" className="text-slate-900">Price (THB) *</Label>
                 <Input
                   id="price"
                   name="price"
                   type="number"
+                  className="text-slate-900"
                   min="0"
                   step="1"
                   placeholder="0"
@@ -586,7 +590,7 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
                       : true
                   }
                 />
-                <Label htmlFor="isAvailable">Available</Label>
+                <Label htmlFor="isAvailable" className="text-slate-900">Available</Label>
               </div>
             </div>
             <DialogFooter>
@@ -616,8 +620,8 @@ export function PoolManager({ initialPools }: PoolManagerProps) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {deleteConfirm?.type}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-slate-900">Delete {deleteConfirm?.type}</DialogTitle>
+            <DialogDescription className="text-slate-600">
               Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;?
               {deleteConfirm?.type === "pool" &&
                 " This will also delete all options in this pool."}

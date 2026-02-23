@@ -284,7 +284,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
       channel.unbind(PAYMENT_REJECTED_EVENT, handlePaymentRejected);
       pusher.unsubscribe(channelName);
     };
-  }, [order.displayId, order.id, refreshOrder]);
+  }, [order.displayId, order.id, order.isClosed, order.status, refreshOrder]);
 
   const handleCancelOrder = useCallback(async () => {
     setCancelConfirmOpen(false);
@@ -614,9 +614,12 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-red-600">Are you sure?</DialogTitle>
+            <DialogTitle className="text-red-600">
+              {dictionary.cancelConfirmTitle ?? "Cancel order?"}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this order? This action cannot be undone.
+              {dictionary.cancelConfirmDescription ??
+                "Are you sure you want to cancel this order? This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -626,7 +629,7 @@ export function OrderStatusClient({ initialOrder, dictionary, locale }: Props) {
               onClick={() => setCancelConfirmOpen(false)}
               disabled={cancelState === "cancelling"}
             >
-              Keep order
+              {dictionary.cancelConfirmKeep ?? "Keep order"}
             </Button>
             <Button
               type="button"

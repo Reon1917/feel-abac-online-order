@@ -139,6 +139,8 @@
   "slipRejectSubmit": "စလစ် ငြင်းပယ်မည်",
   "slipRejectSubmitting": "ငြင်းပယ်နေသည်...",
   "slipRejectCancel": "ပိတ်မည်",
+  "slipRejectConfirmTitle": "ငွေလွှဲစလစ် ငြင်းပယ်မလား?",
+  "slipRejectConfirmDescription": "ဖောက်သည်က စလစ်အသစ် ပြန်တင်ရပါမည်။",
   "slipRejectedToast": "စလစ် ငြင်းပယ်ပြီး - ဖောက်သည် ပြန်တင်နိုင်ပါသည်",
   
   "handToDeliveryModalTitle": "Hand to Delivery",

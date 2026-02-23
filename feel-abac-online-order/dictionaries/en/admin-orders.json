@@ -139,6 +139,8 @@
   "slipRejectSubmit": "Reject Slip",
   "slipRejectSubmitting": "Rejecting...",
   "slipRejectCancel": "Close",
+  "slipRejectConfirmTitle": "Reject payment slip?",
+  "slipRejectConfirmDescription": "Customer must upload a new slip.",
   "slipRejectedToast": "Slip rejected - customer can re-upload",
   
   "handToDeliveryModalTitle": "Hand to Delivery",

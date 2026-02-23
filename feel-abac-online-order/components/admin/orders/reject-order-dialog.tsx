@@ -149,7 +149,7 @@ export function RejectOrderDialog({
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const fallbackReason = resolvedQuickReason.trim();
     const manualReason = notes.trim();

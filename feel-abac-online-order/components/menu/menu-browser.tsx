@@ -88,6 +88,8 @@ export function MenuBrowser({
   const { menuLocale } = useMenuLocale();
   const { browser } = dictionary;
   const outOfStockLabel = browser.outOfStock ?? "Out of stock";
+  const setMenuFromLabel = dictionary.detail.setMenu.fromPrice ?? "from";
+  const setMenuBuildLabel = dictionary.detail.setMenu.buildButton ?? "Build";
   const pluralRules = useMemo(() => new Intl.PluralRules(menuLocale), [menuLocale]);
   const deferredSearch = useDeferredValue(searchTerm);
 
@@ -334,6 +336,8 @@ export function MenuBrowser({
           copy={recommendedDictionary}
           actionLabel={browser.viewDetails}
           outOfStockLabel={outOfStockLabel}
+          setMenuFromLabel={setMenuFromLabel}
+          setMenuBuildLabel={setMenuBuildLabel}
           onQuickAdd={onQuickAdd}
         />
       ) : null}
@@ -354,6 +358,8 @@ export function MenuBrowser({
                 compact={isCompact}
                 actionLabel={browser.viewDetails}
                 outOfStockLabel={outOfStockLabel}
+                setMenuFromLabel={setMenuFromLabel}
+                setMenuBuildLabel={setMenuBuildLabel}
                 priorityItemId={prioritizedItemId}
                 onQuickAdd={onQuickAdd}
               />
@@ -383,6 +389,8 @@ function RecommendedItemsSection({
   copy,
   actionLabel,
   outOfStockLabel,
+  setMenuFromLabel,
+  setMenuBuildLabel,
   onQuickAdd,
 }: {
   recommended: PublicRecommendedMenuItem[];
@@ -391,6 +399,8 @@ function RecommendedItemsSection({
   copy: RecommendationCopy;
   actionLabel: string;
   outOfStockLabel: string;
+  setMenuFromLabel: string;
+  setMenuBuildLabel: string;
   onQuickAdd?: QuickAddHandler;
 }) {
   if (recommended.length === 0) {
@@ -422,6 +432,8 @@ function RecommendedItemsSection({
             appLocale={appLocale}
             actionLabel={actionLabel}
             outOfStockLabel={outOfStockLabel}
+            fromPriceLabel={setMenuFromLabel}
+            buildLabel={setMenuBuildLabel}
             priority={index === 0}
             variant="recommended"
             badgeLabel={entry.badgeLabel ?? fallbackBadge}
@@ -440,6 +452,8 @@ function MenuCategorySection({
   compact,
   actionLabel,
   outOfStockLabel,
+  setMenuFromLabel,
+  setMenuBuildLabel,
   priorityItemId = null,
   onQuickAdd,
 }: {
@@ -449,6 +463,8 @@ function MenuCategorySection({
   compact?: boolean;
   actionLabel: string;
   outOfStockLabel: string;
+  setMenuFromLabel: string;
+  setMenuBuildLabel: string;
   priorityItemId?: string | null;
   onQuickAdd?: QuickAddHandler;
 }) {
@@ -481,6 +497,8 @@ function MenuCategorySection({
                 appLocale={appLocale}
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
+                fromPriceLabel={setMenuFromLabel}
+                buildLabel={setMenuBuildLabel}
                 priority={priorityItemId === item.id}
                 onQuickAdd={onQuickAdd}
               />
@@ -496,6 +514,8 @@ function MenuCategorySection({
                 appLocale={appLocale}
                 actionLabel={actionLabel}
                 outOfStockLabel={outOfStockLabel}
+                fromPriceLabel={setMenuFromLabel}
+                buildLabel={setMenuBuildLabel}
                 priority={priorityItemId === item.id}
                 onQuickAdd={onQuickAdd}
               />
@@ -512,6 +532,8 @@ function MenuItemCard({
   appLocale,
   actionLabel,
   outOfStockLabel,
+  fromPriceLabel,
+  buildLabel,
   priority,
   variant = "default",
   badgeLabel,
@@ -522,6 +544,8 @@ function MenuItemCard({
   appLocale: Locale;
   actionLabel: string;
   outOfStockLabel: string;
+  fromPriceLabel: string;
+  buildLabel: string;
   priority?: boolean;
   variant?: "default" | "recommended";
   badgeLabel?: string | null;
@@ -612,7 +636,9 @@ function MenuItemCard({
           <span className="min-w-0 text-base font-semibold text-emerald-600 sm:text-lg">
             {item.isSetMenu ? (
               <span className="inline-flex min-w-0 items-baseline gap-1">
-                <span className="shrink-0 text-xs font-normal text-slate-500">from</span>
+                <span className="shrink-0 text-xs font-normal text-slate-500">
+                  {fromPriceLabel}
+                </span>
                 <span className="truncate">฿{formatPrice(item.price)}</span>
               </span>
             ) : (
@@ -622,7 +648,7 @@ function MenuItemCard({
           <button
             ref={addButtonRef}
             type="button"
-            aria-label={item.isSetMenu ? "Build" : actionLabel}
+            aria-label={item.isSetMenu ? buildLabel : actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
               "inline-flex items-center justify-center rounded-full bg-white font-bold text-emerald-600 shadow-md ring-1 ring-emerald-100 transition",
@@ -649,7 +675,7 @@ function MenuItemCard({
             {item.isSetMenu ? (
               <>
                 <span className="md:hidden">+</span>
-                <span className="hidden md:inline">Build</span>
+                <span className="hidden md:inline">{buildLabel}</span>
               </>
             ) : (
               "+"
@@ -703,6 +729,8 @@ function MenuItemRow({
   appLocale,
   actionLabel,
   outOfStockLabel,
+  fromPriceLabel,
+  buildLabel,
   priority,
   onQuickAdd,
 }: {
@@ -711,6 +739,8 @@ function MenuItemRow({
   appLocale: Locale;
   actionLabel: string;
   outOfStockLabel: string;
+  fromPriceLabel: string;
+  buildLabel: string;
   priority?: boolean;
   onQuickAdd?: QuickAddHandler;
 }) {
@@ -770,7 +800,9 @@ function MenuItemRow({
           <span className="min-w-0 text-base font-semibold text-emerald-600 sm:text-lg">
             {item.isSetMenu ? (
               <span className="inline-flex min-w-0 items-baseline gap-1">
-                <span className="shrink-0 text-xs font-normal text-slate-500">from</span>
+                <span className="shrink-0 text-xs font-normal text-slate-500">
+                  {fromPriceLabel}
+                </span>
                 <span className="truncate">฿{formatPrice(item.price)}</span>
               </span>
             ) : (
@@ -780,7 +812,7 @@ function MenuItemRow({
           <button
             ref={addButtonRef}
             type="button"
-            aria-label={item.isSetMenu ? "Build" : actionLabel}
+            aria-label={item.isSetMenu ? buildLabel : actionLabel}
             aria-disabled={buttonDisabled}
             className={clsx(
               "inline-flex items-center justify-center rounded-full bg-white font-bold text-emerald-600 shadow ring-1 ring-emerald-100 transition",
@@ -807,7 +839,7 @@ function MenuItemRow({
             {item.isSetMenu ? (
               <>
                 <span className="md:hidden">+</span>
-                <span className="hidden md:inline">Build</span>
+                <span className="hidden md:inline">{buildLabel}</span>
               </>
             ) : (
               "+"

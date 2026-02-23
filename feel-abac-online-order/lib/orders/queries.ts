@@ -354,7 +354,7 @@ const adminSummarySelect = {
   locationCondoName: deliveryLocations.condoName,
   buildingLabel: deliveryBuildings.label,
   // Use a single grouped join instead of a correlated per-row EXISTS subquery.
-  hasVerifiedPayment: sql<string>`CASE WHEN ${verifiedPaymentsByOrder.orderId} IS NOT NULL THEN 'true' ELSE 'false' END`.as("has_verified_payment"),
+  hasVerifiedPayment: sql<boolean>`(${verifiedPaymentsByOrder.orderId} IS NOT NULL)`.as("has_verified_payment"),
 } as const;
 
 type AdminSummaryRow = {
@@ -378,7 +378,7 @@ type AdminSummaryRow = {
   customBuildingName: string | null;
   locationCondoName: string | null;
   buildingLabel: string | null;
-  hasVerifiedPayment: string;
+  hasVerifiedPayment: boolean;
 };
 
 function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
@@ -408,7 +408,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     totalAmount: numericToNumber(row.totalAmount),
     deliveryLabel,
     createdAt: dateToIso(row.createdAt) ?? "",
-    hasVerifiedPayment: row.hasVerifiedPayment === "true",
+    hasVerifiedPayment: row.hasVerifiedPayment,
   };
 }
 
