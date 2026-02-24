@@ -10,6 +10,7 @@ import {
   type OrderStatusEmailTemplateKey,
   type OrderEmailDetails,
 } from "@/lib/email/templates/order-status";
+import type { OrderStatus, RefundStatus, RefundType } from "@/lib/orders/types";
 
 type SendOrderStatusEmailNotificationInput = {
   userId: string | null | undefined;
@@ -18,6 +19,12 @@ type SendOrderStatusEmailNotificationInput = {
   locale?: Locale;
   totalAmount?: string | number | null;
   courierTrackingUrl?: string | null;
+  cancelledFromStatus?: OrderStatus | null;
+  cancelReason?: string | null;
+  refundType?: RefundType | null;
+  refundStatus?: RefundStatus | null;
+  refundAmount?: string | number | null;
+  refundReason?: string | null;
   // Extended order details
   orderDetails?: OrderEmailDetails | null;
 };
@@ -45,6 +52,12 @@ export async function sendOrderStatusEmailNotification(
     locale: input.locale,
     totalAmount: input.totalAmount,
     courierTrackingUrl: input.courierTrackingUrl,
+    cancelledFromStatus: input.cancelledFromStatus,
+    cancelReason: input.cancelReason,
+    refundType: input.refundType,
+    refundStatus: input.refundStatus,
+    refundAmount: input.refundAmount,
+    refundReason: input.refundReason,
     orderDetails: input.orderDetails ?? null,
   });
 

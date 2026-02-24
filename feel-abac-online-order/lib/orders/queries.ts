@@ -139,7 +139,7 @@ function mapOrder(
     cancelReason: row.cancelReason,
     refundStatus: (row.refundStatus as RefundStatus) ?? null,
     refundType: (row.refundType as RefundType) ?? null,
-    refundAmount: row.refundAmount ? numericToNumber(row.refundAmount) : null,
+    refundAmount: row.refundAmount != null ? numericToNumber(row.refundAmount) : null,
     refundReason: row.refundReason ?? null,
     refundProcessedAt: dateToIso(row.refundProcessedAt),
     isClosed: row.isClosed,
@@ -399,7 +399,7 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     isClosed: Boolean(row.isClosed),
     refundStatus: (row.refundStatus as RefundStatus) ?? null,
     refundType: (row.refundType as RefundType) ?? null,
-    refundAmount: row.refundAmount ? numericToNumber(row.refundAmount) : null,
+    refundAmount: row.refundAmount != null ? numericToNumber(row.refundAmount) : null,
     customerName: row.customerName,
     customerPhone: row.customerPhone,
     subtotal: numericToNumber(row.subtotal),
@@ -410,6 +410,121 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
     createdAt: dateToIso(row.createdAt) ?? "",
     hasVerifiedPayment: row.hasVerifiedPayment,
   };
+}
+
+export const ADMIN_REPORT_RANGES = [
+  "today",
+  "last_7_days",
+  "last_30_days",
+] as const;
+
+export type AdminReportRange = (typeof ADMIN_REPORT_RANGES)[number];
+
+type AdminReportRow = {
+  id: string;
+  displayId: string;
+  displayDay: Date | null;
+  status: string;
+  isClosed: boolean | null;
+  subtotal: string | null;
+  vatAmount: string | null;
+  deliveryFee: string | null;
+  totalAmount: string | null;
+  refundStatus: string | null;
+  refundType: string | null;
+  refundAmount: string | null;
+  createdAt: Date | null;
+  hasVerifiedPayment: boolean;
+};
+
+export type AdminReportOrder = {
+  id: string;
+  displayId: string;
+  displayDay: string;
+  status: OrderStatus;
+  isClosed: boolean;
+  subtotal: number;
+  vatAmount: number;
+  deliveryFee: number;
+  totalAmount: number;
+  refundStatus: RefundStatus | null;
+  refundType: RefundType | null;
+  refundAmount: number | null;
+  createdAt: string;
+  hasVerifiedPayment: boolean;
+};
+
+function mapAdminReportRow(row: AdminReportRow): AdminReportOrder {
+  return {
+    id: row.id,
+    displayId: row.displayId,
+    displayDay: pgDateToString(row.displayDay),
+    status: row.status as OrderStatus,
+    isClosed: Boolean(row.isClosed),
+    subtotal: numericToNumber(row.subtotal),
+    vatAmount: numericToNumber(row.vatAmount),
+    deliveryFee: row.deliveryFee ? numericToNumber(row.deliveryFee) : 0,
+    totalAmount: numericToNumber(row.totalAmount),
+    refundStatus: (row.refundStatus as RefundStatus) ?? null,
+    refundType: (row.refundType as RefundType) ?? null,
+    refundAmount: row.refundAmount != null ? numericToNumber(row.refundAmount) : null,
+    createdAt: dateToIso(row.createdAt) ?? "",
+    hasVerifiedPayment: row.hasVerifiedPayment,
+  };
+}
+
+export async function getOrdersForAdminReport(
+  range: AdminReportRange
+): Promise<AdminReportOrder[]> {
+  const todayInBangkok = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`;
+
+  const rangeCondition =
+    range === "today"
+      ? eq(orders.displayDay, todayInBangkok)
+      : range === "last_7_days"
+        ? and(
+            gte(
+              orders.displayDay,
+              sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '6 days')::date`
+            ),
+            lte(orders.displayDay, todayInBangkok)
+          )
+        : and(
+            gte(
+              orders.displayDay,
+              sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '29 days')::date`
+            ),
+            lte(orders.displayDay, todayInBangkok)
+          );
+
+  const rows = await db
+    .select({
+      id: orders.id,
+      displayId: orders.displayId,
+      displayDay: orders.displayDay,
+      status: orders.status,
+      isClosed: orders.isClosed,
+      subtotal: orders.subtotal,
+      vatAmount: orders.vatAmount,
+      deliveryFee: orders.deliveryFee,
+      totalAmount: orders.totalAmount,
+      refundStatus: orders.refundStatus,
+      refundType: orders.refundType,
+      refundAmount: orders.refundAmount,
+      createdAt: orders.createdAt,
+      hasVerifiedPayment: sql<boolean>`(${verifiedPaymentsByOrder.orderId} IS NOT NULL)`.as(
+        "has_verified_payment"
+      ),
+    })
+    .from(orders)
+    .leftJoin(
+      verifiedPaymentsByOrder,
+      eq(orders.id, verifiedPaymentsByOrder.orderId)
+    )
+    .where(rangeCondition)
+    .orderBy(desc(orders.createdAt));
+
+  return rows.map((row) => mapAdminReportRow(row));
 }
 
 export async function getRecentOrdersForAdmin(limit = 20): Promise<OrderAdminSummary[]> {

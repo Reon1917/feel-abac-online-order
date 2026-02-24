@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 import { resolveUserId } from "@/lib/api/require-user";
 import { db } from "@/src/db/client";
@@ -7,6 +7,8 @@ import { orderEvents, orderPayments, orders } from "@/src/db/schema";
 import { broadcastOrderClosed, broadcastOrderStatusChanged } from "@/lib/orders/realtime";
 import { cleanupTransientEvents } from "@/lib/orders/cleanup";
 import type { OrderStatus } from "@/lib/orders/types";
+import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
+import { getOrderEmailDetails } from "@/lib/orders/queries";
 
 type Params = {
   displayId: string;
@@ -149,6 +151,22 @@ export async function PATCH(
   });
 
   await cleanupTransientEvents(order.id);
+
+  // Send email notification (wrapped in try-catch to not block cancellation)
+  try {
+    const orderDetails = await getOrderEmailDetails(order.displayId);
+    await sendOrderStatusEmailNotification({
+      userId: order.userId,
+      displayId: order.displayId,
+      template: "cancelled",
+      totalAmount: order.totalAmount,
+      cancelledFromStatus: order.status as OrderStatus,
+      cancelReason: reason,
+      orderDetails,
+    });
+  } catch (emailError) {
+    console.error("[orders/cancel] Failed to send email notification:", emailError);
+  }
 
   return NextResponse.json({
     status: nextStatus,

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, ExternalLink, Store, Package } from "lucide-react";
+import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, ExternalLink, Store, Package, BarChart3 } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getAdminByUserId } from "@/lib/admin";
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,13 @@ export default async function AdminDashboard({ params }: PageProps) {
       label: "Shop Status",
       description: "Open or close the shop for accepting orders.",
       href: "/admin/settings/shop",
+      variant: "default" as const,
+    },
+    {
+      icon: BarChart3,
+      label: "Reports",
+      description: "Track sales, tax, delivery, and refund-aware analytics.",
+      href: "/admin/reports",
       variant: "default" as const,
     },
     {

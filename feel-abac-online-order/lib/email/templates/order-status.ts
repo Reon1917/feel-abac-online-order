@@ -10,6 +10,7 @@ import {
   renderLayout,
 } from "@/lib/email/templates/ui";
 import { computeOrderTotals, ORDER_VAT_PERCENT_LABEL } from "@/lib/orders/totals";
+import type { OrderStatus, RefundStatus, RefundType } from "@/lib/orders/types";
 
 function getAppBaseUrl() {
   const explicit =
@@ -34,6 +35,7 @@ export type OrderStatusEmailTemplateKey =
   | "proceed_to_payment"
   | "payment_verified"
   | "handed_off"
+  | "cancelled"
   | "delivered";
 
 // Extended order details for richer email content
@@ -62,6 +64,12 @@ export type OrderStatusEmailTemplateInput = {
   locale?: Locale;
   totalAmount?: string | number | null;
   courierTrackingUrl?: string | null;
+  cancelledFromStatus?: OrderStatus | null;
+  cancelReason?: string | null;
+  refundType?: RefundType | null;
+  refundStatus?: RefundStatus | null;
+  refundAmount?: string | number | null;
+  refundReason?: string | null;
   orderDetails?: OrderEmailDetails | null;
 };
 
@@ -81,6 +89,38 @@ function buildAssetUrl(pathname: string) {
   const base = getAppBaseUrl();
   const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
   return `${base}${normalized}`;
+}
+
+function formatOrderStatusLabel(status: OrderStatus) {
+  const labels: Record<OrderStatus, string> = {
+    order_processing: "Order received",
+    awaiting_payment: "Awaiting payment",
+    payment_review: "Payment review",
+    order_in_kitchen: "In kitchen",
+    order_out_for_delivery: "Out for delivery",
+    delivered: "Delivered",
+    closed: "Closed",
+    cancelled: "Cancelled",
+  };
+  return labels[status];
+}
+
+function formatRefundTypeLabel(refundType: RefundType) {
+  const labels: Record<RefundType, string> = {
+    full: "Full refund",
+    food_only: "Food only",
+    delivery_fee_only: "Delivery fee only",
+    none: "No refund",
+  };
+  return labels[refundType];
+}
+
+function formatRefundStatusLabel(refundStatus: RefundStatus) {
+  const labels: Record<RefundStatus, string> = {
+    requested: "Requested",
+    paid: "Paid",
+  };
+  return labels[refundStatus];
 }
 
 /** Render order items table for email */
@@ -371,6 +411,92 @@ export function buildOrderStatusEmail(
         `<p style="margin:0 0 14px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:14px;line-height:20px;">Your order has been handed off to the courier. You can view tracking details from the order page.</p>`,
         renderInfoTable(DEFAULT_EMAIL_THEME, summaryRows),
         trackingHtml,
+        orderDetailsHtml,
+        `<div style="margin-top:16px;">${renderButton(DEFAULT_EMAIL_THEME, orderUrl, "View order")}</div>`,
+      ].join("")
+    );
+
+    const html = renderLayout({
+      subject,
+      preheader,
+      logoUrl,
+      contentHtml,
+    });
+
+    return { subject, preheader, text, html };
+  }
+
+  if (template === "cancelled") {
+    const subject = `Order Cancelled – ${displayId}`;
+    const preheader = `Order ${displayId} was cancelled.`;
+    const cancelledFromLabel = input.cancelledFromStatus
+      ? formatOrderStatusLabel(input.cancelledFromStatus)
+      : "Unknown stage";
+    const cancelReasonText = input.cancelReason?.trim() || "No reason provided";
+    const hasRefund = input.refundType != null && input.refundType !== "none";
+    const refundAmount = formatThbAmount(input.refundAmount);
+
+    const text = [
+      `Your order ${displayId} has been cancelled.`,
+      "",
+      "Cancellation details:",
+      `- Cancelled from: ${cancelledFromLabel}`,
+      `- Reason: ${cancelReasonText}`,
+      hasRefund && input.refundType
+        ? `- Refund type: ${formatRefundTypeLabel(input.refundType)}`
+        : "- Refund: No refund requested",
+      hasRefund && input.refundStatus
+        ? `- Refund status: ${formatRefundStatusLabel(input.refundStatus)}`
+        : null,
+      hasRefund && refundAmount ? `- Refund amount: ${refundAmount}` : null,
+      hasRefund && input.refundReason?.trim()
+        ? `- Refund note: ${input.refundReason.trim()}`
+        : null,
+      "",
+      `View your order: ${orderUrl}`,
+      orderDetailsText,
+    ]
+      .filter((line): line is string => typeof line === "string")
+      .join("\n");
+
+    const summaryRows: Array<[string, string]> = [
+      ["Order ID", displayId],
+      ["Status", "Cancelled"],
+      ["Cancelled from", cancelledFromLabel],
+    ];
+    if (amount) summaryRows.push(["Order total", amount]);
+
+    const cancellationRows: Array<[string, string]> = [
+      ["Reason", cancelReasonText],
+    ];
+    if (hasRefund && input.refundType) {
+      cancellationRows.push(["Refund type", formatRefundTypeLabel(input.refundType)]);
+      if (input.refundStatus) {
+        cancellationRows.push([
+          "Refund status",
+          formatRefundStatusLabel(input.refundStatus),
+        ]);
+      }
+      if (refundAmount) {
+        cancellationRows.push(["Refund amount", refundAmount]);
+      }
+      if (input.refundReason?.trim()) {
+        cancellationRows.push(["Refund note", input.refundReason.trim()]);
+      }
+    } else {
+      cancellationRows.push(["Refund", "No refund requested"]);
+    }
+
+    const contentHtml = renderCard(
+      DEFAULT_EMAIL_THEME,
+      [
+        `<h1 style="margin:0 0 10px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.textColor};font-size:18px;line-height:26px;">Order cancelled</h1>`,
+        `<p style="margin:0 0 14px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.mutedTextColor};font-size:14px;line-height:20px;">This order has been cancelled. Details are included below for your records.</p>`,
+        renderInfoTable(DEFAULT_EMAIL_THEME, summaryRows),
+        `<div style="margin-top:14px;padding-top:14px;border-top:1px solid ${DEFAULT_EMAIL_THEME.cardBorderColor};">`,
+        `<h2 style="margin:0 0 8px 0;font-family:${fontFamily};color:${DEFAULT_EMAIL_THEME.textColor};font-size:14px;line-height:20px;">Cancellation details</h2>`,
+        renderInfoTable(DEFAULT_EMAIL_THEME, cancellationRows),
+        `</div>`,
         orderDetailsHtml,
         `<div style="margin-top:16px;">${renderButton(DEFAULT_EMAIL_THEME, orderUrl, "View order")}</div>`,
       ].join("")

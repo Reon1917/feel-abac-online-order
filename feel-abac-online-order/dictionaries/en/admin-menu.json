@@ -45,7 +45,7 @@
   },
   "actions": {
     "openLayoutEditor": "Open layout editor",
-    "openRecommendations": "Manage recommendations"
+    "openRecommendations": "Manage Staff's Picks"
   },
   "layoutEditor": {
     "title": "Menu layout editor",
@@ -96,22 +96,22 @@
     }
   },
   "recommendationsPage": {
-    "badge": "Recommended spotlight",
-    "title": "Curate recommended dishes",
-    "subtitle": "Pick a handful of dishes to pin above the diner menu. Updates are live as soon as you save.",
+    "badge": "Staff's Picks spotlight",
+    "title": "Curate Staff's Picks",
+    "subtitle": "Pick a handful of dishes to pin in Staff's Picks at the top of the diner menu. Updates are live as soon as you save.",
     "buttons": {
       "dashboard": "Back to dashboard",
       "builder": "Open builder"
     },
     "stats": {
-      "label": "Featured items",
-      "description": "Pinned cards appear at the very top of the diner experience."
+      "label": "Staff's Picks",
+      "description": "Pinned cards appear at the very top of the Staff's Picks section."
     }
   },
   "recommendationsManager": {
-    "title": "Spotlight & recommendations",
-    "subtitle": "Choose which dishes appear in the featured carousel before diners browse the menu.",
-    "addButton": "Add recommended menu items",
+    "title": "Staff's Picks",
+    "subtitle": "Choose which dishes appear in the Staff's Picks carousel before diners browse the menu.",
+    "addButton": "Add Staff's Picks items",
     "dialog": {
       "title": "Add menu item",
       "description": "Pick a category, then choose an existing dish. Duplicates are blocked automatically.",
@@ -120,15 +120,15 @@
       "itemLabel": "Menu item",
       "itemPlaceholder": "Select menu item",
       "badgeLabel": "Badge label (optional)",
-      "badgePlaceholder": "Chef's pick",
+      "badgePlaceholder": "Staff pick",
       "cancel": "Cancel",
       "submit": "Add"
     },
     "states": {
-      "loading": "Refreshing recommendations…",
-      "empty": "Nothing featured yet. Add a dish to show the recommended section at the top of the menu."
+      "loading": "Refreshing Staff's Picks…",
+      "empty": "Nothing in Staff's Picks yet. Add a dish to show this section at the top of the menu."
     },
-    "removeConfirm": "Remove this item from the recommended section?",
+    "removeConfirm": "Remove this item from Staff's Picks?",
     "list": {
       "available": "Available",
       "unavailable": "Out of stock",
@@ -140,16 +140,16 @@
       "save": "Save order"
     },
     "toasts": {
-      "added": "Recommendation added",
+      "added": "Item added to Staff's Picks",
       "addError": "Could not add item",
-      "removed": "Recommendation removed",
-      "removeError": "Could not remove recommendation",
+      "removed": "Item removed from Staff's Picks",
+      "removeError": "Could not remove item",
       "badgeSaved": "Badge updated",
       "badgeError": "Could not update badge",
-      "orderSaved": "Recommendation order updated",
+      "orderSaved": "Staff's Picks order updated",
       "orderError": "Could not save order",
-      "loadError": "Failed to load recommendations",
-      "selectionError": "Pick an item to feature"
+      "loadError": "Failed to load Staff's Picks",
+      "selectionError": "Pick an item for Staff's Picks"
     }
   }
 }

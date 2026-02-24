@@ -1,0 +1,50 @@
+{
+  "pageTitle": "Reports",
+  "pageSubtitle": "Track sales performance with refund-aware totals and cost breakdowns.",
+  "periodLabel": "Period",
+  "periods": {
+    "today": "Today",
+    "last7": "Last 7 days",
+    "last30": "Last 30 days"
+  },
+  "cards": {
+    "netSales": "Net sales",
+    "grossSales": "Gross paid sales",
+    "paidRefunds": "Refunds paid",
+    "pendingRefunds": "Refunds pending",
+    "orders": "Orders in period",
+    "paidOrders": "Paid orders",
+    "cancelledOrders": "Cancelled orders",
+    "openRefunds": "Open refunds"
+  },
+  "breakdown": {
+    "title": "Net sales breakdown",
+    "subtitle": "Net = gross paid sales - paid refunds",
+    "food": "Food",
+    "tax": "Tax",
+    "delivery": "Delivery"
+  },
+  "refundBreakdown": {
+    "title": "Refund impact",
+    "paid": "Paid refunds",
+    "pending": "Pending refunds"
+  },
+  "daily": {
+    "title": "Daily trend",
+    "empty": "No orders in this period yet.",
+    "columns": {
+      "day": "Day",
+      "orders": "Orders",
+      "paidOrders": "Paid",
+      "gross": "Gross",
+      "refunds": "Refunds paid",
+      "net": "Net"
+    }
+  },
+  "notes": {
+    "title": "How totals are calculated",
+    "paidOnly": "Gross sales include orders with verified payment only.",
+    "refunds": "Paid refunds reduce net sales immediately; requested refunds are shown separately.",
+    "allocation": "Partial refunds are allocated across food, tax, and delivery based on refund type."
+  }
+}

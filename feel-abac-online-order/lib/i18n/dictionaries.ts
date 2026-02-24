@@ -6,6 +6,7 @@ import adminMenuEn from "@/dictionaries/en/admin-menu.json";
 import adminDeliveryEn from "@/dictionaries/en/admin-delivery.json";
 import adminOrdersEn from "@/dictionaries/en/admin-orders.json";
 import adminPromptpayEn from "@/dictionaries/en/admin-promptpay.json";
+import adminReportsEn from "@/dictionaries/en/admin-reports.json";
 import commonEn from "@/dictionaries/en/common.json";
 import orderEn from "@/dictionaries/en/order.json";
 import profileEn from "@/dictionaries/en/profile.json";
@@ -19,6 +20,7 @@ import adminMenuMy from "@/dictionaries/my/admin-menu.json";
 import adminDeliveryMy from "@/dictionaries/my/admin-delivery.json";
 import adminOrdersMy from "@/dictionaries/my/admin-orders.json";
 import adminPromptpayMy from "@/dictionaries/my/admin-promptpay.json";
+import adminReportsMy from "@/dictionaries/my/admin-reports.json";
 import commonMy from "@/dictionaries/my/common.json";
 import orderMy from "@/dictionaries/my/order.json";
 import profileMy from "@/dictionaries/my/profile.json";
@@ -36,6 +38,7 @@ export const DICTIONARIES = {
     adminDelivery: adminDeliveryEn,
     adminOrders: adminOrdersEn,
     adminPromptpay: adminPromptpayEn,
+    adminReports: adminReportsEn,
     common: commonEn,
     order: orderEn,
     profile: profileEn,
@@ -50,6 +53,7 @@ export const DICTIONARIES = {
     adminDelivery: adminDeliveryMy,
     adminOrders: adminOrdersMy,
     adminPromptpay: adminPromptpayMy,
+    adminReports: adminReportsMy,
     common: commonMy,
     order: orderMy,
     profile: profileMy,

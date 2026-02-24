@@ -23,10 +23,10 @@
     }
   },
   "recommendations": {
-    "label": "Chef's picks",
-    "title": "Recommended for you",
-    "subtitle": "Hand-picked dishes the kitchen loves right now.",
-    "badgeDefault": "Chef's pick"
+    "label": "Staff's picks",
+    "title": "Staff's Picks",
+    "subtitle": "Hand-picked dishes our team is highlighting right now.",
+    "badgeDefault": "Staff pick"
   },
   "detail": {
     "back": "Back to menu",
