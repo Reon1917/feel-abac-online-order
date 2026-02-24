@@ -18,6 +18,7 @@ import {
   LogOut,
   Store,
   Package,
+  BarChart3,
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
@@ -87,6 +88,11 @@ export function AdminSidebar({
             href: "/admin/orders/archived",
             icon: Archive,
             label: "Past Orders",
+          },
+          {
+            href: "/admin/reports",
+            icon: BarChart3,
+            label: "Reports",
           },
         ],
       },

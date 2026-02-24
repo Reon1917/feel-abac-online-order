@@ -1087,8 +1087,8 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   const renderOrderCard = (order: OrderAdminSummary) => {
     const showSlipReceived = order.status === "payment_review";
     const isTerminal =
+      order.isClosed ||
       order.status === "cancelled" ||
-      order.status === "delivered" ||
       order.status === "closed";
 
     return (

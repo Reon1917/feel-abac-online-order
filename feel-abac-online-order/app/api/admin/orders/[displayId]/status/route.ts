@@ -391,12 +391,7 @@ export async function PATCH(
     // Keep cancelled status for customer-facing views; use isClosed for archiving.
     nextStatus = order.status === "cancelled" ? "cancelled" : "closed";
   } else {
-    if (order.status === "delivered") {
-      return NextResponse.json(
-        { error: "Delivered orders cannot be cancelled" },
-        { status: 400 }
-      );
-    }
+    // Allow cancellation at any stage as long as the order is not already closed.
     nextStatus = "cancelled";
   }
 

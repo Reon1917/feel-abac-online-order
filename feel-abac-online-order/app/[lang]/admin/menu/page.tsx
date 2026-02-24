@@ -64,7 +64,7 @@ export default async function AdminMenuPage({ params }: PageProps) {
             <Button asChild variant="outline" size="sm">
               <Link href={withLocalePath(locale, "/admin/menu/recommended")}>
                 <Star className="mr-2 h-4 w-4" />
-                Featured
+                Staff&apos;s Picks
               </Link>
             </Button>
           </div>

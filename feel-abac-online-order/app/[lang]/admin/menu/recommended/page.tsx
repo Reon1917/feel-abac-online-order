@@ -41,10 +41,10 @@ export default async function AdminRecommendedMenuPage({
     <AdminLayoutShell locale={locale}>
       <AdminHeader
         locale={locale}
-        title={dict.recommendationsPage?.title ?? "Featured Items"}
+        title={dict.recommendationsPage?.title ?? "Staff's Picks"}
         subtitle={
           dict.recommendationsPage?.subtitle ??
-          "Pin dishes to highlight at the top of the diner menu"
+          "Pin dishes to highlight in Staff's Picks at the top of the diner menu"
         }
         languageLabels={common.languageSwitcher}
         actions={
@@ -62,7 +62,7 @@ export default async function AdminRecommendedMenuPage({
       <div className="p-4 md:p-6 lg:p-8">
         <StatsGrid columns={3}>
           <StatsCard
-            title={dict.recommendationsPage?.stats?.label ?? "Featured Items"}
+            title={dict.recommendationsPage?.stats?.label ?? "Staff's Picks"}
             value={featuredCount}
             subtitle="Pinned at the top of diner menu"
             variant="success"
