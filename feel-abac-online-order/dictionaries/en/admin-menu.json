@@ -45,7 +45,7 @@
   },
   "actions": {
     "openLayoutEditor": "Open layout editor",
-    "openRecommendations": "Manage staff's picks"
+    "openRecommendations": "Manage Staff's Picks"
   },
   "layoutEditor": {
     "title": "Menu layout editor",
@@ -97,21 +97,21 @@
   },
   "recommendationsPage": {
     "badge": "Staff's Picks spotlight",
-    "title": "Curate staff's picks",
+    "title": "Curate Staff's Picks",
     "subtitle": "Pick a handful of dishes to pin in Staff's Picks at the top of the diner menu. Updates are live as soon as you save.",
     "buttons": {
       "dashboard": "Back to dashboard",
       "builder": "Open builder"
     },
     "stats": {
-      "label": "Staff's picks",
+      "label": "Staff's Picks",
       "description": "Pinned cards appear at the very top of the Staff's Picks section."
     }
   },
   "recommendationsManager": {
-    "title": "Staff's picks",
+    "title": "Staff's Picks",
     "subtitle": "Choose which dishes appear in the Staff's Picks carousel before diners browse the menu.",
-    "addButton": "Add staff's picks items",
+    "addButton": "Add Staff's Picks items",
     "dialog": {
       "title": "Add menu item",
       "description": "Pick a category, then choose an existing dish. Duplicates are blocked automatically.",

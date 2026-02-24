@@ -9,6 +9,7 @@ import { escapeHtml } from "@/lib/email/templates/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// NOTE: maxDuration > 60s requires Vercel Pro/Enterprise on serverless routes.
 export const maxDuration = 300;
 
 const RETENTION_DAYS = 7;
@@ -299,7 +300,7 @@ export async function GET(request: Request) {
           });
           // Log but continue - orphan files are acceptable
           console.error(
-            `[cleanup-orders] Failed to delete UploadThing batch ${i / UPLOADTHING_BATCH_SIZE + 1}:`,
+            `[cleanup-orders] Failed to delete UploadThing batch ${batchNumber}:`,
             error
           );
         }
@@ -355,8 +356,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const details = getErrorDetails(error);
+    const durationMs = Date.now() - startTime;
     appendRunLog(runLogs, "Fatal cleanup failure", {
       message: details.message,
+      durationMs,
     });
     console.error("[cleanup-orders] Cleanup failed:", error);
     
@@ -373,14 +376,14 @@ export async function GET(request: Request) {
         uploadthingBatchSize: UPLOADTHING_BATCH_SIZE,
       },
       runLogs,
-      durationMs: Date.now() - startTime,
+      durationMs,
     });
 
     return NextResponse.json(
       {
         success: false,
         error: details.message,
-        durationMs: Date.now() - startTime,
+        durationMs,
       },
       { status: 500 }
     );
