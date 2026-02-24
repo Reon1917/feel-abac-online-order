@@ -18,6 +18,7 @@ import {
   type Locale,
 } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { BANGKOK_TIMEZONE } from "@/lib/timezone";
 
 type PageProps = {
   params: Promise<{
@@ -72,6 +73,7 @@ function formatDisplayDay(displayDay: string, locale: Locale) {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: BANGKOK_TIMEZONE,
   }).format(value);
 }
 

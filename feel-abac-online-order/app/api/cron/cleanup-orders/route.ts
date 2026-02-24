@@ -200,20 +200,6 @@ export async function GET(request: Request) {
       isVercelCronAgent,
       hasVercelCronHeader: Boolean(vercelCronHeader),
     });
-    // Alert only for likely cron invocations to avoid noise from arbitrary probes.
-    if (isVercelCronAgent || Boolean(vercelCronHeader)) {
-      await sendCleanupFailureEmail({
-        phase: "auth",
-        reason: "Authorization header did not match CRON_SECRET",
-        context: {
-          source,
-          hasAuthHeader: Boolean(authHeader),
-          hasVercelCronHeader: Boolean(vercelCronHeader),
-        },
-        runLogs,
-        durationMs: Date.now() - startTime,
-      });
-    }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -1089,6 +1089,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     const isTerminal =
       order.isClosed ||
       order.status === "cancelled" ||
+      order.status === "delivered" ||
       order.status === "closed";
 
     return (
