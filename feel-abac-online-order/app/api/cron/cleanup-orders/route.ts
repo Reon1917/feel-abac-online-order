@@ -5,6 +5,7 @@ import { UTApi } from "uploadthing/server";
 import { db } from "@/src/db/client";
 import { orders, orderPayments } from "@/src/db/schema";
 import { sendTransactionalEmail } from "@/lib/email/brevo";
+import { escapeHtml } from "@/lib/email/templates/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,15 +17,6 @@ const UPLOADTHING_BATCH_SIZE = 50;
 
 // Set this to receive cleanup reports (or use env var)
 const CLEANUP_NOTIFY_EMAIL = process.env.CLEANUP_NOTIFY_EMAIL;
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 function safeStringify(value: unknown) {
   try {
@@ -43,6 +35,8 @@ function appendRunLog(
   const metaSuffix =
     meta && Object.keys(meta).length > 0 ? ` ${safeStringify(meta)}` : "";
   runLogs.push(`[${timestamp}] ${message}${metaSuffix}`);
+  // Keep at most 250 log lines in memory; bump the numeric cap below if needed.
+  // Older entries are dropped first to prevent unbounded growth on long runs.
   if (runLogs.length > 250) {
     runLogs.shift();
   }

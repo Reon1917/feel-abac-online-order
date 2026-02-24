@@ -96,7 +96,7 @@ function allocateRefundComponents(order: AdminReportOrder): ReportBreakdown {
     return zeroBreakdown();
   }
 
-  const ratio = effectiveAmount / base.total;
+  const ratio = base.total > 0 ? Math.min(1, effectiveAmount / base.total) : 0;
   return buildBreakdown(
     round2(base.food * ratio),
     round2(base.tax * ratio),

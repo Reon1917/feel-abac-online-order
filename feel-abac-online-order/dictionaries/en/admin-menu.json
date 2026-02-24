@@ -96,7 +96,7 @@
     }
   },
   "recommendationsPage": {
-    "badge": "Staff picks spotlight",
+    "badge": "Staff's Picks spotlight",
     "title": "Curate staff's picks",
     "subtitle": "Pick a handful of dishes to pin in Staff's Picks at the top of the diner menu. Updates are live as soon as you save.",
     "buttons": {

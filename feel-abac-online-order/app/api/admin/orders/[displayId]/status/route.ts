@@ -5,7 +5,7 @@ import { resolveUserId } from "@/lib/api/require-user";
 import { requireAdmin } from "@/lib/api/require-admin";
 import { db } from "@/src/db/client";
 import { orderEvents, orderPayments, orders } from "@/src/db/schema";
-import type { OrderStatus } from "@/lib/orders/types";
+import type { OrderStatus, RefundStatus, RefundType } from "@/lib/orders/types";
 import {
   broadcastOrderStatusChanged,
   broadcastOrderClosed,
@@ -558,6 +558,39 @@ export async function PATCH(
       });
     } catch (emailError) {
       console.error("[delivered] Failed to send email notification:", emailError);
+    }
+  }
+
+  if (action === "cancel") {
+    // Fetch order details for email (wrapped in try-catch to not block cancellation)
+    try {
+      const orderDetails = await getOrderEmailDetails(order.displayId);
+      await sendOrderStatusEmailNotification({
+        userId: order.userId,
+        displayId: order.displayId,
+        template: "cancelled",
+        totalAmount: order.totalAmount,
+        cancelledFromStatus: order.status as OrderStatus,
+        cancelReason: updatePayload.cancelReason ?? reason,
+        refundType:
+          (updatePayload.refundType as RefundType | null) ??
+          (order.refundType as RefundType | null) ??
+          null,
+        refundStatus:
+          (updatePayload.refundStatus as RefundStatus | null) ??
+          (order.refundStatus as RefundStatus | null) ??
+          null,
+        refundAmount:
+          updatePayload.refundAmount != null
+            ? Number(updatePayload.refundAmount)
+            : order.refundAmount != null
+              ? Number(order.refundAmount)
+              : null,
+        refundReason: updatePayload.refundReason ?? order.refundReason ?? null,
+        orderDetails,
+      });
+    } catch (emailError) {
+      console.error("[cancel] Failed to send email notification:", emailError);
     }
   }
 
