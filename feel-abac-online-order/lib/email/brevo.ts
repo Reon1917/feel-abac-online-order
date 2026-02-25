@@ -9,6 +9,19 @@ type SendTransactionalEmailInput = {
 
 const DEFAULT_BREVO_BASE_URL = "https://api.brevo.com/v3";
 
+function maskEmailForLog(email: string) {
+  const normalized = email.trim();
+  if (!normalized) return "[redacted-email]";
+
+  const atIndex = normalized.lastIndexOf("@");
+  if (atIndex <= 0 || atIndex === normalized.length - 1) {
+    return "[redacted-email]";
+  }
+
+  const domain = normalized.slice(atIndex + 1);
+  return `***@${domain}`;
+}
+
 function getBrevoConfig() {
   const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
@@ -86,7 +99,7 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
           statusText: response.statusText,
           body: errorBody,
           sender: senderEmail,
-          to: to.replace(/(.{2}).*@/, "$1***@"), // Mask email
+          to: maskEmailForLog(to),
         });
       }
 
