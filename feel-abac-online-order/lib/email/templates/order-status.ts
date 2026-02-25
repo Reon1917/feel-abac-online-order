@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
+import { getAppBaseUrl } from "@/lib/env/app-base-url";
 import {
   DEFAULT_EMAIL_THEME,
   escapeHtml,
@@ -11,25 +12,6 @@ import {
 } from "@/lib/email/templates/ui";
 import { computeOrderTotals, ORDER_VAT_PERCENT_LABEL } from "@/lib/orders/totals";
 import type { OrderStatus, RefundStatus, RefundType } from "@/lib/orders/types";
-
-function getAppBaseUrl() {
-  const explicit =
-    process.env.APP_BASE_URL ??
-    process.env.NEXT_PUBLIC_APP_BASE_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    null;
-  if (explicit) return explicit.replace(/\/+$/, "");
-
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) {
-    const normalized = vercelUrl.startsWith("http")
-      ? vercelUrl
-      : `https://${vercelUrl}`;
-    return normalized.replace(/\/+$/, "");
-  }
-
-  return "http://localhost:3000";
-}
 
 export type OrderStatusEmailTemplateKey =
   | "proceed_to_payment"

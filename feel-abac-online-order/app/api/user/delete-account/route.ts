@@ -3,22 +3,32 @@ import { auth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
-  const password =
-    body && typeof body.password === "string" && body.password.length > 0
-      ? body.password
-      : undefined;
+  const rawPassword =
+    body && typeof body.password === "string" ? body.password : "";
+  const password = rawPassword.trim().length > 0 ? rawPassword : undefined;
 
   try {
-    const response = await auth.api.deleteUser({
+    const result = await auth.api.deleteUser({
       body: {
         password,
-        callbackURL: "/?accountDeleted=1",
+        callbackURL: "/",
       },
       headers: request.headers,
-      asResponse: true,
+      asResponse: false,
+      returnHeaders: false,
     });
 
-    return response;
+    const verificationSent = result?.message === "Verification email sent";
+    const status = verificationSent ? "verification_sent" : "deleted";
+
+    return NextResponse.json(
+      {
+        success: true,
+        status,
+        verificationSent,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[delete-account] failed", error);

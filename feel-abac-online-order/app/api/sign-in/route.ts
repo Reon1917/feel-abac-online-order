@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { getLinkedProvidersByEmail } from "@/lib/auth/queries";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -11,9 +12,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const email = body.email.trim().toLowerCase();
+  const password = body.password;
+
+  const providers = await getLinkedProvidersByEmail(email);
+  if (providers.includes("google") && !providers.includes("credential")) {
+    return Response.json(
+      { message: "This account uses Google sign-in. Please continue with Google." },
+      { status: 400 }
+    );
+  }
+
   try {
     return await auth.api.signInEmail({
-      body,
+      body: {
+        email,
+        password,
+      },
       headers: request.headers,
       asResponse: true,
     });

@@ -4,21 +4,38 @@ import { APIError } from "better-auth/api";
 
 import { db, schema } from "@/src/db/client";
 import { sendTransactionalEmail } from "@/lib/email/brevo";
+import { buildResetPasswordEmail } from "@/lib/email/templates/auth";
+import { getAppBaseUrl } from "@/lib/env/app-base-url";
 import { getAdminByUserId } from "@/lib/admin";
 
+const authBaseUrl = getAppBaseUrl();
+
 export const auth = betterAuth({
+  baseURL: authBaseUrl,
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
     usePlural: true,
   }),
+  account: {
+    accountLinking: {
+      enabled: false,
+    },
+  },
   emailAndPassword: {
     enabled: true,
     sendResetPassword: async ({ user, url }) => {
-      void sendTransactionalEmail({
+      const resetEmail = buildResetPasswordEmail({
+        resetUrl: url,
+        expiresInMinutes: 60,
+      });
+
+      await sendTransactionalEmail({
         to: user.email,
-        subject: "Reset your Feel ABAC password",
-        text: `We received a request to reset your Feel ABAC password.\n\nIf you made this request, click the link below to choose a new password:\n\n${url}\n\nIf you did not request a password reset, you can safely ignore this email.`,
+        subject: resetEmail.subject,
+        text: resetEmail.text,
+        html: resetEmail.html,
+        throwOnFailure: true,
       });
     },
     resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
@@ -34,10 +51,11 @@ export const auth = betterAuth({
     deleteUser: {
       enabled: true,
       sendDeleteAccountVerification: async ({ user, url }) => {
-        void sendTransactionalEmail({
+        await sendTransactionalEmail({
           to: user.email,
           subject: "Confirm deletion of your Feel ABAC account",
           text: `You requested to delete your Feel ABAC account.\n\nIf this was you, click the link below to permanently delete your account:\n\n${url}\n\nIf you did not request this, you can safely ignore this email.`,
+          throwOnFailure: true,
         });
       },
       beforeDelete: async (user) => {
