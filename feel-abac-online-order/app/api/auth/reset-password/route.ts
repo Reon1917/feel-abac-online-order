@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { and, eq, gt } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { passwordSchema } from "@/lib/validations";
+import { hasCredentialAccount } from "@/lib/auth/queries";
+import { db } from "@/src/db/client";
+import { verifications } from "@/src/db/schema";
 
 const resetPasswordBodySchema = z
   .object({
@@ -31,6 +35,30 @@ export async function POST(request: NextRequest) {
   }
 
   const { token, newPassword } = parsed.data;
+
+  const [verification] = await db
+    .select({ userId: verifications.value })
+    .from(verifications)
+    .where(
+      and(
+        eq(verifications.identifier, `reset-password:${token}`),
+        gt(verifications.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+
+  if (verification) {
+    const hasPassword = await hasCredentialAccount(verification.userId);
+    if (!hasPassword) {
+      return NextResponse.json(
+        {
+          message:
+            "This account uses Google sign-in. Please continue with Google instead of resetting a password.",
+        },
+        { status: 400 }
+      );
+    }
+  }
 
   try {
     const response = await auth.api.resetPassword({

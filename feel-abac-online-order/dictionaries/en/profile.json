@@ -31,20 +31,34 @@
     "security": {
       "title": "Security",
       "description": "Keep your account secure. If you think someone else has access, reset your password and review your devices.",
-      "passwordResetHint": "Forgot your password? Use the “Forgot password?” link on the sign-in form to request a reset email."
+      "passwordResetHint": "Password reset emails can take a few minutes. Check spam/junk if you do not see it.",
+      "authMethodTitle": "Sign-in method",
+      "passwordMethodLabel": "Email + password",
+      "googleMethodLabel": "Google",
+      "unknownMethodLabel": "Unknown method",
+      "resetPasswordButton": "Send password reset email",
+      "googleOnlyResetHint": "This account uses Google sign-in, so password reset is not available.",
+      "multipleMethodsWarning": "This account has multiple sign-in methods linked. We now recommend using only one method for consistency."
     },
     "dangerZone": {
       "title": "Danger zone",
       "description": "Deleting your account is permanent. Your past orders may remain for restaurant records, but you will no longer be able to sign in.",
       "subtitle": "We will send you a confirmation email before final deletion.",
       "oauthDeleteHint": "You signed in with Google, so we'll send you a confirmation email instead of asking for a password.",
+      "passwordOptionalHint": "If you know your password, you can include it as an extra verification step.",
+      "openDialogButton": "Delete account",
+      "modalTitle": "Confirm account deletion",
+      "modalDescription": "Type DELETE to continue. We will send a final confirmation email before your account is permanently removed.",
       "passwordLabel": "Current password",
+      "passwordOptionalLabel": "Current password (optional)",
       "passwordPlaceholder": "Enter your password",
       "confirmLabel": "Type DELETE to confirm",
       "confirmPlaceholder": "DELETE",
       "deleteButton": "Delete account",
       "sendVerificationButton": "Send confirmation email",
-      "deletingLabel": "Deleting…"
+      "deletingLabel": "Deleting…",
+      "cancelDeleteButton": "Cancel",
+      "confirmDeleteButton": "Continue"
     }
   },
   "toast": {
@@ -54,6 +68,7 @@
     "accountDeleteVerificationSent": "Check your email to confirm account deletion.",
     "accountDeleteError": "Failed to delete your account. Please try again.",
     "deleteConfirmMismatch": "Type DELETE exactly to confirm account deletion.",
-    "passwordRequired": "Please enter your password to delete your account."
+    "passwordRequired": "Please enter your password to delete your account.",
+    "requestTimeout": "The request took too long. Please try again."
   }
 }

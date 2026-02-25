@@ -3,6 +3,8 @@ type SendTransactionalEmailInput = {
   subject: string;
   text?: string;
   html?: string;
+  timeoutMs?: number;
+  throwOnFailure?: boolean;
 };
 
 const DEFAULT_BREVO_BASE_URL = "https://api.brevo.com/v3";
@@ -32,11 +34,28 @@ function getBrevoConfig() {
 
 export async function sendTransactionalEmail(input: SendTransactionalEmailInput) {
   const config = getBrevoConfig();
-  if (!config) return;
+  if (!config) {
+    if (input.throwOnFailure) {
+      throw new Error("Email service is not configured.");
+    }
+    return;
+  }
 
   const { apiKey, senderEmail, senderName, baseUrl } = config;
 
-  if (!input.to || !input.subject) return;
+  if (!input.to || !input.subject) {
+    if (input.throwOnFailure) {
+      throw new Error("Email recipient and subject are required.");
+    }
+    return;
+  }
+
+  const timeoutMs =
+    typeof input.timeoutMs === "number" && input.timeoutMs > 0
+      ? input.timeoutMs
+      : 10_000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${baseUrl}/smtp/email`, {
@@ -52,21 +71,37 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
         textContent: input.text || undefined,
         htmlContent: input.html || undefined,
       }),
+      signal: controller.signal,
     });
 
-    if (!response.ok && process.env.NODE_ENV !== "production") {
+    if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
-      console.error("[brevo] Failed to send email", {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorBody,
-        sender: senderEmail,
-        to: input.to?.replace(/(.{2}).*@/, "$1***@"), // Mask email
-      });
+
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[brevo] Failed to send email", {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody,
+          sender: senderEmail,
+          to: input.to?.replace(/(.{2}).*@/, "$1***@"), // Mask email
+        });
+      }
+
+      if (input.throwOnFailure) {
+        throw new Error(
+          `Brevo responded with ${response.status} ${response.statusText}`.trim()
+        );
+      }
     }
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[brevo] Error while sending email", error);
     }
+
+    if (input.throwOnFailure) {
+      throw error;
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
