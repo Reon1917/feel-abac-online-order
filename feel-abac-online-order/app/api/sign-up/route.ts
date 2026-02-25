@@ -18,6 +18,16 @@ export async function POST(request: NextRequest) {
   }
 
   const email = body.email.trim().toLowerCase();
+  const name = body.name.trim();
+  const password = body.password;
+
+  if (!name || !password || !email) {
+    return Response.json(
+      { message: "Name, email, and password are required." },
+      { status: 400 }
+    );
+  }
+
   const providers = await getLinkedProvidersByEmail(email);
   if (providers.includes("google") && !providers.includes("credential")) {
     return Response.json(
@@ -32,8 +42,9 @@ export async function POST(request: NextRequest) {
   try {
     return await auth.api.signUpEmail({
       body: {
-        ...body,
+        name,
         email,
+        password,
       },
       headers: request.headers,
       asResponse: true,

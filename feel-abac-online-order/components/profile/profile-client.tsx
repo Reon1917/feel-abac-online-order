@@ -58,6 +58,8 @@ type ProfileClientProps = {
 type DeleteAccountResponse = {
   success?: boolean;
   message?: string;
+  status?: "verification_sent" | "deleted";
+  verificationSent?: boolean;
 };
 
 const DELETE_CONFIRM_VALUE = "DELETE";
@@ -185,7 +187,8 @@ export function ProfileClient({
         return;
       }
 
-      const wasVerificationFlow = data.message === "Verification email sent";
+      const wasVerificationFlow =
+        data.status === "verification_sent" || data.verificationSent === true;
       const successMessage = wasVerificationFlow
         ? toastMessages.accountDeleteVerificationSent
         : toastMessages.accountDeleted;

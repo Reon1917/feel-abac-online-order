@@ -18,7 +18,17 @@ export async function POST(request: NextRequest) {
       returnHeaders: false,
     });
 
-    return NextResponse.json(result, { status: 200 });
+    const verificationSent = result?.message === "Verification email sent";
+    const status = verificationSent ? "verification_sent" : "deleted";
+
+    return NextResponse.json(
+      {
+        success: true,
+        status,
+        verificationSent,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[delete-account] failed", error);

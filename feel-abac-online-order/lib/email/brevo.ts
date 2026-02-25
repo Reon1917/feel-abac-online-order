@@ -42,18 +42,21 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
   }
 
   const { apiKey, senderEmail, senderName, baseUrl } = config;
+  const to = input.to?.trim();
+  const subject = input.subject?.trim();
 
-  if (!input.to || !input.subject) {
+  if (!to || !subject) {
     if (input.throwOnFailure) {
       throw new Error("Email recipient and subject are required.");
     }
     return;
   }
 
-  const timeoutMs =
-    typeof input.timeoutMs === "number" && input.timeoutMs > 0
-      ? input.timeoutMs
-      : 10_000;
+  const parsedTimeoutMs = Number(input.timeoutMs);
+  const normalizedTimeoutMs = Number.isFinite(parsedTimeoutMs)
+    ? Math.floor(parsedTimeoutMs)
+    : 10_000;
+  const timeoutMs = Math.min(Math.max(normalizedTimeoutMs, 100), 120_000);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -66,8 +69,8 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
       },
       body: JSON.stringify({
         sender: { email: senderEmail, name: senderName },
-        to: [{ email: input.to }],
-        subject: input.subject,
+        to: [{ email: to }],
+        subject,
         textContent: input.text || undefined,
         htmlContent: input.html || undefined,
       }),
@@ -83,7 +86,7 @@ export async function sendTransactionalEmail(input: SendTransactionalEmailInput)
           statusText: response.statusText,
           body: errorBody,
           sender: senderEmail,
-          to: input.to?.replace(/(.{2}).*@/, "$1***@"), // Mask email
+          to: to.replace(/(.{2}).*@/, "$1***@"), // Mask email
         });
       }
 
