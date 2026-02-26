@@ -6,6 +6,12 @@
   "workspace": {
     "badge": "Order management"
   },
+  "quickActions": {
+    "presetLocations": {
+      "label": "Preset Locations",
+      "description": "Manage saved preset locations customers can choose during checkout."
+    }
+  },
   "cards": {
     "menuBuilder": {
       "title": "Menu builder",

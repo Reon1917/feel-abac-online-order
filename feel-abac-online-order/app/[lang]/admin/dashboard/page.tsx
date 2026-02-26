@@ -34,6 +34,7 @@ export default async function AdminDashboard({ params }: PageProps) {
 
   const locale = lang as Locale;
   const common = getDictionary(locale, "common");
+  const dashboardDictionary = getDictionary(locale, "adminDashboard");
 
   const sessionData = await getSession();
 
@@ -103,8 +104,12 @@ export default async function AdminDashboard({ params }: PageProps) {
     },
     {
       icon: MapPin,
-      label: "Preset Locations",
-      description: "Manage saved preset locations customers can choose during checkout.",
+      label:
+        dashboardDictionary.quickActions?.presetLocations?.label ??
+        "Preset Locations",
+      description:
+        dashboardDictionary.quickActions?.presetLocations?.description ??
+        "Manage saved preset locations customers can choose during checkout.",
       href: "/admin/delivery",
       variant: "default" as const,
       minRole: "admin" as AdminRole,

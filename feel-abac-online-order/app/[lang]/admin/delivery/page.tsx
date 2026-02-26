@@ -48,23 +48,38 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
       <div className="p-4 md:p-6 lg:p-8">
         <StatsGrid columns={3}>
           <StatsCard
-            title="Active Preset Locations"
+            title={
+              dict.stats?.activePresetLocations?.title ??
+              "Active Preset Locations"
+            }
             value={activeLocations.length}
-            subtitle="Preset choices available to customers"
+            subtitle={
+              dict.stats?.activePresetLocations?.subtitle ??
+              "Preset choices available to customers"
+            }
             variant="success"
           />
           <StatsCard
-            title="Total Preset Locations"
+            title={
+              dict.stats?.totalPresetLocations?.title ??
+              "Total Preset Locations"
+            }
             value={locations.length}
-            subtitle="All preset choices configured"
+            subtitle={
+              dict.stats?.totalPresetLocations?.subtitle ??
+              "All preset choices configured"
+            }
           />
           <StatsCard
-            title="Building Options"
+            title={dict.stats?.buildingOptions?.title ?? "Building Options"}
             value={activeLocations.reduce(
               (sum, loc) => sum + loc.buildings.length,
               0
             )}
-            subtitle="Total selectable building entries"
+            subtitle={
+              dict.stats?.buildingOptions?.subtitle ??
+              "Total selectable building entries"
+            }
           />
         </StatsGrid>
 

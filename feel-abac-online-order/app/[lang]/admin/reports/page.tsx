@@ -50,6 +50,15 @@ type CustomRange = {
   toDay: string;
 };
 
+const PERIOD_TO_RANGE: Record<ReportPeriodKey, AdminReportRange> = {
+  today: "today",
+  yesterday: "yesterday",
+  last3: "last_3_days",
+  last7: "last_7_days",
+};
+
+const PERIOD_KEYS = Object.keys(PERIOD_TO_RANGE) as ReportPeriodKey[];
+
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
   style: "currency",
   currency: "THB",
@@ -114,10 +123,7 @@ function resolvePeriodKey(period: string | undefined): ReportPeriodKey {
 }
 
 function resolvePeriodRange(periodKey: ReportPeriodKey): AdminReportRange {
-  if (periodKey === "yesterday") return "yesterday";
-  if (periodKey === "last3") return "last_3_days";
-  if (periodKey === "last7") return "last_7_days";
-  return "today";
+  return PERIOD_TO_RANGE[periodKey];
 }
 
 function resolveQuickBounds(periodKey: ReportPeriodKey, todayDay: string): CustomRange {
@@ -206,32 +212,12 @@ export default async function AdminReportsPage({
   const fromInputValue = selectedCustomRange?.fromDay ?? quickBounds.fromDay;
   const toInputValue = selectedCustomRange?.toDay ?? quickBounds.toDay;
 
-  const periodOptions: PeriodOption[] = [
-    {
-      key: "today",
-      range: "today",
-      label: dictionary.periods.today,
-      description: dictionary.periodDescriptions.today,
-    },
-    {
-      key: "yesterday",
-      range: "yesterday",
-      label: dictionary.periods.yesterday,
-      description: dictionary.periodDescriptions.yesterday,
-    },
-    {
-      key: "last3",
-      range: "last_3_days",
-      label: dictionary.periods.last3,
-      description: dictionary.periodDescriptions.last3,
-    },
-    {
-      key: "last7",
-      range: "last_7_days",
-      label: dictionary.periods.last7,
-      description: dictionary.periodDescriptions.last7,
-    },
-  ];
+  const periodOptions: PeriodOption[] = PERIOD_KEYS.map((key) => ({
+    key,
+    range: PERIOD_TO_RANGE[key],
+    label: dictionary.periods[key],
+    description: dictionary.periodDescriptions[key],
+  }));
   const selectedOption =
     periodOptions.find((option) => option.key === selectedPeriodKey) ??
     periodOptions[0];

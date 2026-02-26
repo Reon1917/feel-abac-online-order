@@ -5,6 +5,20 @@
     "subtitle": "These are saved locations customers can pick quickly during onboarding and checkout.",
     "backToDashboard": "Back to dashboard"
   },
+  "stats": {
+    "activePresetLocations": {
+      "title": "Active Preset Locations",
+      "subtitle": "Preset choices available to customers"
+    },
+    "totalPresetLocations": {
+      "title": "Total Preset Locations",
+      "subtitle": "All preset choices configured"
+    },
+    "buildingOptions": {
+      "title": "Building Options",
+      "subtitle": "Total selectable building entries"
+    }
+  },
   "form": {
     "title": "Add preset location",
     "description": "Add a preset location with a fee range and optional building choices for customers.",

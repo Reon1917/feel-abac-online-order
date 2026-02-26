@@ -35,6 +35,24 @@ function dateToIso(value: Date | string | null | undefined) {
   return value.toISOString();
 }
 
+function isValidIsoDate(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = value.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return false;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 function mapOrderItemChoice(choice: typeof orderItemChoices.$inferSelect): OrderItemChoice {
   return {
     id: choice.id,
@@ -516,13 +534,21 @@ export async function getOrdersForAdminReport(
                   lte(orders.displayDay, todayInBangkok)
                 );
 
-  const customRangeCondition =
-    query.fromDay && query.toDay
-      ? and(
-          gte(orders.displayDay, sql`${query.fromDay}::date`),
-          lte(orders.displayDay, sql`${query.toDay}::date`)
-        )
+  const validFromDay = isValidIsoDate(query.fromDay) ? query.fromDay : null;
+  const validToDay = isValidIsoDate(query.toDay) ? query.toDay : null;
+  const normalizedCustomRange =
+    validFromDay && validToDay
+      ? validFromDay <= validToDay
+        ? { fromDay: validFromDay, toDay: validToDay }
+        : { fromDay: validToDay, toDay: validFromDay }
       : null;
+
+  const customRangeCondition = normalizedCustomRange
+    ? and(
+        gte(orders.displayDay, sql`${normalizedCustomRange.fromDay}::date`),
+        lte(orders.displayDay, sql`${normalizedCustomRange.toDay}::date`)
+      )
+    : null;
 
   const finalCondition = customRangeCondition
     ? and(

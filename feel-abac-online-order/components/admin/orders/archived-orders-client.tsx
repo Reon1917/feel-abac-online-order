@@ -248,28 +248,44 @@ export function ArchivedOrdersClient({
     [dictionary.errorLoading, dictionary.statusUpdatedToast]
   );
 
+  const patchOrderStatus = useCallback(
+    async (displayId: string, body: Record<string, unknown>) => {
+      const response = await fetch(
+        `/api/admin/orders/${displayId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? dictionary.errorLoading);
+      }
+      return payload as {
+        status?: string;
+        isClosed?: boolean;
+        refundStatus?: string | null;
+        refundType?: string | null;
+        refundAmount?: number | null;
+      };
+    },
+    [dictionary.errorLoading]
+  );
+
   const handleCloseOrder = useCallback(
     async (order: OrderAdminSummary) => {
       setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
       try {
-        const response = await fetch(
-          `/api/admin/orders/${order.displayId}/status`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "close" }),
-          }
-        );
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(payload?.error ?? dictionary.errorLoading);
-        }
+        const payload = await patchOrderStatus(order.displayId, {
+          action: "close",
+        });
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
               ? {
                   ...item,
-                  status: payload?.status ?? item.status,
+                  status: payload?.status ?? "closed",
                   isClosed: true,
                 }
               : item
@@ -284,31 +300,20 @@ export function ArchivedOrdersClient({
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, patchOrderStatus]
   );
 
   const handleCancelOrder = useCallback(
     async (order: OrderAdminSummary, data: CancelOrderData) => {
       setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
       try {
-        const response = await fetch(
-          `/api/admin/orders/${order.displayId}/status`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "cancel",
-              reason: data.reason,
-              refundType: data.refundType,
-              refundAmount: data.refundAmount,
-              refundReason: data.refundReason,
-            }),
-          }
-        );
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(payload?.error ?? dictionary.errorLoading);
-        }
+        const payload = await patchOrderStatus(order.displayId, {
+          action: "cancel",
+          reason: data.reason,
+          refundType: data.refundType,
+          refundAmount: data.refundAmount,
+          refundReason: data.refundReason,
+        });
 
         const nextStatus = payload?.status ?? "cancelled";
         const nextRefundStatus = payload?.refundStatus ?? order.refundStatus ?? null;
@@ -344,7 +349,7 @@ export function ArchivedOrdersClient({
         setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
       }
     },
-    [dictionary.errorLoading, dictionary.statusUpdatedToast]
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, patchOrderStatus]
   );
 
   const handleRejectSubmit = useCallback(
