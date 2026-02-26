@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CalendarDays } from "lucide-react";
 
 import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
 import { AdminHeader } from "@/components/admin/admin-header";
@@ -26,19 +27,28 @@ type PageProps = {
   }>;
   searchParams: Promise<{
     period?: string;
+    from?: string;
+    to?: string;
   }>;
 };
 
+type ReportPeriodKey =
+  | "today"
+  | "yesterday"
+  | "last3"
+  | "last7";
+
 type PeriodOption = {
-  key: "today" | "last7" | "last30";
+  key: ReportPeriodKey;
   range: AdminReportRange;
+  label: string;
+  description: string;
 };
 
-const PERIOD_OPTIONS: PeriodOption[] = [
-  { key: "today", range: "today" },
-  { key: "last7", range: "last_7_days" },
-  { key: "last30", range: "last_30_days" },
-];
+type CustomRange = {
+  fromDay: string;
+  toDay: string;
+};
 
 const currencyFormatter = new Intl.NumberFormat("en-TH", {
   style: "currency",
@@ -51,10 +61,81 @@ function formatCurrency(amount: number) {
   return currencyFormatter.format(amount);
 }
 
-function resolvePeriodRange(period: string | undefined): AdminReportRange {
-  if (period === "last7") return "last_7_days";
-  if (period === "last30") return "last_30_days";
+function toIsoDayUtc(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function parseIsoDayToUtc(day: string): Date {
+  const [yearRaw, monthRaw, dayRaw] = day.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const date = Number(dayRaw);
+  return new Date(Date.UTC(year, month - 1, date));
+}
+
+function isValidIsoDay(day: string | undefined): day is string {
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return false;
+  }
+  const parsed = parseIsoDayToUtc(day);
+  return Number.isFinite(parsed.getTime()) && toIsoDayUtc(parsed) === day;
+}
+
+function shiftIsoDay(day: string, days: number) {
+  const next = parseIsoDayToUtc(day);
+  next.setUTCDate(next.getUTCDate() + days);
+  return toIsoDayUtc(next);
+}
+
+function getBangkokTodayIsoDay() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BANGKOK_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+function clampIsoDay(day: string, minDay: string, maxDay: string) {
+  if (day < minDay) return minDay;
+  if (day > maxDay) return maxDay;
+  return day;
+}
+
+function resolvePeriodKey(period: string | undefined): ReportPeriodKey {
+  if (period === "yesterday") return "yesterday";
+  if (period === "last3") return "last3";
+  if (period === "last7") return "last7";
   return "today";
+}
+
+function resolvePeriodRange(periodKey: ReportPeriodKey): AdminReportRange {
+  if (periodKey === "yesterday") return "yesterday";
+  if (periodKey === "last3") return "last_3_days";
+  if (periodKey === "last7") return "last_7_days";
+  return "today";
+}
+
+function resolveQuickBounds(periodKey: ReportPeriodKey, todayDay: string): CustomRange {
+  if (periodKey === "today") {
+    return { fromDay: todayDay, toDay: todayDay };
+  }
+  if (periodKey === "yesterday") {
+    const yesterday = shiftIsoDay(todayDay, -1);
+    return { fromDay: yesterday, toDay: yesterday };
+  }
+  if (periodKey === "last3") {
+    return { fromDay: shiftIsoDay(todayDay, -2), toDay: todayDay };
+  }
+  return { fromDay: shiftIsoDay(todayDay, -6), toDay: todayDay };
+}
+
+function rangesEqual(a: CustomRange, b: CustomRange) {
+  return a.fromDay === b.fromDay && a.toDay === b.toDay;
 }
 
 function formatDisplayDay(displayDay: string, locale: Locale) {
@@ -94,10 +175,84 @@ export default async function AdminReportsPage({
   const locale = lang as Locale;
   const dictionary = getDictionary(locale, "adminReports");
   const common = getDictionary(locale, "common");
-  const selectedPeriod = typeof query.period === "string" ? query.period : "today";
-  const selectedRange = resolvePeriodRange(selectedPeriod);
+  const todayDay = getBangkokTodayIsoDay();
+  const minSelectableDay = shiftIsoDay(todayDay, -6);
+  const selectedPeriodKey = resolvePeriodKey(
+    typeof query.period === "string" ? query.period : undefined
+  );
+  const selectedRange = resolvePeriodRange(selectedPeriodKey);
 
-  const orders = await getOrdersForAdminReport(selectedRange);
+  const rawFrom = typeof query.from === "string" ? query.from : undefined;
+  const rawTo = typeof query.to === "string" ? query.to : undefined;
+  const parsedFrom = isValidIsoDay(rawFrom) ? rawFrom : null;
+  const parsedTo = isValidIsoDay(rawTo) ? rawTo : null;
+
+  const selectedCustomRange: CustomRange | null = (() => {
+    if (!parsedFrom || !parsedTo) return null;
+    let fromDay = parsedFrom;
+    let toDay = parsedTo;
+    if (fromDay > toDay) {
+      [fromDay, toDay] = [toDay, fromDay];
+    }
+    fromDay = clampIsoDay(fromDay, minSelectableDay, todayDay);
+    toDay = clampIsoDay(toDay, minSelectableDay, todayDay);
+    if (fromDay > toDay) {
+      fromDay = toDay;
+    }
+    return { fromDay, toDay };
+  })();
+
+  const quickBounds = resolveQuickBounds(selectedPeriodKey, todayDay);
+  const fromInputValue = selectedCustomRange?.fromDay ?? quickBounds.fromDay;
+  const toInputValue = selectedCustomRange?.toDay ?? quickBounds.toDay;
+
+  const periodOptions: PeriodOption[] = [
+    {
+      key: "today",
+      range: "today",
+      label: dictionary.periods.today,
+      description: dictionary.periodDescriptions.today,
+    },
+    {
+      key: "yesterday",
+      range: "yesterday",
+      label: dictionary.periods.yesterday,
+      description: dictionary.periodDescriptions.yesterday,
+    },
+    {
+      key: "last3",
+      range: "last_3_days",
+      label: dictionary.periods.last3,
+      description: dictionary.periodDescriptions.last3,
+    },
+    {
+      key: "last7",
+      range: "last_7_days",
+      label: dictionary.periods.last7,
+      description: dictionary.periodDescriptions.last7,
+    },
+  ];
+  const selectedOption =
+    periodOptions.find((option) => option.key === selectedPeriodKey) ??
+    periodOptions[0];
+  const activeQuickKey: ReportPeriodKey | null = selectedCustomRange
+    ? (periodOptions.find((option) =>
+        rangesEqual(selectedCustomRange, resolveQuickBounds(option.key, todayDay))
+      )?.key ?? null)
+    : selectedPeriodKey;
+  const isCustomOnly = selectedCustomRange != null && activeQuickKey == null;
+  const selectedSummary = selectedCustomRange
+    ? `${formatDisplayDay(selectedCustomRange.fromDay, locale)} - ${formatDisplayDay(
+        selectedCustomRange.toDay,
+        locale
+      )}`
+    : selectedOption.description;
+
+  const orders = await getOrdersForAdminReport({
+    range: selectedRange,
+    fromDay: selectedCustomRange?.fromDay,
+    toDay: selectedCustomRange?.toDay,
+  });
   const analytics = buildAdminSalesAnalytics(orders);
 
   return (
@@ -107,37 +262,114 @@ export default async function AdminReportsPage({
         title={dictionary.pageTitle}
         subtitle={dictionary.pageSubtitle}
         languageLabels={common.languageSwitcher}
-        actions={
-          <div className="flex items-center gap-2">
-            {PERIOD_OPTIONS.map((option) => {
-              const active = selectedRange === option.range;
-              return (
-                <Button
-                  key={option.key}
-                  asChild
-                  variant={active ? "default" : "outline"}
-                  size="sm"
-                >
-                  <Link
-                    href={withLocalePath(
-                      locale,
-                      `/admin/reports?period=${option.key}`
-                    )}
-                  >
-                    {option.key === "today"
-                      ? dictionary.periods.today
-                      : option.key === "last7"
-                        ? dictionary.periods.last7
-                        : dictionary.periods.last30}
-                  </Link>
-                </Button>
-              );
-            })}
-          </div>
-        }
       />
 
       <div className="p-4 md:p-6 lg:p-8">
+        <div className="mb-4 flex justify-end">
+          <div className="w-full rounded-xl border border-slate-200 bg-white p-3 shadow-md sm:max-w-[760px]">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">
+                {dictionary.quickRangeLabel}
+              </p>
+              <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-1">
+                <CalendarDays className="ml-1 h-4 w-4 shrink-0 text-slate-400" />
+                {periodOptions.map((option) => {
+                  const active = activeQuickKey === option.key;
+                  return (
+                    <Button
+                      key={option.key}
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className={
+                        active
+                          ? "h-8 rounded-md whitespace-nowrap border border-emerald-300 bg-emerald-100 text-emerald-900 shadow-md hover:bg-emerald-100"
+                          : "h-8 rounded-md whitespace-nowrap text-slate-600 hover:bg-white/80 hover:text-slate-900"
+                      }
+                    >
+                      <Link
+                        href={withLocalePath(
+                          locale,
+                          `/admin/reports?period=${option.key}`
+                        )}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        {option.label}
+                      </Link>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <form
+              method="get"
+              action={withLocalePath(locale, "/admin/reports")}
+              className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]"
+            >
+              <div className="min-w-0">
+                <label
+                  htmlFor="reports-from-day"
+                  className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  {dictionary.fromLabel}
+                </label>
+                <input
+                  id="reports-from-day"
+                  name="from"
+                  type="date"
+                  defaultValue={fromInputValue}
+                  min={minSelectableDay}
+                  max={todayDay}
+                  className={
+                    isCustomOnly
+                      ? "mt-1 h-9 w-full rounded-md border border-emerald-300 bg-emerald-50 px-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                      : "mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  }
+                />
+              </div>
+
+              <div className="min-w-0">
+                <label
+                  htmlFor="reports-to-day"
+                  className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  {dictionary.toLabel}
+                </label>
+                <input
+                  id="reports-to-day"
+                  name="to"
+                  type="date"
+                  defaultValue={toInputValue}
+                  min={minSelectableDay}
+                  max={todayDay}
+                  className={
+                    isCustomOnly
+                      ? "mt-1 h-9 w-full rounded-md border border-emerald-300 bg-emerald-50 px-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                      : "mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                  }
+                />
+              </div>
+
+              <Button type="submit" size="sm" className="mt-5">
+                {dictionary.applyRange}
+              </Button>
+
+              <Button asChild variant="outline" size="sm" className="mt-5">
+                <Link href={withLocalePath(locale, "/admin/reports?period=today")}>
+                  {dictionary.resetRange}
+                </Link>
+              </Button>
+            </form>
+
+            <p className={isCustomOnly ? "mt-2 text-xs text-emerald-700" : "mt-2 text-xs text-slate-500"}>
+              {selectedSummary}
+              {" · "}
+              {dictionary.customRangeHint}
+            </p>
+          </div>
+        </div>
+
         <StatsGrid columns={4}>
           <StatsCard
             title={dictionary.cards.netSales}

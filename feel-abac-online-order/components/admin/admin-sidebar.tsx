@@ -19,6 +19,7 @@ import {
   Store,
   Package,
   BarChart3,
+  ExternalLink,
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n/config";
 import { withLocalePath } from "@/lib/i18n/path";
@@ -77,6 +78,11 @@ export function AdminSidebar({
             href: "/admin/dashboard",
             icon: LayoutDashboard,
             label: "Dashboard",
+          },
+          {
+            href: "/menu",
+            icon: ExternalLink,
+            label: "Customer Side",
           },
           {
             href: "/admin/orders",

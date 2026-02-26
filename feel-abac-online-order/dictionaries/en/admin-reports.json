@@ -1,11 +1,24 @@
 {
   "pageTitle": "Reports",
   "pageSubtitle": "Track sales performance with refund-aware totals and cost breakdowns.",
-  "periodLabel": "Period",
+  "periodLabel": "Date range",
+  "quickRangeLabel": "Quick ranges",
+  "fromLabel": "From",
+  "toLabel": "To",
+  "applyRange": "Apply",
+  "resetRange": "Reset",
+  "customRangeHint": "Selectable window is limited to today and the previous 6 days.",
   "periods": {
     "today": "Today",
-    "last7": "Last 7 days",
-    "last30": "Last 30 days"
+    "yesterday": "Yesterday",
+    "last3": "Last 3 days",
+    "last7": "Last 7 days"
+  },
+  "periodDescriptions": {
+    "today": "Only orders from today.",
+    "yesterday": "Only orders from yesterday.",
+    "last3": "Rolling 3-day view including today.",
+    "last7": "Rolling 7-day view including today."
   },
   "cards": {
     "netSales": "Net sales",
