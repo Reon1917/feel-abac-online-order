@@ -39,9 +39,14 @@ export function getAppBaseUrl() {
   const vercelRuntimeUrl = normalizeBaseUrl(process.env.VERCEL_URL);
 
   if (isProduction) {
+    const appOrigin = normalizeBaseUrl(process.env.APP_ORIGIN);
+    const publicAppOrigin = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_ORIGIN);
+
     const productionCandidates = [
       process.env.APP_BASE_URL,
+      process.env.APP_ORIGIN,
       process.env.NEXT_PUBLIC_APP_BASE_URL,
+      process.env.NEXT_PUBLIC_APP_ORIGIN,
       process.env.NEXT_PUBLIC_SITE_URL,
       process.env.BETTER_AUTH_URL,
       process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
@@ -61,19 +66,28 @@ export function getAppBaseUrl() {
 
     const localhostCandidate = productionCandidates[0];
     if (localhostCandidate) {
+      // Allow explicit APP_ORIGIN localhost values for local production builds.
+      if (appOrigin && isLocalhostBaseUrl(appOrigin)) {
+        return appOrigin;
+      }
+      if (publicAppOrigin && isLocalhostBaseUrl(publicAppOrigin)) {
+        return publicAppOrigin;
+      }
       throw new Error(
-        "[app-base-url] Production base URL resolved to localhost. Set APP_BASE_URL or BETTER_AUTH_URL to your public domain."
+        "[app-base-url] Production base URL resolved to localhost. Set APP_BASE_URL, BETTER_AUTH_URL, or APP_ORIGIN to your public domain."
       );
     }
 
     throw new Error(
-      "[app-base-url] Missing production base URL. Set APP_BASE_URL or BETTER_AUTH_URL."
+      "[app-base-url] Missing production base URL. Set APP_BASE_URL, BETTER_AUTH_URL, or APP_ORIGIN."
     );
   }
 
   const developmentCandidates = [
+    process.env.APP_ORIGIN,
     process.env.BETTER_AUTH_URL,
     process.env.APP_BASE_URL,
+    process.env.NEXT_PUBLIC_APP_ORIGIN,
     process.env.NEXT_PUBLIC_APP_BASE_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
     process.env.NEXT_PUBLIC_BETTER_AUTH_URL,

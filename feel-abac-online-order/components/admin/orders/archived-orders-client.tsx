@@ -263,11 +263,11 @@ export function ArchivedOrdersClient({
         throw new Error(payload?.error ?? dictionary.errorLoading);
       }
       return payload as {
-        status?: string;
+        status?: OrderAdminSummary["status"];
         isClosed?: boolean;
-        refundStatus?: string | null;
-        refundType?: string | null;
-        refundAmount?: number | null;
+        refundStatus?: OrderAdminSummary["refundStatus"];
+        refundType?: OrderAdminSummary["refundType"];
+        refundAmount?: OrderAdminSummary["refundAmount"];
       };
     },
     [dictionary.errorLoading]
