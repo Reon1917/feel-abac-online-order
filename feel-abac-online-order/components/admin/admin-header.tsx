@@ -47,7 +47,7 @@ export function AdminHeader({
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <UiLanguageSwitcher
             locale={locale}
             labels={languageLabels}

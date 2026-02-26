@@ -1,53 +1,67 @@
 {
   "header": {
     "badge": "Coverage setup",
-    "title": "Delivery locations",
-    "subtitle": "Keep the AU condo list fresh so diners can tap once and see the correct fee range.",
+    "title": "Preset delivery locations",
+    "subtitle": "These are saved locations customers can pick quickly during onboarding and checkout.",
     "backToDashboard": "Back to dashboard"
   },
+  "stats": {
+    "activePresetLocations": {
+      "title": "Active Preset Locations",
+      "subtitle": "Preset choices available to customers"
+    },
+    "totalPresetLocations": {
+      "title": "Total Preset Locations",
+      "subtitle": "All preset choices configured"
+    },
+    "buildingOptions": {
+      "title": "Building Options",
+      "subtitle": "Total selectable building entries"
+    }
+  },
   "form": {
-    "title": "Add new condo",
-    "description": "Give each condo a fee range and optionally list out the building labels diners will see.",
-    "condoName": "Condo name",
+    "title": "Add preset location",
+    "description": "Add a preset location with a fee range and optional building choices for customers.",
+    "condoName": "Preset location name",
     "minFee": "Min fee (Baht)",
     "maxFee": "Max fee (Baht)",
     "notes": "Internal notes (optional)",
-    "buildings": "Buildings",
-    "buildingsToggle": "This condo has multiple buildings",
-    "buildingsAdd": "Add building",
+    "buildings": "Building options",
+    "buildingsToggle": "This preset location has multiple building options",
+    "buildingsAdd": "Add building option",
     "buildingsRemove": "Remove",
     "buildingsPlaceholder": "Building A",
     "buildingsEmpty": "Add at least one building name.",
     "invalidFeeOrder": "Minimum fee cannot exceed maximum fee",
-    "submit": "Add location",
+    "submit": "Add preset location",
     "submitting": "Adding...",
-    "success": "Delivery location added",
-    "error": "Unable to add delivery location"
+    "success": "Preset location added",
+    "error": "Unable to add preset location"
   },
   "list": {
-    "title": "Delivery coverage",
-    "subtitle": "Condos visible to diners right now.",
-    "empty": "No delivery locations yet. Add your first condo to get started.",
+    "title": "Preset locations for customers",
+    "subtitle": "Customers can choose these saved locations when placing an order.",
+    "empty": "No preset locations yet. Add one to enable quick customer selection.",
     "columns": {
-      "condo": "Condo",
+      "condo": "Preset location",
       "fee": "Fee range",
-      "buildings": "Buildings"
+      "buildings": "Building options"
     },
-    "editButton": "Edit condo",
+    "editButton": "Edit preset location",
     "deleteButton": "Delete",
     "deletePending": "Deleting...",
-    "deleteConfirmTitle": "Remove delivery location",
-    "deleteConfirm": "Remove this condo? This action cannot be undone.",
-    "deleteSuccess": "Delivery location removed",
-    "deleteError": "Unable to delete delivery location"
+    "deleteConfirmTitle": "Remove preset location",
+    "deleteConfirm": "Remove this preset location? This action cannot be undone.",
+    "deleteSuccess": "Preset location removed",
+    "deleteError": "Unable to delete preset location"
   },
   "edit": {
-    "title": "Edit delivery condo",
-    "description": "Update the name, fee range, or buildings for this location.",
+    "title": "Edit preset location",
+    "description": "Update the location name, fee range, or building options.",
     "submit": "Save changes",
     "submitting": "Saving...",
     "cancel": "Cancel",
-    "success": "Delivery location updated",
-    "error": "Unable to update delivery location"
+    "success": "Preset location updated",
+    "error": "Unable to update preset location"
   }
 }

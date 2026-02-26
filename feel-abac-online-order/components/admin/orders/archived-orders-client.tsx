@@ -17,6 +17,7 @@ import type { OrderAdminSummary, OrderRecord } from "@/lib/orders/types";
 import { formatBangkokTimestamp, formatDateHeader } from "@/lib/timezone";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
 import { OrderDetailModal } from "./order-detail-modal";
+import { RejectOrderDialog, type CancelOrderData } from "./reject-order-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -71,6 +72,10 @@ export function ArchivedOrdersClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
   const [refundState, setRefundState] = useState<Record<string, "idle" | "saving">>({});
+  const [actionState, setActionState] = useState<Record<string, "idle" | "saving">>({});
+  const [rejectTarget, setRejectTarget] = useState<OrderAdminSummary | null>(null);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
 
   const router = useRouter();
@@ -243,6 +248,124 @@ export function ArchivedOrdersClient({
     [dictionary.errorLoading, dictionary.statusUpdatedToast]
   );
 
+  const patchOrderStatus = useCallback(
+    async (displayId: string, body: Record<string, unknown>) => {
+      const response = await fetch(
+        `/api/admin/orders/${displayId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? dictionary.errorLoading);
+      }
+      return payload as {
+        status?: OrderAdminSummary["status"];
+        isClosed?: boolean;
+        refundStatus?: OrderAdminSummary["refundStatus"];
+        refundType?: OrderAdminSummary["refundType"];
+        refundAmount?: OrderAdminSummary["refundAmount"];
+      };
+    },
+    [dictionary.errorLoading]
+  );
+
+  const handleCloseOrder = useCallback(
+    async (order: OrderAdminSummary) => {
+      setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
+      try {
+        const payload = await patchOrderStatus(order.displayId, {
+          action: "close",
+        });
+        setOrders((prev) =>
+          prev.map((item) =>
+            item.id === order.id
+              ? {
+                  ...item,
+                  status: payload?.status ?? "closed",
+                  isClosed: true,
+                }
+              : item
+          )
+        );
+        toast.success(dictionary.statusUpdatedToast);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : dictionary.errorLoading
+        );
+      } finally {
+        setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
+      }
+    },
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, patchOrderStatus]
+  );
+
+  const handleCancelOrder = useCallback(
+    async (order: OrderAdminSummary, data: CancelOrderData) => {
+      setActionState((prev) => ({ ...prev, [order.id]: "saving" }));
+      try {
+        const payload = await patchOrderStatus(order.displayId, {
+          action: "cancel",
+          reason: data.reason,
+          refundType: data.refundType,
+          refundAmount: data.refundAmount,
+          refundReason: data.refundReason,
+        });
+
+        const nextStatus = payload?.status ?? "cancelled";
+        const nextRefundStatus = payload?.refundStatus ?? order.refundStatus ?? null;
+        const nextRefundType = payload?.refundType ?? data.refundType ?? order.refundType ?? null;
+        const nextRefundAmount = payload?.refundAmount ?? data.refundAmount ?? order.refundAmount ?? null;
+        const nextIsClosed =
+          typeof payload?.isClosed === "boolean"
+            ? payload.isClosed
+            : nextRefundStatus !== "requested";
+
+        setOrders((prev) =>
+          prev.map((item) =>
+            item.id === order.id
+              ? {
+                  ...item,
+                  status: nextStatus,
+                  isClosed: nextIsClosed,
+                  refundStatus: nextRefundStatus,
+                  refundType: nextRefundType,
+                  refundAmount: nextRefundAmount,
+                }
+              : item
+          )
+        );
+        toast.success(dictionary.statusUpdatedToast);
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : dictionary.errorLoading
+        );
+        return false;
+      } finally {
+        setActionState((prev) => ({ ...prev, [order.id]: "idle" }));
+      }
+    },
+    [dictionary.errorLoading, dictionary.statusUpdatedToast, patchOrderStatus]
+  );
+
+  const handleRejectSubmit = useCallback(
+    async (data: CancelOrderData) => {
+      if (!rejectTarget) return;
+      setRejectSubmitting(true);
+      const success = await handleCancelOrder(rejectTarget, data);
+      setRejectSubmitting(false);
+      if (success) {
+        setRejectDialogOpen(false);
+        setRejectTarget(null);
+      }
+    },
+    [handleCancelOrder, rejectTarget]
+  );
+
   const columns = useMemo<ColumnDef<OrderAdminSummary>[]>(
     () => [
       {
@@ -294,29 +417,65 @@ export function ArchivedOrdersClient({
         cell: ({ row }) => {
           const order = row.original;
           const isViewing = loadingOrderId === order.id;
+          const isSaving = actionState[order.id] === "saving";
           const refundSaving = refundState[order.id] === "saving";
-          // Only show refund options if there was a verified payment
+          const canCancel =
+            !order.isClosed &&
+            !["delivered", "cancelled", "closed"].includes(order.status);
+          const canClose =
+            !order.isClosed &&
+            (order.status === "delivered" ||
+              (order.status === "cancelled" &&
+                (!order.hasVerifiedPayment ||
+                  order.refundType === "none" ||
+                  order.refundStatus === "paid")));
           const canMarkRefundPaid =
-            order.status === "cancelled" && 
-            order.hasVerifiedPayment && 
+            !order.isClosed &&
+            order.status === "cancelled" &&
+            order.hasVerifiedPayment &&
             order.refundStatus === "requested";
           const canMarkRefundRequested =
-            order.status === "cancelled" && 
-            order.hasVerifiedPayment && 
+            !order.isClosed &&
+            order.status === "cancelled" &&
+            order.hasVerifiedPayment &&
             !order.refundStatus;
-          const noRefundNeeded = 
+          const noRefundNeeded =
             order.status === "cancelled" && !order.hasVerifiedPayment;
 
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                disabled={isViewing}
+                disabled={isViewing || isSaving || refundSaving}
                 onClick={() => void handleViewOrder(order)}
               >
                 {isViewing ? "..." : dictionary.viewOrder}
               </Button>
+              {canCancel && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  disabled={isSaving || refundSaving}
+                  onClick={() => {
+                    setRejectTarget(order);
+                    setRejectDialogOpen(true);
+                  }}
+                >
+                  {dictionary.actionCancel ?? "Cancel Order"}
+                </Button>
+              )}
+              {canClose && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isSaving || refundSaving}
+                  onClick={() => void handleCloseOrder(order)}
+                >
+                  {dictionary.closeOrder ?? "Close Order"}
+                </Button>
+              )}
               {noRefundNeeded && (
                 <span className="text-xs text-slate-500">
                   {dictionary.noRefundNeeded ?? "No refund needed"}
@@ -326,7 +485,7 @@ export function ArchivedOrdersClient({
                 <Button
                   size="sm"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={refundSaving}
+                  disabled={refundSaving || isSaving}
                   onClick={() => void handleMarkRefundPaid(order)}
                 >
                   {dictionary.actionMarkRefundPaid ?? "Mark refund paid"}
@@ -336,7 +495,7 @@ export function ArchivedOrdersClient({
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={refundSaving}
+                  disabled={refundSaving || isSaving}
                   onClick={() => void handleMarkRefundRequested(order)}
                 >
                   {dictionary.actionMarkRefundRequested ?? "Mark refund requested"}
@@ -353,7 +512,9 @@ export function ArchivedOrdersClient({
       },
     ],
     [
+      actionState,
       dictionary,
+      handleCloseOrder,
       handleMarkRefundPaid,
       handleMarkRefundRequested,
       handleViewOrder,
@@ -629,6 +790,30 @@ export function ArchivedOrdersClient({
         open={modalOpen}
         onOpenChange={setModalOpen}
         dictionary={dictionary}
+      />
+
+      <RejectOrderDialog
+        open={rejectDialogOpen}
+        onOpenChange={(open) => {
+          setRejectDialogOpen(open);
+          if (!open) {
+            setRejectTarget(null);
+          }
+        }}
+        dictionary={dictionary}
+        isSubmitting={rejectSubmitting}
+        onSubmit={handleRejectSubmit}
+        hasVerifiedPayment={rejectTarget?.hasVerifiedPayment ?? false}
+        orderAmounts={
+          rejectTarget
+            ? {
+                subtotal: rejectTarget.subtotal,
+                vatAmount: rejectTarget.vatAmount,
+                deliveryFee: rejectTarget.deliveryFee,
+                totalAmount: rejectTarget.totalAmount,
+              }
+            : undefined
+        }
       />
     </div>
   );

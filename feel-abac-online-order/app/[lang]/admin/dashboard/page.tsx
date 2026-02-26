@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, ExternalLink, Store, Package, BarChart3 } from "lucide-react";
+import { Bell, UtensilsCrossed, MapPin, Users, CreditCard, Store, Package, BarChart3 } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getAdminByUserId } from "@/lib/admin";
-import { Button } from "@/components/ui/button";
 import { db } from "@/src/db/client";
 import { admins } from "@/src/db/schema";
 import { withLocalePath } from "@/lib/i18n/path";
@@ -35,6 +34,7 @@ export default async function AdminDashboard({ params }: PageProps) {
 
   const locale = lang as Locale;
   const common = getDictionary(locale, "common");
+  const dashboardDictionary = getDictionary(locale, "adminDashboard");
 
   const sessionData = await getSession();
 
@@ -104,8 +104,12 @@ export default async function AdminDashboard({ params }: PageProps) {
     },
     {
       icon: MapPin,
-      label: "Delivery Locations",
-      description: "Manage delivery zones, fees, and condo building lists.",
+      label:
+        dashboardDictionary.quickActions?.presetLocations?.label ??
+        "Preset Locations",
+      description:
+        dashboardDictionary.quickActions?.presetLocations?.description ??
+        "Manage saved preset locations customers can choose during checkout.",
       href: "/admin/delivery",
       variant: "default" as const,
       minRole: "admin" as AdminRole,
@@ -139,14 +143,6 @@ export default async function AdminDashboard({ params }: PageProps) {
         title="Dashboard"
         subtitle="Welcome back! Here's an overview of your restaurant."
         languageLabels={common.languageSwitcher}
-        actions={
-          <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link href={withLocalePath(locale, "/menu")}>
-              <ExternalLink className="h-4 w-4" />
-              View Customer Side
-            </Link>
-          </Button>
-        }
       />
 
       <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8">

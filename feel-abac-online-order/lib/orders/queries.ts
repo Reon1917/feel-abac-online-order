@@ -35,6 +35,24 @@ function dateToIso(value: Date | string | null | undefined) {
   return value.toISOString();
 }
 
+function isValidIsoDate(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = value.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return false;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 function mapOrderItemChoice(choice: typeof orderItemChoices.$inferSelect): OrderItemChoice {
   return {
     id: choice.id,
@@ -414,11 +432,20 @@ function mapOrderAdminSummary(row: AdminSummaryRow): OrderAdminSummary {
 
 export const ADMIN_REPORT_RANGES = [
   "today",
+  "yesterday",
+  "day_before_yesterday",
+  "today_and_yesterday",
+  "last_3_days",
   "last_7_days",
-  "last_30_days",
 ] as const;
 
 export type AdminReportRange = (typeof ADMIN_REPORT_RANGES)[number];
+
+type AdminReportQuery = {
+  range?: AdminReportRange;
+  fromDay?: string | null;
+  toDay?: string | null;
+};
 
 type AdminReportRow = {
   id: string;
@@ -474,28 +501,62 @@ function mapAdminReportRow(row: AdminReportRow): AdminReportOrder {
 }
 
 export async function getOrdersForAdminReport(
-  range: AdminReportRange
+  query: AdminReportQuery = {}
 ): Promise<AdminReportOrder[]> {
+  const range = query.range ?? "today";
   const todayInBangkok = sql`(CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date`;
+  const yesterdayInBangkok =
+    sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '1 day')::date`;
+  const dayBeforeYesterdayInBangkok =
+    sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '2 days')::date`;
+  const sixDaysAgoInBangkok =
+    sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '6 days')::date`;
 
   const rangeCondition =
     range === "today"
       ? eq(orders.displayDay, todayInBangkok)
-      : range === "last_7_days"
-        ? and(
-            gte(
-              orders.displayDay,
-              sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '6 days')::date`
-            ),
-            lte(orders.displayDay, todayInBangkok)
-          )
-        : and(
-            gte(
-              orders.displayDay,
-              sql`((CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Bangkok')::date - INTERVAL '29 days')::date`
-            ),
-            lte(orders.displayDay, todayInBangkok)
-          );
+      : range === "yesterday"
+        ? eq(orders.displayDay, yesterdayInBangkok)
+        : range === "day_before_yesterday"
+          ? eq(orders.displayDay, dayBeforeYesterdayInBangkok)
+          : range === "today_and_yesterday"
+            ? and(
+                gte(orders.displayDay, yesterdayInBangkok),
+                lte(orders.displayDay, todayInBangkok)
+              )
+            : range === "last_3_days"
+              ? and(
+                  gte(orders.displayDay, dayBeforeYesterdayInBangkok),
+                  lte(orders.displayDay, todayInBangkok)
+                )
+              : and(
+                  gte(orders.displayDay, sixDaysAgoInBangkok),
+                  lte(orders.displayDay, todayInBangkok)
+                );
+
+  const validFromDay = isValidIsoDate(query.fromDay) ? query.fromDay : null;
+  const validToDay = isValidIsoDate(query.toDay) ? query.toDay : null;
+  const normalizedCustomRange =
+    validFromDay && validToDay
+      ? validFromDay <= validToDay
+        ? { fromDay: validFromDay, toDay: validToDay }
+        : { fromDay: validToDay, toDay: validFromDay }
+      : null;
+
+  const customRangeCondition = normalizedCustomRange
+    ? and(
+        gte(orders.displayDay, sql`${normalizedCustomRange.fromDay}::date`),
+        lte(orders.displayDay, sql`${normalizedCustomRange.toDay}::date`)
+      )
+    : null;
+
+  const finalCondition = customRangeCondition
+    ? and(
+        customRangeCondition,
+        gte(orders.displayDay, sixDaysAgoInBangkok),
+        lte(orders.displayDay, todayInBangkok)
+      )
+    : rangeCondition;
 
   const rows = await db
     .select({
@@ -521,7 +582,7 @@ export async function getOrdersForAdminReport(
       verifiedPaymentsByOrder,
       eq(orders.id, verifiedPaymentsByOrder.orderId)
     )
-    .where(rangeCondition)
+    .where(finalCondition)
     .orderBy(desc(orders.createdAt));
 
   return rows.map((row) => mapAdminReportRow(row));

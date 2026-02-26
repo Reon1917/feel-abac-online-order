@@ -6,6 +6,12 @@
   "workspace": {
     "badge": "အက်မင် အလုပ်ခွင်"
   },
+  "quickActions": {
+    "presetLocations": {
+      "label": "ကြိုတင်သတ်မှတ်နေရာများ",
+      "description": "ဖောက်သည်များ checkout တွင် ရွေးနိုင်မည့် ကြိုတင်သတ်မှတ်ထားသောနေရာများကို စီမံပါ။"
+    }
+  },
   "cards": {
     "menuBuilder": {
       "title": "မီနူး တည်ဆောက်ရာ",
