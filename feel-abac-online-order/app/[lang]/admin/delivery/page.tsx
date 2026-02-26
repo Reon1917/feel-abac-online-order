@@ -48,23 +48,23 @@ export default async function AdminDeliveryPage({ params }: PageProps) {
       <div className="p-4 md:p-6 lg:p-8">
         <StatsGrid columns={3}>
           <StatsCard
-            title="Active Locations"
+            title="Active Preset Locations"
             value={activeLocations.length}
-            subtitle="Delivery zones available"
+            subtitle="Preset choices available to customers"
             variant="success"
           />
           <StatsCard
-            title="Total Locations"
+            title="Total Preset Locations"
             value={locations.length}
-            subtitle="All configured locations"
+            subtitle="All preset choices configured"
           />
           <StatsCard
-            title="Buildings"
+            title="Building Options"
             value={activeLocations.reduce(
               (sum, loc) => sum + loc.buildings.length,
               0
             )}
-            subtitle="Total building options"
+            subtitle="Total selectable building entries"
           />
         </StatsGrid>
 

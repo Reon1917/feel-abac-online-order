@@ -136,7 +136,7 @@ export function AdminSidebar({
           {
             href: "/admin/delivery",
             icon: MapPin,
-            label: "Delivery Locations",
+            label: "Preset Locations",
             minRole: "admin",
           },
         ],

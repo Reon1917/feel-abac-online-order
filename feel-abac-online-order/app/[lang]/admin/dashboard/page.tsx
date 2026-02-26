@@ -103,8 +103,8 @@ export default async function AdminDashboard({ params }: PageProps) {
     },
     {
       icon: MapPin,
-      label: "Delivery Locations",
-      description: "Manage delivery zones, fees, and condo building lists.",
+      label: "Preset Locations",
+      description: "Manage saved preset locations customers can choose during checkout.",
       href: "/admin/delivery",
       variant: "default" as const,
       minRole: "admin" as AdminRole,
