@@ -76,6 +76,20 @@
       "saving": "Saving..."
     }
   },
+  "contact": {
+    "label": "Verification phone",
+    "helper": "We'll use this number to verify and contact you about this order.",
+    "notSet": "Not set",
+    "placeholder": "0812345678 or +66812345678",
+    "addCta": "Add",
+    "editCta": "Edit",
+    "saveCta": "Save",
+    "cancelCta": "Cancel",
+    "saving": "Saving...",
+    "invalidPhone": "Enter a valid Thai phone number.",
+    "updated": "Phone number updated",
+    "updateError": "Failed to update phone number"
+  },
   "items": {
     "choicesHeading": "Choices",
     "noteLabel": "Note",

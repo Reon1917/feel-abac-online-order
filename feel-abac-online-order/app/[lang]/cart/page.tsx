@@ -76,6 +76,7 @@ export default async function CartPage({ params }: PageProps) {
             deliveryLocations={deliveryLocations}
             defaultDeliverySelection={defaultDeliverySelection}
             savedCustomSelection={savedCustomSelection}
+            userPhone={profile.phoneNumber}
             locale={locale}
           />
         </div>

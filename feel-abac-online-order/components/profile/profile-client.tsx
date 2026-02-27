@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -34,7 +34,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updatePhoneAction } from "@/app/[lang]/profile/actions";
+import {
+  updateNameAction,
+  updatePhoneAction,
+} from "@/app/[lang]/profile/actions";
 import { withLocalePath } from "@/lib/i18n/path";
 import type { Locale } from "@/lib/i18n/config";
 
@@ -75,6 +78,9 @@ export function ProfileClient({
   locale,
 }: ProfileClientProps) {
   const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [currentName, setCurrentName] = useState(user.name ?? "");
+  const [nameValue, setNameValue] = useState(user.name ?? "");
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [currentPhone, setCurrentPhone] = useState(phone);
   const [phoneValue, setPhoneValue] = useState(phone);
@@ -86,8 +92,11 @@ export function ProfileClient({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
 
-  const [state, formAction] = useActionState(updatePhoneAction, null);
+  const [nameState, nameFormAction] = useActionState(updateNameAction, null);
+  const [phoneState, phoneFormAction] = useActionState(updatePhoneAction, null);
   const { sections, toast: toastMessages } = dictionary;
+  const latestNameValueRef = useRef(nameValue);
+  const latestPhoneValueRef = useRef(phoneValue);
 
   const hasGoogle = linkedProviders.includes("google");
 
@@ -110,24 +119,59 @@ export function ProfileClient({
   }, [hasGoogle, hasPassword, sections.security]);
 
   useEffect(() => {
+    const normalizedName = user.name ?? "";
+    setCurrentName(normalizedName);
+    setNameValue(normalizedName);
+  }, [user.name]);
+
+  useEffect(() => {
+    latestNameValueRef.current = nameValue;
+  }, [nameValue]);
+
+  useEffect(() => {
     setCurrentPhone(phone);
     setPhoneValue(phone);
   }, [phone]);
 
   useEffect(() => {
-    if (state?.success) {
-      setCurrentPhone(phoneValue);
+    latestPhoneValueRef.current = phoneValue;
+  }, [phoneValue]);
+
+  useEffect(() => {
+    if (nameState?.success) {
+      const normalizedName = latestNameValueRef.current.trim();
+      setCurrentName(normalizedName);
+      setNameValue(normalizedName);
+      toast.success(toastMessages.nameUpdated);
+      setIsEditingName(false);
+      router.refresh();
+      return;
+    }
+
+    if (nameState?.error) {
+      toast.error(nameState.error);
+    }
+  }, [nameState, router, toastMessages.nameUpdated]);
+
+  useEffect(() => {
+    if (phoneState?.success) {
+      setCurrentPhone(latestPhoneValueRef.current);
       toast.success(toastMessages.phoneUpdated);
       setIsEditingPhone(false);
       return;
     }
 
-    if (state?.error) {
-      toast.error(state.error);
+    if (phoneState?.error) {
+      toast.error(phoneState.error);
     }
-  }, [phoneValue, state, toastMessages.phoneUpdated]);
+  }, [phoneState, toastMessages.phoneUpdated]);
 
-  const handleCancelEdit = () => {
+  const handleCancelNameEdit = () => {
+    setNameValue(currentName);
+    setIsEditingName(false);
+  };
+
+  const handleCancelPhoneEdit = () => {
     setPhoneValue(currentPhone);
     setIsEditingPhone(false);
   };
@@ -244,9 +288,50 @@ export function ProfileClient({
                 <p className="text-xs font-medium text-slate-500">
                   {sections.account.name}
                 </p>
-                <p className="truncate text-sm font-medium text-slate-900">
-                  {user.name || "-"}
-                </p>
+                {isEditingName ? (
+                  <form action={nameFormAction} className="mt-1 flex items-center gap-2">
+                    <input
+                      type="text"
+                      name="name"
+                      value={nameValue}
+                      onChange={(event) => setNameValue(event.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder={sections.account.namePlaceholder}
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      aria-label={sections.account.saveName}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition hover:bg-emerald-200"
+                      title={sections.account.saveName}
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={sections.account.cancelEdit}
+                      onClick={handleCancelNameEdit}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                      title={sections.account.cancelEdit}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {currentName || "-"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingName(true)}
+                      className="flex h-7 items-center gap-1 rounded-full bg-slate-100 px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      {sections.account.editName}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -273,7 +358,7 @@ export function ProfileClient({
                   {sections.account.phone}
                 </p>
                 {isEditingPhone ? (
-                  <form action={formAction} className="mt-1 flex items-center gap-2">
+                  <form action={phoneFormAction} className="mt-1 flex items-center gap-2">
                     <input
                       type="tel"
                       name="phoneNumber"
@@ -285,6 +370,7 @@ export function ProfileClient({
                     />
                     <button
                       type="submit"
+                      aria-label={sections.account.savePhone}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition hover:bg-emerald-200"
                       title={sections.account.savePhone}
                     >
@@ -292,7 +378,8 @@ export function ProfileClient({
                     </button>
                     <button
                       type="button"
-                      onClick={handleCancelEdit}
+                      aria-label={sections.account.cancelEdit}
+                      onClick={handleCancelPhoneEdit}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
                       title={sections.account.cancelEdit}
                     >
