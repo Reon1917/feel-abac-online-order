@@ -79,7 +79,9 @@
   "contact": {
     "label": "Verification phone",
     "helper": "We'll use this number to verify and contact you about this order.",
+    "notSet": "Not set",
     "placeholder": "0812345678 or +66812345678",
+    "addCta": "Add",
     "editCta": "Edit",
     "saveCta": "Save",
     "cancelCta": "Cancel",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -95,6 +95,8 @@ export function ProfileClient({
   const [nameState, nameFormAction] = useActionState(updateNameAction, null);
   const [phoneState, phoneFormAction] = useActionState(updatePhoneAction, null);
   const { sections, toast: toastMessages } = dictionary;
+  const latestNameValueRef = useRef(nameValue);
+  const latestPhoneValueRef = useRef(phoneValue);
 
   const hasGoogle = linkedProviders.includes("google");
 
@@ -123,13 +125,21 @@ export function ProfileClient({
   }, [user.name]);
 
   useEffect(() => {
+    latestNameValueRef.current = nameValue;
+  }, [nameValue]);
+
+  useEffect(() => {
     setCurrentPhone(phone);
     setPhoneValue(phone);
   }, [phone]);
 
   useEffect(() => {
+    latestPhoneValueRef.current = phoneValue;
+  }, [phoneValue]);
+
+  useEffect(() => {
     if (nameState?.success) {
-      const normalizedName = nameValue.trim();
+      const normalizedName = latestNameValueRef.current.trim();
       setCurrentName(normalizedName);
       setNameValue(normalizedName);
       toast.success(toastMessages.nameUpdated);
@@ -141,11 +151,11 @@ export function ProfileClient({
     if (nameState?.error) {
       toast.error(nameState.error);
     }
-  }, [nameState, nameValue, router, toastMessages.nameUpdated]);
+  }, [nameState, router, toastMessages.nameUpdated]);
 
   useEffect(() => {
     if (phoneState?.success) {
-      setCurrentPhone(phoneValue);
+      setCurrentPhone(latestPhoneValueRef.current);
       toast.success(toastMessages.phoneUpdated);
       setIsEditingPhone(false);
       return;
@@ -154,7 +164,7 @@ export function ProfileClient({
     if (phoneState?.error) {
       toast.error(phoneState.error);
     }
-  }, [phoneState, phoneValue, toastMessages.phoneUpdated]);
+  }, [phoneState, toastMessages.phoneUpdated]);
 
   const handleCancelNameEdit = () => {
     setNameValue(currentName);
@@ -291,6 +301,7 @@ export function ProfileClient({
                     />
                     <button
                       type="submit"
+                      aria-label={sections.account.saveName}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition hover:bg-emerald-200"
                       title={sections.account.saveName}
                     >
@@ -298,6 +309,7 @@ export function ProfileClient({
                     </button>
                     <button
                       type="button"
+                      aria-label={sections.account.cancelEdit}
                       onClick={handleCancelNameEdit}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
                       title={sections.account.cancelEdit}

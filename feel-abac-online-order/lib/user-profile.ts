@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/src/db/client";
+import { dbTx } from "@/src/db/tx-client";
 import { admins, userProfiles, users } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
 import { decryptPhone, encryptPhone } from "@/lib/crypto";
@@ -61,15 +62,17 @@ export async function updateUserName(userId: string, name: string) {
     throw new Error("Name must be at least 2 characters.");
   }
 
-  await db
-    .update(users)
-    .set({ name: normalizedName })
-    .where(eq(users.id, normalizedUserId));
+  await dbTx.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ name: normalizedName })
+      .where(eq(users.id, normalizedUserId));
 
-  await db
-    .update(admins)
-    .set({ name: normalizedName })
-    .where(eq(admins.userId, normalizedUserId));
+    await tx
+      .update(admins)
+      .set({ name: normalizedName })
+      .where(eq(admins.userId, normalizedUserId));
+  });
 }
 
 export async function updateUserDeliverySelection(

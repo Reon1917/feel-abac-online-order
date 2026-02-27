@@ -272,13 +272,6 @@ export function CartView({
     const normalizedCurrentPhone = currentPhone.trim();
     const normalizedNextPhone = nextPhoneRaw.trim();
 
-    if (normalizedNextPhone === normalizedCurrentPhone) {
-      setPhoneValue(normalizedCurrentPhone);
-      setPhoneError(null);
-      setIsEditingPhone(false);
-      return true;
-    }
-
     const parsed = onboardingSchema.safeParse({
       phoneNumber: normalizedNextPhone,
     });
@@ -289,6 +282,14 @@ export function CartView({
       setPhoneError(message);
       toast.error(message);
       return false;
+    }
+
+    if (normalizedNextPhone === normalizedCurrentPhone) {
+      setCurrentPhone(parsed.data.phoneNumber);
+      setPhoneValue(parsed.data.phoneNumber);
+      setPhoneError(null);
+      setIsEditingPhone(false);
+      return true;
     }
 
     setIsSavingPhone(true);
@@ -602,6 +603,13 @@ export function CartView({
     "Tip: Swipe left on an item card to remove it quickly.";
   const unavailableBadge =
     dictionary.stockGuard?.itemBadge ?? "Out of stock";
+  const hasCurrentPhone = currentPhone.trim().length > 0;
+  const phoneDisplayLabel = hasCurrentPhone
+    ? currentPhone
+    : contactDictionary.notSet;
+  const phoneActionLabel = hasCurrentPhone
+    ? contactDictionary.editCta
+    : contactDictionary.addCta;
 
   return (
     <>
@@ -938,14 +946,16 @@ export function CartView({
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                <p className="text-sm font-semibold text-slate-900">{currentPhone}</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {phoneDisplayLabel}
+                </p>
                 <button
                   type="button"
                   onClick={() => setIsEditingPhone(true)}
                   className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
                 >
                   <Pencil className="h-3 w-3" />
-                  {contactDictionary.editCta}
+                  {phoneActionLabel}
                 </button>
               </div>
             )}
