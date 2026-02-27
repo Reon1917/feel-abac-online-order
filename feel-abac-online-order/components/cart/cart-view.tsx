@@ -3,7 +3,16 @@
 import { useMemo, useState, useEffect, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Loader2, MapPin, Pencil, Phone, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  MapPin,
+  Pencil,
+  Phone,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -79,6 +88,8 @@ export function CartView({
   const [currentPhone, setCurrentPhone] = useState(userPhone);
   const [phoneValue, setPhoneValue] = useState(userPhone);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isMobileBreakdownOpen, setIsMobileBreakdownOpen] = useState(false);
+  const [isMobilePhonePanelOpen, setIsMobilePhonePanelOpen] = useState(false);
   const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(
     () => {
       if (!defaultDeliverySelection) {
@@ -267,7 +278,7 @@ export function CartView({
 
   const savePhoneNumber = async (
     nextPhoneRaw: string,
-    options?: { showSuccessToast?: boolean }
+    options?: { showSuccessToast?: boolean; keepEditorOpenOnError?: boolean }
   ) => {
     const normalizedCurrentPhone = currentPhone.trim();
     const normalizedNextPhone = nextPhoneRaw.trim();
@@ -279,7 +290,10 @@ export function CartView({
     if (!parsed.success) {
       const message =
         parsed.error.issues[0]?.message ?? contactDictionary.invalidPhone;
-      setIsEditingPhone(true);
+      if (options?.keepEditorOpenOnError ?? true) {
+        setIsEditingPhone(true);
+      }
+      setIsMobilePhonePanelOpen(true);
       setPhoneError(message);
       toast.error(message);
       return false;
@@ -330,6 +344,10 @@ export function CartView({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : contactDictionary.updateError;
+      setIsMobilePhonePanelOpen(true);
+      if (options?.keepEditorOpenOnError ?? true) {
+        setIsEditingPhone(true);
+      }
       setPhoneError(message);
       toast.error(message);
       return false;
@@ -345,7 +363,13 @@ export function CartView({
   };
 
   const handleSavePhone = async () => {
-    await savePhoneNumber(phoneValue, { showSuccessToast: true });
+    const ok = await savePhoneNumber(phoneValue, {
+      showSuccessToast: true,
+      keepEditorOpenOnError: true,
+    });
+    if (ok) {
+      setIsMobilePhonePanelOpen(false);
+    }
   };
 
   const handleSendOrder = async () => {
@@ -356,6 +380,7 @@ export function CartView({
 
     const hasValidPhone = await savePhoneNumber(phoneValue, {
       showSuccessToast: false,
+      keepEditorOpenOnError: true,
     });
     if (!hasValidPhone) {
       return;
@@ -623,7 +648,7 @@ export function CartView({
         </Link>
       </div>
       <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
-      <section className="space-y-3.5 pb-72 sm:pb-64 lg:pb-0">
+        <section className="space-y-3.5 pb-4 lg:pb-0">
         {cart.items.map((item) => {
           const displayName =
             menuLocale === "my"
@@ -805,10 +830,171 @@ export function CartView({
             </div>
           </div>
         </div>
-      </section>
+        </section>
 
-      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[4.5rem] max-lg:z-30 max-lg:mx-4 max-lg:rounded-2xl max-lg:border max-lg:bg-white max-lg:shadow-[0_-8px_20px_rgba(15,23,42,0.12)] sm:max-lg:bottom-4 lg:sticky lg:top-6 lg:self-start">
-        <div className="space-y-2.5 text-sm max-lg:text-[13px]">
+      <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 lg:self-start">
+        <div className="space-y-3 lg:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                {dictionary.summary.heading}
+              </h2>
+              <p className="mt-1 text-xs text-slate-600">
+                {itemCountLabel} · {totalQuantity} {dictionary.items.quantityLabel}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">
+                {dictionary.summary.foodTotal ?? "Food Total"}
+              </p>
+              <p className="text-base font-semibold text-slate-900">
+                ฿{formatPrice(cartTotals.foodTotal)}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileBreakdownOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+          >
+            <span>
+              {isMobileBreakdownOpen
+                ? dictionary.summary.hideDetailsCta
+                : dictionary.summary.showDetailsCta}
+            </span>
+            {isMobileBreakdownOpen ? (
+              <ChevronUp className="h-3.5 w-3.5 text-emerald-700" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-emerald-700" />
+            )}
+          </button>
+
+          {isMobileBreakdownOpen ? (
+            <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>{itemCountLabel}</span>
+                <span>
+                  {totalQuantity} {dictionary.items.quantityLabel}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-800">
+                <span>{dictionary.summary.foodSubtotal}</span>
+                <span className="font-semibold">
+                  ฿{formatPrice(cartTotals.foodSubtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700">
+                <span>
+                  {dictionary.summary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}
+                </span>
+                <span>฿{formatPrice(cartTotals.vatAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900">
+                <span>{dictionary.summary.foodTotal ?? "Food Total"}</span>
+                <span>฿{formatPrice(cartTotals.foodTotal)}</span>
+              </div>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">
+                {dictionary.summary.vatIncluded ?? `Includes VAT (${ORDER_VAT_PERCENT_LABEL})`}
+              </p>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setIsMobilePhonePanelOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5" />
+              {contactDictionary.label}
+            </span>
+            <span className="inline-flex items-center gap-1 text-emerald-700">
+              {isMobilePhonePanelOpen
+                ? contactDictionary.hideCta
+                : contactDictionary.showCta}
+              {isMobilePhonePanelOpen ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </span>
+          </button>
+
+          {isMobilePhonePanelOpen ? (
+            <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+              <p className="text-xs text-slate-600">{contactDictionary.helper}</p>
+              {isEditingPhone ? (
+                <div className="space-y-2">
+                  <input
+                    type="tel"
+                    value={phoneValue}
+                    onChange={(event) => {
+                      setPhoneValue(event.target.value);
+                      if (phoneError) {
+                        setPhoneError(null);
+                      }
+                    }}
+                    placeholder={contactDictionary.placeholder}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    disabled={isSavingPhone}
+                    autoFocus
+                  />
+                  {phoneError ? (
+                    <p className="text-xs font-medium text-red-600">{phoneError}</p>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSavePhone()}
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                      disabled={isSavingPhone}
+                    >
+                      {isSavingPhone ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {contactDictionary.saving}
+                        </>
+                      ) : (
+                        contactDictionary.saveCta
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelPhoneEdit}
+                      className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isSavingPhone}
+                    >
+                      {contactDictionary.cancelCta}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {phoneDisplayLabel}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingPhone(true)}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    {phoneActionLabel}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {submitError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              {submitError}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden space-y-2.5 text-sm lg:block">
           <h2 className="text-base font-semibold text-slate-900">
             {dictionary.summary.heading}
           </h2>
@@ -818,7 +1004,7 @@ export function CartView({
               {totalQuantity} {dictionary.items.quantityLabel}
             </span>
           </div>
-          <div className="flex items-start justify-between gap-2 text-sm max-lg:text-[13px]">
+          <div className="flex items-start justify-between gap-2 text-sm">
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-slate-900">
                 {dictionary.summary.foodSubtotal}
@@ -828,14 +1014,14 @@ export function CartView({
               ฿{formatPrice(cartTotals.foodSubtotal)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-700 max-lg:text-[13px]">
+          <div className="flex items-center justify-between text-sm text-slate-700">
             <span>
               {dictionary.summary.vatLabel ??
                 `VAT (${ORDER_VAT_PERCENT_LABEL})`}
             </span>
             <span>฿{formatPrice(cartTotals.vatAmount)}</span>
           </div>
-          <div className="flex items-start justify-between gap-2 border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900 max-lg:text-[13px]">
+          <div className="flex items-start justify-between gap-2 border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900">
             <div className="flex flex-col">
               <span>{dictionary.summary.foodTotal ?? "Food Total"}</span>
               <span className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -893,79 +1079,77 @@ export function CartView({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 shadow-inner">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              {contactDictionary.label}
-            </div>
-            <p className="text-xs text-slate-500">{contactDictionary.helper}</p>
-            {isEditingPhone ? (
-              <div className="space-y-2">
-                <input
-                  type="tel"
-                  value={phoneValue}
-                  onChange={(event) => {
-                    setPhoneValue(event.target.value);
-                    if (phoneError) {
-                      setPhoneError(null);
-                    }
-                  }}
-                  placeholder={contactDictionary.placeholder}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  disabled={isSavingPhone}
-                  autoFocus
-                />
-                {phoneError ? (
-                  <p className="text-xs font-medium text-red-600">{phoneError}</p>
-                ) : null}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void handleSavePhone()}
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
-                    disabled={isSavingPhone}
-                  >
-                    {isSavingPhone ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        {contactDictionary.saving}
-                      </>
-                    ) : (
-                      contactDictionary.saveCta
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelPhoneEdit}
-                    className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={isSavingPhone}
-                  >
-                    {contactDictionary.cancelCta}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                <p className="text-sm font-semibold text-slate-900">
-                  {phoneDisplayLabel}
-                </p>
+        <div className="hidden space-y-2 rounded-3xl border border-slate-200 bg-slate-50/70 p-4 lg:block">
+          <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+            <Phone className="h-4 w-4" aria-hidden="true" />
+            {contactDictionary.label}
+          </div>
+          <p className="text-xs text-slate-500">{contactDictionary.helper}</p>
+          {isEditingPhone ? (
+            <div className="space-y-2">
+              <input
+                type="tel"
+                value={phoneValue}
+                onChange={(event) => {
+                  setPhoneValue(event.target.value);
+                  if (phoneError) {
+                    setPhoneError(null);
+                  }
+                }}
+                placeholder={contactDictionary.placeholder}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                disabled={isSavingPhone}
+                autoFocus
+              />
+              {phoneError ? (
+                <p className="text-xs font-medium text-red-600">{phoneError}</p>
+              ) : null}
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsEditingPhone(true)}
-                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                  onClick={() => void handleSavePhone()}
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                  disabled={isSavingPhone}
                 >
-                  <Pencil className="h-3 w-3" />
-                  {phoneActionLabel}
+                  {isSavingPhone ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {contactDictionary.saving}
+                    </>
+                  ) : (
+                    contactDictionary.saveCta
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelPhoneEdit}
+                  className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSavingPhone}
+                >
+                  {contactDictionary.cancelCta}
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+              <p className="text-sm font-semibold text-slate-900">
+                {phoneDisplayLabel}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsEditingPhone(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+              >
+                <Pencil className="h-3 w-3" />
+                {phoneActionLabel}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
           {submitError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+            <div className="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 lg:block">
               {submitError}
             </div>
           ) : null}

@@ -15,7 +15,9 @@
     "foodTotal": "Food Total",
     "vatIncluded": "VAT INCLUDED",
     "empty": "Your cart is empty",
-    "checkoutCta": "Send order"
+    "checkoutCta": "Send order",
+    "showDetailsCta": "Show food/tax details",
+    "hideDetailsCta": "Hide food/tax details"
   },
   "activeOrderBlock": {
     "message": "You can place a new order after payment for your current order is verified.",
@@ -77,10 +79,12 @@
     }
   },
   "contact": {
-    "label": "Verification phone",
+    "label": "Phone Number",
     "helper": "We'll use this number to verify and contact you about this order.",
     "notSet": "Not set",
     "placeholder": "0812345678 or +66812345678",
+    "showCta": "Show",
+    "hideCta": "Hide",
     "addCta": "Add",
     "editCta": "Edit",
     "saveCta": "Save",
