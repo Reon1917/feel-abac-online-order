@@ -5,9 +5,12 @@
     "account": {
       "title": "Account Information",
       "name": "Name",
+      "namePlaceholder": "Enter your name",
       "email": "Email",
       "phone": "Phone Number",
       "phonePlaceholder": "Add a phone number",
+      "editName": "Edit",
+      "saveName": "Save",
       "editPhone": "Edit",
       "savePhone": "Save",
       "cancelEdit": "Cancel"
@@ -62,6 +65,7 @@
     }
   },
   "toast": {
+    "nameUpdated": "Name updated",
     "phoneUpdated": "Phone number updated",
     "phoneError": "Failed to update phone number",
     "accountDeleted": "Your account has been deleted.",

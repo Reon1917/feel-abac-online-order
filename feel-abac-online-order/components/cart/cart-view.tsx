@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, MapPin, X } from "lucide-react";
+import { AlertTriangle, Loader2, MapPin, Pencil, Phone, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useMenuLocale } from "@/components/i18n/menu-locale-provider";
@@ -23,6 +23,7 @@ import {
   computeOrderTotals,
   ORDER_VAT_PERCENT_LABEL,
 } from "@/lib/orders/totals";
+import { onboardingSchema } from "@/lib/validations";
 
 type CartDictionary = typeof import("@/dictionaries/en/cart.json");
 
@@ -33,6 +34,7 @@ type CartViewProps = {
   deliveryLocations: DeliveryLocationOption[];
   defaultDeliverySelection: DeliverySelection | null;
   savedCustomSelection: DeliverySelection | null;
+  userPhone: string;
   locale: Locale;
 };
 
@@ -57,6 +59,7 @@ export function CartView({
   deliveryLocations,
   defaultDeliverySelection,
   savedCustomSelection,
+  userPhone,
   locale,
 }: CartViewProps) {
   const { menuLocale } = useMenuLocale();
@@ -71,6 +74,11 @@ export function CartView({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [unavailableItemsModalOpen, setUnavailableItemsModalOpen] = useState(false);
   const [unavailableItems, setUnavailableItems] = useState<string[]>([]);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [currentPhone, setCurrentPhone] = useState(userPhone);
+  const [phoneValue, setPhoneValue] = useState(userPhone);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(
     () => {
       if (!defaultDeliverySelection) {
@@ -122,6 +130,7 @@ export function CartView({
     dictionary.items.removeError ?? "Unable to remove this item.";
   const removeLabel = dictionary.items.remove;
   const deliveryDictionary = dictionary.delivery;
+  const contactDictionary = dictionary.contact;
   const selectedDeliveryLocation = useMemo(() => {
     if (deliverySelection?.mode !== "preset") {
       return null;
@@ -176,6 +185,13 @@ export function CartView({
 
     setLocationValidationError(null);
   }, [deliverySelection, deliveryLocations, deliveryDictionary]);
+
+  useEffect(() => {
+    setCurrentPhone(userPhone);
+    setPhoneValue(userPhone);
+    setPhoneError(null);
+    setIsEditingPhone(false);
+  }, [userPhone]);
 
   const setItemPending = (itemId: string, isPending: boolean) => {
     setPendingItems((prev) => ({
@@ -249,9 +265,97 @@ export function CartView({
     return deliverySelection;
   };
 
+  const savePhoneNumber = async (
+    nextPhoneRaw: string,
+    options?: { showSuccessToast?: boolean }
+  ) => {
+    const normalizedCurrentPhone = currentPhone.trim();
+    const normalizedNextPhone = nextPhoneRaw.trim();
+
+    if (normalizedNextPhone === normalizedCurrentPhone) {
+      setPhoneValue(normalizedCurrentPhone);
+      setPhoneError(null);
+      setIsEditingPhone(false);
+      return true;
+    }
+
+    const parsed = onboardingSchema.safeParse({
+      phoneNumber: normalizedNextPhone,
+    });
+
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues[0]?.message ?? contactDictionary.invalidPhone;
+      setPhoneError(message);
+      toast.error(message);
+      return false;
+    }
+
+    setIsSavingPhone(true);
+    setPhoneError(null);
+
+    try {
+      const response = await fetch("/api/user/phone", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber: parsed.data.phoneNumber,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : contactDictionary.updateError
+        );
+      }
+
+      setCurrentPhone(parsed.data.phoneNumber);
+      setPhoneValue(parsed.data.phoneNumber);
+      setPhoneError(null);
+      setIsEditingPhone(false);
+
+      if (options?.showSuccessToast ?? true) {
+        toast.success(contactDictionary.updated);
+      }
+
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : contactDictionary.updateError;
+      setPhoneError(message);
+      toast.error(message);
+      return false;
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
+
+  const handleCancelPhoneEdit = () => {
+    setPhoneValue(currentPhone);
+    setPhoneError(null);
+    setIsEditingPhone(false);
+  };
+
+  const handleSavePhone = async () => {
+    await savePhoneNumber(phoneValue, { showSuccessToast: true });
+  };
+
   const handleSendOrder = async () => {
     if (!cart || cart.items.length === 0) {
       toast.error(dictionary.summary.empty);
+      return;
+    }
+
+    const hasValidPhone = await savePhoneNumber(phoneValue, {
+      showSuccessToast: false,
+    });
+    if (!hasValidPhone) {
       return;
     }
 
@@ -780,6 +884,74 @@ export function CartView({
           </div>
         </div>
 
+        <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 shadow-inner">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+              <Phone className="h-4 w-4" aria-hidden="true" />
+              {contactDictionary.label}
+            </div>
+            <p className="text-xs text-slate-500">{contactDictionary.helper}</p>
+            {isEditingPhone ? (
+              <div className="space-y-2">
+                <input
+                  type="tel"
+                  value={phoneValue}
+                  onChange={(event) => {
+                    setPhoneValue(event.target.value);
+                    if (phoneError) {
+                      setPhoneError(null);
+                    }
+                  }}
+                  placeholder={contactDictionary.placeholder}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  disabled={isSavingPhone}
+                  autoFocus
+                />
+                {phoneError ? (
+                  <p className="text-xs font-medium text-red-600">{phoneError}</p>
+                ) : null}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleSavePhone()}
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                    disabled={isSavingPhone}
+                  >
+                    {isSavingPhone ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {contactDictionary.saving}
+                      </>
+                    ) : (
+                      contactDictionary.saveCta
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelPhoneEdit}
+                    className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isSavingPhone}
+                  >
+                    {contactDictionary.cancelCta}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <p className="text-sm font-semibold text-slate-900">{currentPhone}</p>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingPhone(true)}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  <Pencil className="h-3 w-3" />
+                  {contactDictionary.editCta}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-2">
           {submitError ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
@@ -791,6 +963,7 @@ export function CartView({
             className="flex w-full items-center justify-center rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
             disabled={
               isSubmitting ||
+              isSavingPhone ||
               !cart ||
               cart.items.length === 0 ||
               Boolean(locationValidationError)

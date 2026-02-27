@@ -1,17 +1,27 @@
 import "server-only";
 
 import { db } from "@/src/db/client";
-import { userProfiles } from "@/src/db/schema";
+import { admins, userProfiles, users } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
 import { decryptPhone, encryptPhone } from "@/lib/crypto";
 import type { DeliverySelection } from "@/lib/delivery/types";
 
+function normalizeUserId(userId: string) {
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) {
+    throw new Error("Missing userId");
+  }
+  return normalizedUserId;
+}
+
 export async function getUserProfile(userId: string) {
   if (!userId) return null;
+  const normalizedUserId = userId.trim();
+  if (!normalizedUserId) return null;
   const [profile] = await db
     .select()
     .from(userProfiles)
-    .where(eq(userProfiles.id, userId))
+    .where(eq(userProfiles.id, normalizedUserId))
     .limit(1);
 
   if (!profile) return null;
@@ -30,12 +40,36 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function updateUserPhone(userId: string, phoneNumber: string) {
-  const encryptedPhone = encryptPhone(phoneNumber);
+  const normalizedUserId = normalizeUserId(userId);
+  const normalizedPhoneNumber = phoneNumber.trim();
+  if (!normalizedPhoneNumber) {
+    throw new Error("Missing phone number");
+  }
+
+  const encryptedPhone = encryptPhone(normalizedPhoneNumber);
 
   await db
     .update(userProfiles)
     .set({ phoneNumber: encryptedPhone })
-    .where(eq(userProfiles.id, userId));
+    .where(eq(userProfiles.id, normalizedUserId));
+}
+
+export async function updateUserName(userId: string, name: string) {
+  const normalizedUserId = normalizeUserId(userId);
+  const normalizedName = name.trim();
+  if (normalizedName.length < 2) {
+    throw new Error("Name must be at least 2 characters.");
+  }
+
+  await db
+    .update(users)
+    .set({ name: normalizedName })
+    .where(eq(users.id, normalizedUserId));
+
+  await db
+    .update(admins)
+    .set({ name: normalizedName })
+    .where(eq(admins.userId, normalizedUserId));
 }
 
 export async function updateUserDeliverySelection(
@@ -43,9 +77,7 @@ export async function updateUserDeliverySelection(
   selection: DeliverySelection,
   options?: { coordinates?: { lat: number; lng: number } | null }
 ) {
-  if (!userId) {
-    throw new Error("Missing userId for delivery selection update");
-  }
+  const normalizedUserId = normalizeUserId(userId);
 
   const updatePayload: Record<string, unknown> = {
     deliverySelectionMode: selection.mode,
@@ -67,7 +99,7 @@ export async function updateUserDeliverySelection(
   await db
     .update(userProfiles)
     .set(updatePayload)
-    .where(eq(userProfiles.id, userId));
+    .where(eq(userProfiles.id, normalizedUserId));
 }
 
 export function buildDeliverySelectionFromProfile(
