@@ -279,6 +279,7 @@ export function CartView({
     if (!parsed.success) {
       const message =
         parsed.error.issues[0]?.message ?? contactDictionary.invalidPhone;
+      setIsEditingPhone(true);
       setPhoneError(message);
       toast.error(message);
       return false;

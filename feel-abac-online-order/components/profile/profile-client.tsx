@@ -370,6 +370,7 @@ export function ProfileClient({
                     />
                     <button
                       type="submit"
+                      aria-label={sections.account.savePhone}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition hover:bg-emerald-200"
                       title={sections.account.savePhone}
                     >
@@ -377,6 +378,7 @@ export function ProfileClient({
                     </button>
                     <button
                       type="button"
+                      aria-label={sections.account.cancelEdit}
                       onClick={handleCancelPhoneEdit}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
                       title={sections.account.cancelEdit}
