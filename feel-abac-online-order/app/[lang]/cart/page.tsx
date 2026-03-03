@@ -68,7 +68,7 @@ export default async function CartPage({ params }: PageProps) {
     <>
       {sessionData.isAdmin && <AdminBar />}
       <main className="min-h-screen w-full bg-white pb-20 sm:pb-0 sm:pl-20 lg:pl-24">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-10 sm:px-8 lg:px-10">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-5 py-5 sm:gap-6 sm:px-8 sm:py-10 lg:px-10">
           <CartView
             cart={cart}
             dictionary={cartDictionary}
