@@ -80,6 +80,7 @@ export function CartView({
   const [locationValidationError, setLocationValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [unavailableItemsModalOpen, setUnavailableItemsModalOpen] = useState(false);
   const [unavailableItems, setUnavailableItems] = useState<string[]>([]);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
@@ -1115,7 +1116,7 @@ export function CartView({
               cart.items.length === 0 ||
               Boolean(locationValidationError)
             }
-            onClick={() => void handleSendOrder()}
+            onClick={() => setConfirmModalOpen(true)}
           >
             {isSubmitting ? dictionary.summary.checkoutCta + "..." : dictionary.summary.checkoutCta}
           </button>
@@ -1126,6 +1127,81 @@ export function CartView({
 
       </aside>
     </div>
+
+    {/* Send Order Confirmation Modal */}
+    {confirmModalOpen ? (
+      <>
+        <div
+          className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[1px]"
+          aria-hidden="true"
+          onClick={() => setConfirmModalOpen(false)}
+        />
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setConfirmModalOpen(false);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={dictionary.summary.confirmTitle ?? "Confirm your order"}
+            className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {dictionary.summary.confirmTitle ?? "Confirm your order"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-snug text-amber-800 ring-1 ring-amber-200">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <span>{dictionary.summary.confirmDeliveryFeeNote ?? "Delivery fee is not included in the total and will be collected separately."}</span>
+              </div>
+              <div className="flex items-start gap-2.5 rounded-xl bg-blue-50 px-3 py-2.5 text-sm leading-snug text-blue-800 ring-1 ring-blue-200">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                <span>{dictionary.summary.confirmWaitNote ?? "After sending, please wait for the shop to accept your order before proceeding to payment."}</span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="flex-1 rounded-full border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                {dictionary.summary.confirmCancel ?? "Go back"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmModalOpen(false);
+                  void handleSendOrder();
+                }}
+                disabled={isSubmitting}
+                className="flex-1 rounded-full bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                {isSubmitting
+                  ? (dictionary.summary.confirmCta ?? "Confirm & Send") + "..."
+                  : dictionary.summary.confirmCta ?? "Confirm & Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    ) : null}
+
     {editingItem ? (
       <>
         <div
