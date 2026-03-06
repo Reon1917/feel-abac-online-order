@@ -1305,7 +1305,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md top-[5%] translate-y-0 max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-emerald-600">
               {dictionary.acceptModalTitle ?? "Accept Order"}

@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  ChevronDown,
-  ChevronUp,
+  Info,
   Loader2,
   MapPin,
   Pencil,
@@ -81,6 +80,7 @@ export function CartView({
   const [locationValidationError, setLocationValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [unavailableItemsModalOpen, setUnavailableItemsModalOpen] = useState(false);
   const [unavailableItems, setUnavailableItems] = useState<string[]>([]);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
@@ -88,8 +88,8 @@ export function CartView({
   const [currentPhone, setCurrentPhone] = useState(userPhone);
   const [phoneValue, setPhoneValue] = useState(userPhone);
   const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [isMobileBreakdownOpen, setIsMobileBreakdownOpen] = useState(false);
-  const [isMobilePhonePanelOpen, setIsMobilePhonePanelOpen] = useState(false);
+
+
   const [deliverySelection, setDeliverySelection] = useState<DeliverySelection | null>(
     () => {
       if (!defaultDeliverySelection) {
@@ -293,7 +293,6 @@ export function CartView({
       if (options?.keepEditorOpenOnError ?? true) {
         setIsEditingPhone(true);
       }
-      setIsMobilePhonePanelOpen(true);
       setPhoneError(message);
       toast.error(message);
       return false;
@@ -344,7 +343,6 @@ export function CartView({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : contactDictionary.updateError;
-      setIsMobilePhonePanelOpen(true);
       if (options?.keepEditorOpenOnError ?? true) {
         setIsEditingPhone(true);
       }
@@ -368,7 +366,7 @@ export function CartView({
       keepEditorOpenOnError: true,
     });
     if (ok) {
-      setIsMobilePhonePanelOpen(false);
+      setIsEditingPhone(false);
     }
   };
 
@@ -647,8 +645,8 @@ export function CartView({
           {dictionary.empty.cta}
         </Link>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[2fr_1fr]">
-        <section className="space-y-3.5 pb-4 lg:pb-0">
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr] lg:gap-6">
+        <section className="space-y-3.5 lg:pb-0">
         {cart.items.map((item) => {
           const displayName =
             menuLocale === "my"
@@ -834,44 +832,13 @@ export function CartView({
 
       <aside className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 lg:self-start">
         <div className="space-y-3 lg:hidden">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">
-                {dictionary.summary.heading}
-              </h2>
-              <p className="mt-1 text-xs text-slate-600">
-                {itemCountLabel} · {totalQuantity} {dictionary.items.quantityLabel}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wide text-slate-500">
-                {dictionary.summary.foodTotal ?? "Food Total"}
-              </p>
-              <p className="text-base font-semibold text-slate-900">
-                ฿{formatPrice(cartTotals.foodTotal)}
-              </p>
-            </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">
+              {dictionary.summary.heading}
+            </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsMobileBreakdownOpen((prev) => !prev)}
-            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
-          >
-            <span>
-              {isMobileBreakdownOpen
-                ? dictionary.summary.hideDetailsCta
-                : dictionary.summary.showDetailsCta}
-            </span>
-            {isMobileBreakdownOpen ? (
-              <ChevronUp className="h-3.5 w-3.5 text-emerald-700" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-emerald-700" />
-            )}
-          </button>
-
-          {isMobileBreakdownOpen ? (
-            <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
+          <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
               <div className="flex items-center justify-between text-slate-600">
                 <span>{itemCountLabel}</span>
                 <span>
@@ -892,38 +859,24 @@ export function CartView({
               </div>
               <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900">
                 <span>{dictionary.summary.foodTotal ?? "Food Total"}</span>
-                <span>฿{formatPrice(cartTotals.foodTotal)}</span>
+                <span>
+                  ฿{formatPrice(cartTotals.foodTotal)}{" "}
+                  <span className="text-[10px] font-normal uppercase tracking-wide text-slate-500">
+                    {dictionary.summary.vatInc ?? "VAT inc."}
+                  </span>
+                </span>
               </div>
-              <p className="text-[10px] uppercase tracking-wide text-slate-500">
-                {dictionary.summary.vatIncluded ?? `Includes VAT (${ORDER_VAT_PERCENT_LABEL})`}
-              </p>
+              <div className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] leading-snug text-amber-800">
+                <Info className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
+                <span>{dictionary.summary.deliveryFeeNote ?? "Delivery fee is not included and will be collected separately."}</span>
+              </div>
             </div>
-          ) : null}
 
-          <button
-            type="button"
-            onClick={() => setIsMobilePhonePanelOpen((prev) => !prev)}
-            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5" />
-              {contactDictionary.label}
-            </span>
-            <span className="inline-flex items-center gap-1 text-emerald-700">
-              {isMobilePhonePanelOpen
-                ? contactDictionary.hideCta
-                : contactDictionary.showCta}
-              {isMobilePhonePanelOpen ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </span>
-          </button>
-
-          {isMobilePhonePanelOpen ? (
-            <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
-              <p className="text-xs text-slate-600">{contactDictionary.helper}</p>
+          <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                <Phone className="h-3.5 w-3.5" />
+                {contactDictionary.label}
+              </div>
               {isEditingPhone ? (
                 <div className="space-y-2">
                   <input
@@ -985,7 +938,6 @@ export function CartView({
                 </div>
               )}
             </div>
-          ) : null}
 
           {submitError ? (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
@@ -1022,16 +974,17 @@ export function CartView({
             <span>฿{formatPrice(cartTotals.vatAmount)}</span>
           </div>
           <div className="flex items-start justify-between gap-2 border-t border-slate-200 pt-2 text-sm font-semibold text-slate-900">
-            <div className="flex flex-col">
-              <span>{dictionary.summary.foodTotal ?? "Food Total"}</span>
-              <span className="text-[10px] uppercase tracking-wide text-slate-500">
-                {dictionary.summary.vatIncluded ??
-                  `Includes VAT (${ORDER_VAT_PERCENT_LABEL})`}
-              </span>
-            </div>
+            <span>{dictionary.summary.foodTotal ?? "Food Total"}</span>
             <span className="text-sm font-semibold text-slate-900">
-              ฿{formatPrice(cartTotals.foodTotal)}
+              ฿{formatPrice(cartTotals.foodTotal)}{" "}
+              <span className="text-[10px] font-normal uppercase tracking-wide text-slate-500">
+                {dictionary.summary.vatInc ?? "VAT inc."}
+              </span>
             </span>
+          </div>
+          <div className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] leading-snug text-amber-800">
+            <Info className="mt-0.5 h-3 w-3 shrink-0 text-amber-600" />
+            <span>{dictionary.summary.deliveryFeeNote ?? "Delivery fee is not included and will be collected separately."}</span>
           </div>
         </div>
 
@@ -1163,14 +1116,92 @@ export function CartView({
               cart.items.length === 0 ||
               Boolean(locationValidationError)
             }
-            onClick={() => void handleSendOrder()}
+            onClick={() => setConfirmModalOpen(true)}
           >
             {isSubmitting ? dictionary.summary.checkoutCta + "..." : dictionary.summary.checkoutCta}
           </button>
+          <p className="text-center text-[11px] leading-snug text-slate-500">
+            {dictionary.summary.orderAcceptNote ?? "After sending, please wait for the shop to accept your order."}
+          </p>
         </div>
 
       </aside>
     </div>
+
+    {/* Send Order Confirmation Modal */}
+    {confirmModalOpen ? (
+      <>
+        <div
+          className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[1px]"
+          aria-hidden="true"
+          onClick={() => setConfirmModalOpen(false)}
+        />
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setConfirmModalOpen(false);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={dictionary.summary.confirmTitle ?? "Confirm your order"}
+            className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {dictionary.summary.confirmTitle ?? "Confirm your order"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-snug text-amber-800 ring-1 ring-amber-200">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <span>{dictionary.summary.confirmDeliveryFeeNote ?? "Delivery fee is not included in the total and will be collected separately."}</span>
+              </div>
+              <div className="flex items-start gap-2.5 rounded-xl bg-blue-50 px-3 py-2.5 text-sm leading-snug text-blue-800 ring-1 ring-blue-200">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                <span>{dictionary.summary.confirmWaitNote ?? "After sending, please wait for the shop to accept your order before proceeding to payment."}</span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="flex-1 rounded-full border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                {dictionary.summary.confirmCancel ?? "Go back"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmModalOpen(false);
+                  void handleSendOrder();
+                }}
+                disabled={isSubmitting}
+                className="flex-1 rounded-full bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              >
+                {isSubmitting
+                  ? (dictionary.summary.confirmCta ?? "Confirm & Send") + "..."
+                  : dictionary.summary.confirmCta ?? "Confirm & Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    ) : null}
+
     {editingItem ? (
       <>
         <div
