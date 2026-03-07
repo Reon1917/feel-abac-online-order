@@ -27,6 +27,14 @@ function formatCurrency(amount: number) {
   return currencyFormatter.format(amount);
 }
 
+function parseDeliveryFeeInput(value: string) {
+  const parsedValue = value.trim() === "" ? 0 : Number(value);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return Number.NaN;
+  }
+  return Math.round(parsedValue);
+}
+
 /* ---------- Types ---------- */
 type Dictionary = {
   acceptModalTitle?: string;
@@ -39,6 +47,11 @@ type Dictionary = {
   vatLabel?: string;
   foodTotalLabel?: string;
   deliveryFeeLabel?: string;
+  orderDetailsLabel?: string;
+  orderIdLabel?: string;
+  customerLabel?: string;
+  locationLabel?: string;
+  close?: string;
   // fallback strings used when keys are missing
   [key: string]: string | undefined;
 };
@@ -63,7 +76,7 @@ export function AcceptOrderModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* ---- derived fee value ---- */
-  const feeValue = feeInput.trim() === "" ? 0 : Number(feeInput);
+  const feeValue = parseDeliveryFeeInput(feeInput);
   const feeIsValid = Number.isFinite(feeValue) && feeValue >= 0;
 
   /* ---- reset on close ---- */
@@ -148,7 +161,7 @@ export function AcceptOrderModal({
                 type="number"
                 inputMode="numeric"
                 min={0}
-                step="any"
+                step="1"
                 value={feeInput}
                 onChange={(e) => setFeeInput(e.target.value)}
                 onFocus={handleInputFocus}
@@ -169,7 +182,8 @@ export function AcceptOrderModal({
             {/* Quick-fee preset grid */}
             <div className="grid grid-cols-5 gap-2">
               {QUICK_FEES.map((amt) => {
-                const active = feeInput === String(amt);
+                const active =
+                  feeInput.trim() !== "" && feeIsValid && feeValue === amt;
                 return (
                   <button
                     key={amt}
@@ -194,19 +208,25 @@ export function AcceptOrderModal({
           {/* ---- 2. Compact order summary ---- */}
           <section className="space-y-2">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Order Details
+              {dictionary.orderDetailsLabel ?? "Order Details"}
             </h4>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm space-y-1.5">
               <div className="flex justify-between">
-                <span className="text-slate-500">Order</span>
+                <span className="text-slate-500">
+                  {dictionary.orderIdLabel ?? "Order"}
+                </span>
                 <span className="font-semibold text-slate-900">{order.displayId}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Customer</span>
+                <span className="text-slate-500">
+                  {dictionary.customerLabel ?? "Customer"}
+                </span>
                 <span className="font-semibold text-slate-900">{order.customerName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Location</span>
+                <span className="text-slate-500">
+                  {dictionary.locationLabel ?? "Location"}
+                </span>
                 <span className="font-medium text-slate-700">{order.deliveryLabel}</span>
               </div>
               <div className="flex justify-between pt-1.5 border-t border-slate-200">
@@ -246,7 +266,7 @@ export function AcceptOrderModal({
               className="flex-1"
               onClick={() => handleOpenChange(false)}
             >
-              Cancel
+              {dictionary.close ?? "Close"}
             </Button>
             <Button
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-base py-5"

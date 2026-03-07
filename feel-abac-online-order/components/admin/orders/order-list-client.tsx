@@ -343,14 +343,36 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
-        invalidateOrderDetailCache(order.displayId);
+        const currentDeliveryFee =
+          typeof order.deliveryFee === "number" && Number.isFinite(order.deliveryFee)
+            ? Math.round(Math.max(0, order.deliveryFee))
+            : 0;
+        const normalizedDeliveryFee = Math.round(Math.max(0, deliveryFee));
+        const nextDeliveryFee =
+          typeof payload?.deliveryFee === "number" && Number.isFinite(payload.deliveryFee)
+            ? Math.round(Math.max(0, payload.deliveryFee))
+            : normalizedDeliveryFee;
+        const nextTotalAmount =
+          typeof payload?.totalAmount === "number" && Number.isFinite(payload.totalAmount)
+            ? payload.totalAmount
+            : Math.max(0, order.totalAmount - currentDeliveryFee + nextDeliveryFee);
+        const nextStatus =
+          (payload?.status as OrderStatus | undefined) ??
+          ("awaiting_payment" as OrderStatus);
+
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
-              ? { ...item, status: "awaiting_payment" as OrderStatus }
+              ? {
+                  ...item,
+                  status: nextStatus,
+                  deliveryFee: nextDeliveryFee,
+                  totalAmount: nextTotalAmount,
+                }
               : item
           )
         );
+        invalidateOrderDetailCache(order.displayId);
         toast.success(dictionary.statusUpdatedToast);
         return true;
       } catch (error) {
@@ -710,15 +732,6 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     },
     [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
-
-  // Modal handlers
-  const handleAcceptWithFee = useCallback(async (order: OrderAdminSummary, deliveryFee: number) => {
-    const success = await handleAcceptOrder(order, deliveryFee);
-    if (success) {
-      invalidateOrderDetailCache(order.displayId);
-    }
-    return success;
-  }, [handleAcceptOrder, invalidateOrderDetailCache]);
 
   const handleHandoffSubmit = useCallback(async () => {
     if (!handoffTarget) return;
@@ -1286,7 +1299,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         }}
         order={acceptTarget}
         dictionary={dictionary}
-        onAccept={handleAcceptWithFee}
+        onAccept={handleAcceptOrder}
       />
 
       {/* Verify Payment Modal */}
