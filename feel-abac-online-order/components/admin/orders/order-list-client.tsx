@@ -36,6 +36,7 @@ import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
 import { RejectOrderDialog, type CancelOrderData } from "./reject-order-dialog";
+import { AcceptOrderModal } from "./accept-order-modal";
 import {
   computeOrderTotals,
   ORDER_VAT_PERCENT_LABEL,
@@ -93,11 +94,9 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
-  // Accept modal state for entering delivery fee
+  // Accept modal state
   const [acceptTarget, setAcceptTarget] = useState<OrderAdminSummary | null>(null);
   const [acceptModalOpen, setAcceptModalOpen] = useState(false);
-  const [deliveryFeeInput, setDeliveryFeeInput] = useState("");
-  const [acceptSubmitting, setAcceptSubmitting] = useState(false);
 
   // Hand-off modal state
   const [handoffTarget, setHandoffTarget] = useState<OrderAdminSummary | null>(null);
@@ -344,14 +343,36 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         if (!response.ok) {
           throw new Error(payload?.error ?? dictionary.errorLoading);
         }
-        invalidateOrderDetailCache(order.displayId);
+        const currentDeliveryFee =
+          typeof order.deliveryFee === "number" && Number.isFinite(order.deliveryFee)
+            ? Math.round(Math.max(0, order.deliveryFee))
+            : 0;
+        const normalizedDeliveryFee = Math.round(Math.max(0, deliveryFee));
+        const nextDeliveryFee =
+          typeof payload?.deliveryFee === "number" && Number.isFinite(payload.deliveryFee)
+            ? Math.round(Math.max(0, payload.deliveryFee))
+            : normalizedDeliveryFee;
+        const nextTotalAmount =
+          typeof payload?.totalAmount === "number" && Number.isFinite(payload.totalAmount)
+            ? payload.totalAmount
+            : Math.max(0, order.totalAmount - currentDeliveryFee + nextDeliveryFee);
+        const nextStatus =
+          (payload?.status as OrderStatus | undefined) ??
+          ("awaiting_payment" as OrderStatus);
+
         setOrders((prev) =>
           prev.map((item) =>
             item.id === order.id
-              ? { ...item, status: "awaiting_payment" as OrderStatus }
+              ? {
+                  ...item,
+                  status: nextStatus,
+                  deliveryFee: nextDeliveryFee,
+                  totalAmount: nextTotalAmount,
+                }
               : item
           )
         );
+        invalidateOrderDetailCache(order.displayId);
         toast.success(dictionary.statusUpdatedToast);
         return true;
       } catch (error) {
@@ -712,30 +733,6 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     [dictionary.errorLoading, dictionary.statusUpdatedToast, invalidateOrderDetailCache]
   );
 
-  // Modal handlers
-  const handleAcceptWithFee = useCallback(async () => {
-    if (!acceptTarget) return;
-
-    const rawFee = deliveryFeeInput.trim();
-    const feeValue = rawFee === "" ? 0 : Number(rawFee);
-
-    if (!Number.isFinite(feeValue) || feeValue < 0) {
-      toast.error("Delivery fee must be a non-negative number");
-      return;
-    }
-
-    setAcceptSubmitting(true);
-    const success = await handleAcceptOrder(acceptTarget, feeValue);
-    setAcceptSubmitting(false);
-
-    if (success) {
-      invalidateOrderDetailCache(acceptTarget.displayId);
-      setAcceptModalOpen(false);
-      setAcceptTarget(null);
-      setDeliveryFeeInput("");
-    }
-  }, [acceptTarget, deliveryFeeInput, handleAcceptOrder, invalidateOrderDetailCache]);
-
   const handleHandoffSubmit = useCallback(async () => {
     if (!handoffTarget) return;
 
@@ -941,7 +938,6 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
             disabled={isSaving}
             onClick={() => {
               setAcceptTarget(order);
-              setDeliveryFeeInput("");
               setAcceptModalOpen(true);
             }}
           >
@@ -1294,148 +1290,17 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
         } : undefined}
       />
 
-      {/* Accept Order Modal */}
-      <Dialog
+      {/* Accept Order Modal — tablet-optimized with quick-fee buttons & sticky footer */}
+      <AcceptOrderModal
         open={acceptModalOpen}
         onOpenChange={(open) => {
           setAcceptModalOpen(open);
-          if (!open) {
-            setAcceptTarget(null);
-            setDeliveryFeeInput("");
-          }
+          if (!open) setAcceptTarget(null);
         }}
-      >
-        <DialogContent className="sm:max-w-md top-[5%] translate-y-0 max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-emerald-600">
-              {dictionary.acceptModalTitle ?? "Accept Order"}
-            </DialogTitle>
-          </DialogHeader>
-          {acceptTarget && (
-            <div className="space-y-4">
-              {/* Order Summary Section */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Order Details
-                </h4>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Order ID</span>
-                    <span className="font-semibold text-slate-900">
-                      {acceptTarget.displayId}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Customer</span>
-                    <span className="font-semibold text-slate-900">
-                      {acceptTarget.customerName}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Location</span>
-                    <span className="font-medium text-slate-700">
-                      {acceptTarget.deliveryLabel}
-                    </span>
-                  </div>
-                  {(() => {
-                    const totals = computeOrderTotals({
-                      foodSubtotal: acceptTarget.subtotal,
-                      vatAmount: acceptTarget.vatAmount,
-                      deliveryFee: acceptTarget.deliveryFee,
-                    });
-                    return (
-                      <>
-                        <div className="flex justify-between pt-2 border-t border-slate-200">
-                          <span className="text-slate-500">{dictionary.subtotalLabel ?? "Subtotal"}</span>
-                          <span className="font-semibold text-slate-900">
-                            {formatCurrency(totals.foodSubtotal)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">
-                            {dictionary.vatLabel ?? `VAT (${ORDER_VAT_PERCENT_LABEL})`}
-                          </span>
-                          <span className="font-semibold text-slate-900">
-                            {formatCurrency(totals.vatAmount)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">
-                            {dictionary.foodTotalLabel ?? "Food Total"}
-                          </span>
-                          <span className="font-semibold text-slate-900">
-                            {formatCurrency(totals.foodTotal)}
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* Delivery Fee Input Section */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Set Delivery Fee
-                </h4>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={deliveryFeeInput}
-                  onChange={(e) => setDeliveryFeeInput(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  placeholder={
-                    dictionary.acceptDeliveryFeePlaceholder ??
-                    "Enter delivery fee (0 for pickup)"
-                  }
-                />
-              </div>
-
-              {/* Total Summary Section */}
-              <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-emerald-700">
-                    {dictionary.acceptCustomerPays ?? "Customer Pays"}
-                  </span>
-                  <span className="text-lg font-bold text-emerald-800">
-                    {formatCurrency(
-                      computeOrderTotals({
-                        foodSubtotal: acceptTarget.subtotal,
-                        vatAmount: acceptTarget.vatAmount,
-                        deliveryFee: Number(deliveryFeeInput) || 0,
-                      }).totalAmount
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAcceptModalOpen(false);
-                    setAcceptTarget(null);
-                    setDeliveryFeeInput("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  disabled={acceptSubmitting}
-                  onClick={() => void handleAcceptWithFee()}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {acceptSubmitting
-                    ? (dictionary.acceptSubmitting ?? "Accepting...")
-                    : (dictionary.acceptSubmit ?? "Accept Order")}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+        order={acceptTarget}
+        dictionary={dictionary}
+        onAccept={handleAcceptOrder}
+      />
 
       {/* Verify Payment Modal */}
       <Dialog
