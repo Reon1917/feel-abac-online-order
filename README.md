@@ -13,9 +13,9 @@
 
 <br />
 
-<img src="docs/images/landingpage.png" alt="Landing Page" width="260" />
+<img src="feel-abac-online-order/docs/images/landingpage.png" alt="Landing Page" width="260" />
 &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="docs/images/menu.png" alt="Menu Browser" width="260" />
+<img src="feel-abac-online-order/docs/images/menu.png" alt="Menu Browser" width="260" />
 
 </div>
 
@@ -80,19 +80,19 @@
 ## Screenshots
 
 ### Admin Dashboard
-<img src="docs/images/admindashboard.png" alt="Admin Dashboard" width="800" />
+<img src="feel-abac-online-order/docs/images/admindashboard.png" alt="Admin Dashboard" width="800" />
 
 ### Menu Management
-<img src="docs/images/menumanagement.png" alt="Menu Tools" width="800" />
+<img src="feel-abac-online-order/docs/images/menumanagement.png" alt="Menu Tools" width="800" />
 
 ### Live Order Board
-<img src="docs/images/ordermanagement.png" alt="Live Orders" width="800" />
+<img src="feel-abac-online-order/docs/images/ordermanagement.png" alt="Live Orders" width="800" />
 
 ### Customer Landing & Menu (Mobile)
 <p>
-  <img src="docs/images/landingpage.png" alt="Landing Page" width="300" />
+  <img src="feel-abac-online-order/docs/images/landingpage.png" alt="Landing Page" width="300" />
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/images/menu.png" alt="Menu Browser" width="300" />
+  <img src="feel-abac-online-order/docs/images/menu.png" alt="Menu Browser" width="300" />
 </p>
 
 ---
@@ -124,7 +124,7 @@
 
 ## Architecture
 
-<img src="docs/images/system%20architeture.png" alt="System Architecture" width="800" />
+<img src="feel-abac-online-order/docs/images/system%20architeture.png" alt="System Architecture" width="800" />
 
 **Key Design Decisions:**
 - **Locale-based routing** — All pages nested under `[lang]` for clean EN/MY URLs
