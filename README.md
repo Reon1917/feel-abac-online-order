@@ -75,15 +75,15 @@
 ## Screenshots
 
 ### Admin Dashboard
-<img width="1038" height="598" alt="Galaxy-Tab-S7-feelabac com" src="https://github.com/user-attachments/assets/b5820bea-8a9f-4620-8734-11aa0ee9cfd4" />
+<img width="838" height="598" alt="Galaxy-Tab-S7-feelabac com" src="https://github.com/user-attachments/assets/b5820bea-8a9f-4620-8734-11aa0ee9cfd4" />
 
 
 ### Menu Management
-<img width="1038" height="598" alt="Galaxy-Tab-S7-feelabac com (2)" src="https://github.com/user-attachments/assets/07905150-d977-4f71-8083-e82b0b6af6f8" />
+<img width="838" height="598" alt="Galaxy-Tab-S7-feelabac com (2)" src="https://github.com/user-attachments/assets/07905150-d977-4f71-8083-e82b0b6af6f8" />
 
 
 ### Live Order Board
-<img width="1038" height="598" alt="Galaxy-Tab-S7-feelabac com (1)" src="https://github.com/user-attachments/assets/3cce2e98-7a1c-496e-b7ed-9c404cef4af4" />
+<img width="838" height="598" alt="Galaxy-Tab-S7-feelabac com (1)" src="https://github.com/user-attachments/assets/3cce2e98-7a1c-496e-b7ed-9c404cef4af4" />
 
 ### Customer Landing & Menu (Mobile)
 
