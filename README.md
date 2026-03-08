@@ -11,6 +11,12 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)](https://neon.tech/)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?logo=vercel)](https://vercel.com/)
 
+<br />
+
+<img src="docs/images/landingpage.png" alt="Landing Page" width="260" />
+&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="docs/images/menu.png" alt="Menu Browser" width="260" />
+
 </div>
 
 ---
@@ -27,6 +33,7 @@
 - [Project Structure](#project-structure)
 - [Internationalization](#internationalization)
 - [Scripts](#scripts)
+- [Screenshots](#screenshots)
 - [Deployment](#deployment)
 - [License](#license)
 
@@ -70,6 +77,26 @@
 
 ---
 
+## Screenshots
+
+### Admin Dashboard
+<img src="docs/images/admindashboard.png" alt="Admin Dashboard" width="800" />
+
+### Menu Management
+<img src="docs/images/menumanagement.png" alt="Menu Tools" width="800" />
+
+### Live Order Board
+<img src="docs/images/ordermanagement.png" alt="Live Orders" width="800" />
+
+### Customer Landing & Menu (Mobile)
+<p>
+  <img src="docs/images/landingpage.png" alt="Landing Page" width="300" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/images/menu.png" alt="Menu Browser" width="300" />
+</p>
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -97,22 +124,7 @@
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    Client (Browser)                  │
-│  React 19 · Tailwind · shadcn/ui · Zustand · i18n   │
-└──────────────────────┬──────────────────────────────┘
-                       │
-              ┌────────▼────────┐
-              │  Next.js 16 App │
-              │  Router + API   │
-              └──┬─────┬─────┬──┘
-                 │     │     │
-    ┌────────────▼┐ ┌──▼──┐ ┌▼────────────┐
-    │  Neon (PG)  │ │Pusher│ │UploadThing  │
-    │  Drizzle ORM│ │  WS  │ │+ R2 Storage │
-    └─────────────┘ └─────┘ └─────────────┘
-```
+<img src="docs/images/system%20architeture.png" alt="System Architecture" width="800" />
 
 **Key Design Decisions:**
 - **Locale-based routing** — All pages nested under `[lang]` for clean EN/MY URLs
