@@ -10,9 +10,9 @@
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?logo=vercel)](https://vercel.com/)
 
 
-<img width="916" height="1858" alt="iPhone-14-Plus-feelabac com" src="https://github.com/user-attachments/assets/83782003-d963-4b6f-9a75-02fa634ae89a" /> 
-<img width="916" height="1858" alt="iPhone-14-Plus-feelabac com (1)" src="https://github.com/user-attachments/assets/1e4823fd-0138-485d-8b5f-2c06865b9697" />
-
+<img width="316" height="1258" alt="iPhone-14-Plus-feelabac com" src="https://github.com/user-attachments/assets/83782003-d963-4b6f-9a75-02fa634ae89a" />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<img width="316" height="1258" alt="iPhone-14-Plus-feelabac com (1)" src="https://github.com/user-attachments/assets/1e4823fd-0138-485d-8b5f-2c06865b9697" />
 
 ---
 
@@ -75,20 +75,21 @@
 ## Screenshots
 
 ### Admin Dashboard
-<img width="1838" height="1198" alt="Galaxy-Tab-S7-feelabac com" src="https://github.com/user-attachments/assets/b5820bea-8a9f-4620-8734-11aa0ee9cfd4" />
+<img width="1038" height="598" alt="Galaxy-Tab-S7-feelabac com" src="https://github.com/user-attachments/assets/b5820bea-8a9f-4620-8734-11aa0ee9cfd4" />
 
 
 ### Menu Management
-<img width="1838" height="1198" alt="Galaxy-Tab-S7-feelabac com (2)" src="https://github.com/user-attachments/assets/07905150-d977-4f71-8083-e82b0b6af6f8" />
+<img width="1038" height="598" alt="Galaxy-Tab-S7-feelabac com (2)" src="https://github.com/user-attachments/assets/07905150-d977-4f71-8083-e82b0b6af6f8" />
 
 
 ### Live Order Board
-<img width="1838" height="1198" alt="Galaxy-Tab-S7-feelabac com (1)" src="https://github.com/user-attachments/assets/3cce2e98-7a1c-496e-b7ed-9c404cef4af4" />
+<img width="1038" height="598" alt="Galaxy-Tab-S7-feelabac com (1)" src="https://github.com/user-attachments/assets/3cce2e98-7a1c-496e-b7ed-9c404cef4af4" />
 
 ### Customer Landing & Menu (Mobile)
 
-<img width="916" height="1858" alt="iPhone-14-Plus-feelabac com" src="https://github.com/user-attachments/assets/2b144089-3ad0-45f1-b1d4-53f9d88c9202" />
-<img width="916" height="1858" alt="iPhone-14-Plus-feelabac com (1)" src="https://github.com/user-attachments/assets/7f49982c-b08b-42b2-92e5-f41cbdbd21f2" />
+<img width="316" height="1258" alt="iPhone-14-Plus-feelabac com" src="https://github.com/user-attachments/assets/2b144089-3ad0-45f1-b1d4-53f9d88c9202" />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<img width="316" height="1258" alt="iPhone-14-Plus-feelabac com (1)" src="https://github.com/user-attachments/assets/7f49982c-b08b-42b2-92e5-f41cbdbd21f2" />
 
 ---
 
@@ -119,7 +120,7 @@
 
 ## Architecture
 
-<img width="1624" height="1080" alt="Diner App" src="https://github.com/user-attachments/assets/c90f2abf-193e-4bf5-b527-2c1d76abbaa6" />
+<img width="924" height="680" alt="Diner App" src="https://github.com/user-attachments/assets/c90f2abf-193e-4bf5-b527-2c1d76abbaa6" />
 
 
 **Key Design Decisions:**
