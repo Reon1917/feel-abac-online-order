@@ -3,7 +3,13 @@
   "pageSubtitle": "Add PromptPay accounts and choose the active one for QR payments.",
   "addSectionTitle": "Add PromptPay account",
   "nameLabel": "Account name",
+  "accountTypeLabel": "Account type",
+  "anyIdOption": "Phone number (AnyID)",
+  "billPaymentOption": "Bill Payment",
   "phoneLabel": "Phone number",
+  "billerIdLabel": "Biller ID",
+  "ref1Label": "Reference 1",
+  "ref2Label": "Reference 2 (optional)",
   "activateLabel": "Set as active",
   "saveAccount": "Save account",
   "saving": "Saving...",
@@ -16,5 +22,8 @@
   "toastSaved": "PromptPay account saved",
   "toastActivated": "Active account updated",
   "invalidPhone": "Enter a 10-digit Thai mobile number starting with 0",
-  "activationFailed": "Unable to activate account"
+  "invalidBillPayment": "Biller ID and Reference 1 are required",
+  "activationFailed": "Unable to activate account",
+  "anyIdBadge": "AnyID",
+  "billPaymentBadge": "Bill Payment"
 }

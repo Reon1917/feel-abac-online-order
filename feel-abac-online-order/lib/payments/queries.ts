@@ -7,7 +7,11 @@ import { normalizePromptPayPhone } from "./promptpay";
 export type PromptPayAccountRecord = {
   id: string;
   name: string;
-  phoneNumber: string;
+  accountType: string;
+  phoneNumber: string | null;
+  billerId: string | null;
+  ref1: string | null;
+  ref2: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -19,7 +23,11 @@ function mapPromptPayAccount(
   return {
     id: row.id,
     name: row.name,
-    phoneNumber: row.phoneNumber,
+    accountType: row.accountType ?? "anyid",
+    phoneNumber: row.phoneNumber ?? null,
+    billerId: row.billerId ?? null,
+    ref1: row.ref1 ?? null,
+    ref2: row.ref2 ?? null,
     isActive: row.isActive ?? false,
     createdAt: row.createdAt?.toISOString() ?? "",
     updatedAt: row.updatedAt?.toISOString() ?? "",
@@ -46,19 +54,40 @@ export async function getActivePromptPayAccount(): Promise<PromptPayAccountRecor
   return row ? mapPromptPayAccount(row) : null;
 }
 
-export async function createPromptPayAccount(input: {
-  name: string;
-  phoneNumber: string;
-  activate?: boolean;
-}): Promise<PromptPayAccountRecord> {
-  const normalizedPhone = normalizePromptPayPhone(input.phoneNumber);
-  if (!normalizedPhone) {
-    throw new Error("Invalid PromptPay phone number");
-  }
+export type CreatePromptPayAccountInput =
+  | {
+      accountType: "anyid";
+      name: string;
+      phoneNumber: string;
+      activate?: boolean;
+    }
+  | {
+      accountType: "billpayment";
+      name: string;
+      billerId: string;
+      ref1: string;
+      ref2?: string;
+      activate?: boolean;
+    };
 
+export async function createPromptPayAccount(
+  input: CreatePromptPayAccountInput,
+): Promise<PromptPayAccountRecord> {
   const trimmedName = input.name.trim();
   if (!trimmedName) {
     throw new Error("Account name is required");
+  }
+
+  let normalizedPhone: string | null = null;
+
+  if (input.accountType === "anyid") {
+    normalizedPhone = normalizePromptPayPhone(input.phoneNumber);
+    if (!normalizedPhone) {
+      throw new Error("Invalid PromptPay phone number");
+    }
+  } else {
+    if (!input.billerId.trim()) throw new Error("Biller ID is required");
+    if (!input.ref1.trim()) throw new Error("Reference 1 is required");
   }
 
   const [existingActive] = await db
@@ -73,13 +102,26 @@ export async function createPromptPayAccount(input: {
     await db.update(promptpayAccounts).set({ isActive: false });
   }
 
+  const values =
+    input.accountType === "billpayment"
+      ? {
+          name: trimmedName,
+          accountType: "billpayment" as const,
+          billerId: input.billerId.trim(),
+          ref1: input.ref1.trim(),
+          ref2: input.ref2?.trim() || null,
+          isActive: shouldActivate,
+        }
+      : {
+          name: trimmedName,
+          accountType: "anyid" as const,
+          phoneNumber: normalizedPhone,
+          isActive: shouldActivate,
+        };
+
   const [inserted] = await db
     .insert(promptpayAccounts)
-    .values({
-      name: trimmedName,
-      phoneNumber: normalizedPhone,
-      isActive: shouldActivate,
-    })
+    .values(values)
     .returning();
 
   return mapPromptPayAccount(inserted);

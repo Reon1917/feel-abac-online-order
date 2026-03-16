@@ -30,11 +30,26 @@ export async function GET() {
   }
 }
 
-const createAccountSchema = z.object({
+const anyIdSchema = z.object({
+  accountType: z.literal("anyid"),
   name: z.string().trim().min(1, "Name is required"),
   phoneNumber: z.string().trim().min(8, "Phone number is required"),
   activate: z.boolean().optional(),
 });
+
+const billPaymentSchema = z.object({
+  accountType: z.literal("billpayment"),
+  name: z.string().trim().min(1, "Name is required"),
+  billerId: z.string().trim().min(1, "Biller ID is required"),
+  ref1: z.string().trim().min(1, "Reference 1 is required"),
+  ref2: z.string().trim().optional(),
+  activate: z.boolean().optional(),
+});
+
+const createAccountSchema = z.discriminatedUnion("accountType", [
+  anyIdSchema,
+  billPaymentSchema,
+]);
 
 export async function POST(req: NextRequest) {
   const result = await requirePromptPayAccess();
@@ -49,17 +64,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const normalizedPhone = normalizePromptPayPhone(parsed.data.phoneNumber);
-  if (!normalizedPhone) {
-    return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+  const data = parsed.data;
+
+  if (data.accountType === "anyid") {
+    const normalizedPhone = normalizePromptPayPhone(data.phoneNumber);
+    if (!normalizedPhone) {
+      return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+    }
   }
 
   try {
-    const account = await createPromptPayAccount({
-      name: parsed.data.name.trim(),
-      phoneNumber: normalizedPhone,
-      activate: parsed.data.activate,
-    });
+    const account =
+      data.accountType === "billpayment"
+        ? await createPromptPayAccount({
+            accountType: "billpayment",
+            name: data.name.trim(),
+            billerId: data.billerId,
+            ref1: data.ref1,
+            ref2: data.ref2,
+            activate: data.activate,
+          })
+        : await createPromptPayAccount({
+            accountType: "anyid",
+            name: data.name.trim(),
+            phoneNumber: data.phoneNumber,
+            activate: data.activate,
+          });
 
     return NextResponse.json({ account });
   } catch (error) {

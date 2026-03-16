@@ -166,7 +166,11 @@ export const promptpayAccounts = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
-    phoneNumber: text("phone_number").notNull(),
+    accountType: text("account_type").default("anyid").notNull(),
+    phoneNumber: text("phone_number"),
+    billerId: text("biller_id"),
+    ref1: text("ref1"),
+    ref2: text("ref2"),
     isActive: boolean("is_active").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
