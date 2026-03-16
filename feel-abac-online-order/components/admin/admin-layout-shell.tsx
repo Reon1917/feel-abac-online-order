@@ -7,6 +7,7 @@ import { AdminSidebar } from "./admin-sidebar";
 import { AdminSidebarProvider } from "./admin-sidebar-context";
 import { AdminMainContent } from "./admin-main-content";
 import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
+import { countLiveAdminOrders } from "@/lib/orders/admin-stats";
 import type { AdminRole } from "@/lib/admin/types";
 
 type AdminLayoutShellProps = {
@@ -25,9 +26,7 @@ export async function AdminLayoutShell({ children, locale }: AdminLayoutShellPro
   
   // Get live order count for badge
   const orders = await getTodayOrdersForAdmin();
-  const liveOrderCount = orders.filter(
-    (o) => !["delivered", "cancelled", "closed"].includes(o.status)
-  ).length;
+  const liveOrderCount = countLiveAdminOrders(orders);
 
   const currentUser = {
     name: currentAdmin?.name ?? sessionData.session.user.name ?? "Admin",

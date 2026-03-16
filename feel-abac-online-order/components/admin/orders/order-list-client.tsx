@@ -49,6 +49,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -230,6 +231,20 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
     return grouped;
   }, [orders]);
+
+  const workflowSummary = useMemo(() => {
+    const received = ordersByTab.received.length;
+    const payment = ordersByTab.waitForPayment.length;
+    const active = ordersByTab.paid.length + ordersByTab.handToDelivery.length;
+    const completed = ordersByTab.delivered.length + ordersByTab.closed.length;
+
+    return {
+      received,
+      payment,
+      active,
+      completed,
+    };
+  }, [ordersByTab]);
 
   // Get tab label from dictionary
   const getTabLabel = (key: TabKey) => {
@@ -1205,6 +1220,33 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   return (
     <div className="space-y-4">
+      <StatsGrid columns={4}>
+        <StatsCard
+          title="Received"
+          value={workflowSummary.received}
+          subtitle="New orders"
+          variant={workflowSummary.received > 0 ? "warning" : "default"}
+        />
+        <StatsCard
+          title="Payment"
+          value={workflowSummary.payment}
+          subtitle="Awaiting payment"
+          variant={workflowSummary.payment > 0 ? "info" : "default"}
+        />
+        <StatsCard
+          title="Active"
+          value={workflowSummary.active}
+          subtitle="Preparing / delivering"
+          variant="info"
+        />
+        <StatsCard
+          title="Completed"
+          value={workflowSummary.completed}
+          subtitle="Delivered today"
+          variant="success"
+        />
+      </StatsGrid>
+
       {/* Tab Navigation */}
       <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl">
         {WORKFLOW_TABS.map((tab) => {
