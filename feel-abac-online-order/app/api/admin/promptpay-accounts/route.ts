@@ -66,11 +66,13 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
+  let normalizedPhone: string | undefined;
   if (data.accountType === "anyid") {
-    const normalizedPhone = normalizePromptPayPhone(data.phoneNumber);
-    if (!normalizedPhone) {
+    const result = normalizePromptPayPhone(data.phoneNumber);
+    if (!result) {
       return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
     }
+    normalizedPhone = result;
   }
 
   try {
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest) {
         : await createPromptPayAccount({
             accountType: "anyid",
             name: data.name.trim(),
-            phoneNumber: data.phoneNumber,
+            phoneNumber: normalizedPhone!,
             activate: data.activate,
           });
 
