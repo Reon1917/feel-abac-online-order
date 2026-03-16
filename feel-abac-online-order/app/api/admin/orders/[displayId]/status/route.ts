@@ -11,7 +11,7 @@ import {
   broadcastOrderClosed,
 } from "@/lib/orders/realtime";
 import { cleanupTransientEvents } from "@/lib/orders/cleanup";
-import { buildPromptPayPayload } from "@/lib/payments/promptpay";
+import { buildPayloadForAccount } from "@/lib/payments/promptpay";
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
 import { sendOrderStatusEmailNotification } from "@/lib/email/order-status";
 import { getOrderEmailDetails } from "@/lib/orders/queries";
@@ -250,13 +250,17 @@ export async function PATCH(
       })
       .where(eq(orders.id, order.id));
 
-    const { payload, normalizedPhone, amount } = buildPromptPayPayload({
-      phoneNumber: activeAccount.phoneNumber,
-      amount: totals.totalAmount,
-    });
+    const { payload, amount } = buildPayloadForAccount(
+      activeAccount,
+      totals.totalAmount,
+    );
 
     const promptParseData = JSON.stringify({
-      phoneNumber: normalizedPhone,
+      accountType: activeAccount.accountType,
+      phoneNumber: activeAccount.phoneNumber,
+      billerId: activeAccount.billerId,
+      ref1: activeAccount.ref1,
+      ref2: activeAccount.ref2,
       amount,
       accountId: activeAccount.id,
     });

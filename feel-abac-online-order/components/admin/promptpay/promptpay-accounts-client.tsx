@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
+import { parse } from "promptparse";
 
 import type adminPromptpayDictionary from "@/dictionaries/en/admin-promptpay.json";
 import type { PromptPayAccountRecord } from "@/lib/payments/queries";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/payments/promptpay";
 
 type Dictionary = typeof adminPromptpayDictionary;
+type AccountType = "anyid" | "billpayment";
 
 type Props = {
   initialAccounts: PromptPayAccountRecord[];
@@ -26,6 +28,48 @@ function sortAccounts(list: PromptPayAccountRecord[]) {
   });
 }
 
+function AccountTypeLabel({
+  accountType,
+  dictionary,
+}: {
+  accountType: string;
+  dictionary: Dictionary;
+}) {
+  const isBill = accountType === "billpayment";
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+        isBill
+          ? "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200"
+          : "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200",
+      )}
+    >
+      {isBill ? dictionary.billPaymentBadge : dictionary.anyIdBadge}
+    </span>
+  );
+}
+
+function AccountDetail({ account }: { account: PromptPayAccountRecord }) {
+  if (account.accountType === "billpayment") {
+    return (
+      <div className="space-y-0.5 text-sm text-slate-600">
+        <p>Biller: {account.billerId}</p>
+        <p>Ref1: {account.ref1}</p>
+        {account.ref2 ? <p>Ref2: {account.ref2}</p> : null}
+      </div>
+    );
+  }
+  return (
+    <p className="text-sm text-slate-700">
+      {formatPromptPayPhoneForDisplay(account.phoneNumber)}
+    </p>
+  );
+}
+
+const inputClass =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200";
+
 export function PromptPayAccountsClient({
   initialAccounts,
   dictionary,
@@ -33,8 +77,14 @@ export function PromptPayAccountsClient({
   const [accounts, setAccounts] = useState<PromptPayAccountRecord[]>(() =>
     sortAccounts(initialAccounts)
   );
+  const [accountType, setAccountType] = useState<AccountType>("anyid");
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [qrRawInput, setQrRawInput] = useState("");
+  const [billerId, setBillerId] = useState("");
+  const [ref1, setRef1] = useState("");
+  const [ref2, setRef2] = useState("");
+  const [qrParsed, setQrParsed] = useState(false);
   const [activate, setActivate] = useState(initialAccounts.length === 0);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [isSaving, startSaving] = useTransition();
@@ -44,24 +94,104 @@ export function PromptPayAccountsClient({
     [accounts]
   );
 
+  const resetForm = () => {
+    setName("");
+    setPhoneNumber("");
+    setQrRawInput("");
+    setBillerId("");
+    setRef1("");
+    setRef2("");
+    setQrParsed(false);
+    setActivate(false);
+  };
+
+  const handleQrPaste = (raw: string) => {
+    setQrRawInput(raw);
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setBillerId("");
+      setRef1("");
+      setRef2("");
+      setQrParsed(false);
+      return;
+    }
+    try {
+      const data = parse(trimmed);
+      if (!data) {
+        toast.error(dictionary.qrParseError);
+        setQrParsed(false);
+        return;
+      }
+      const tag30raw = data.getTagValue("30");
+      if (!tag30raw) {
+        toast.error(dictionary.qrParseNoTag30);
+        setQrParsed(false);
+        return;
+      }
+      const tag30 = parse(tag30raw);
+      if (!tag30) {
+        toast.error(dictionary.qrParseError);
+        setQrParsed(false);
+        return;
+      }
+      const parsedBillerId = tag30.getTagValue("01") ?? "";
+      const parsedRef1 = tag30.getTagValue("02") ?? "";
+      const parsedRef2 = tag30.getTagValue("03") ?? "";
+      if (!parsedBillerId || !parsedRef1) {
+        toast.error(dictionary.qrParseMissingFields);
+        setQrParsed(false);
+        return;
+      }
+      setBillerId(parsedBillerId);
+      setRef1(parsedRef1);
+      setRef2(parsedRef2);
+      setQrParsed(true);
+      toast.success(dictionary.qrParseSuccess);
+    } catch {
+      toast.error(dictionary.qrParseError);
+      setQrParsed(false);
+    }
+  };
+
   const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalized = normalizePromptPayPhone(phoneNumber);
-    if (!normalized) {
-      toast.error(dictionary.invalidPhone);
-      return;
+
+    if (accountType === "anyid") {
+      const normalized = normalizePromptPayPhone(phoneNumber);
+      if (!normalized) {
+        toast.error(dictionary.invalidPhone);
+        return;
+      }
+    } else {
+      if (!billerId.trim() || !ref1.trim()) {
+        toast.error(dictionary.invalidBillPayment);
+        return;
+      }
     }
 
     startSaving(async () => {
       try {
+        const body =
+          accountType === "billpayment"
+            ? {
+                accountType: "billpayment",
+                name: name.trim(),
+                billerId: billerId.trim(),
+                ref1: ref1.trim(),
+                ref2: ref2.trim() || undefined,
+                activate: activate || !hasActiveAccount,
+              }
+            : {
+                accountType: "anyid",
+                name: name.trim(),
+                phoneNumber: normalizePromptPayPhone(phoneNumber)!,
+                activate: activate || !hasActiveAccount,
+              };
+
         const response = await fetch("/api/admin/promptpay-accounts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: name.trim(),
-            phoneNumber: normalized,
-            activate: activate || !hasActiveAccount,
-          }),
+          body: JSON.stringify(body),
         });
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
@@ -76,12 +206,10 @@ export function PromptPayAccountsClient({
               : [newAccount, ...prev]
           )
         );
-        setName("");
-        setPhoneNumber("");
-        setActivate(false);
+        resetForm();
         toast.success(dictionary.toastSaved);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : dictionary.invalidPhone);
+        toast.error(error instanceof Error ? error.message : "Failed to save");
       }
     });
   };
@@ -132,6 +260,40 @@ export function PromptPayAccountsClient({
           </div>
         </div>
 
+        {/* Account type toggle */}
+        <div className="mt-4 space-y-1">
+          <span className="block text-sm font-semibold text-slate-700">
+            {dictionary.accountTypeLabel}
+          </span>
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5">
+            <button
+              type="button"
+              onClick={() => setAccountType("anyid")}
+              className={clsx(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition",
+                accountType === "anyid"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              {dictionary.anyIdOption}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountType("billpayment")}
+              className={clsx(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition",
+                accountType === "billpayment"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              {dictionary.billPaymentOption}
+            </button>
+          </div>
+        </div>
+
+        {/* Common: Name */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="block text-sm font-semibold text-slate-700">
@@ -142,26 +304,73 @@ export function PromptPayAccountsClient({
               value={name}
               onChange={(event) => setName(event.target.value)}
               required
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className={inputClass}
               placeholder="Main account"
             />
           </label>
-          <label className="space-y-1">
-            <span className="block text-sm font-semibold text-slate-700">
-              {dictionary.phoneLabel}
-            </span>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(event) => setPhoneNumber(event.target.value)}
-              required
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-              placeholder="09XXXXXXXX"
-              inputMode="numeric"
-              maxLength={14}
-            />
-          </label>
+
+          {/* Conditional: Phone (AnyID) */}
+          {accountType === "anyid" ? (
+            <label className="space-y-1">
+              <span className="block text-sm font-semibold text-slate-700">
+                {dictionary.phoneLabel}
+              </span>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                required
+                className={inputClass}
+                placeholder="09XXXXXXXX"
+                inputMode="numeric"
+                maxLength={14}
+              />
+            </label>
+          ) : null}
         </div>
+
+        {/* Bill Payment: paste QR data to auto-fill */}
+        {accountType === "billpayment" ? (
+          <div className="mt-4 space-y-4">
+            <label className="space-y-1">
+              <span className="block text-sm font-semibold text-slate-700">
+                {dictionary.qrDataLabel}
+              </span>
+              <p className="text-xs text-slate-500">{dictionary.qrDataHint}</p>
+              <textarea
+                value={qrRawInput}
+                onChange={(event) => handleQrPaste(event.target.value)}
+                className={clsx(inputClass, "min-h-[60px] font-mono text-xs")}
+                placeholder="00020101021130700016A000000677..."
+                rows={2}
+              />
+            </label>
+
+            {qrParsed ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-emerald-800">
+                  {dictionary.qrParseSuccess}
+                </p>
+                <div className="grid gap-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <span className="text-xs text-emerald-700">{dictionary.billerIdLabel}</span>
+                    <p className="font-mono text-slate-900">{billerId}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-emerald-700">{dictionary.ref1Label}</span>
+                    <p className="font-mono text-slate-900">{ref1}</p>
+                  </div>
+                  {ref2 ? (
+                    <div>
+                      <span className="text-xs text-emerald-700">{dictionary.ref2Label}</span>
+                      <p className="font-mono text-slate-900">{ref2}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-3 flex items-center gap-2">
           <input
@@ -211,15 +420,17 @@ export function PromptPayAccountsClient({
                     <p className="text-base font-semibold text-slate-900">
                       {account.name}
                     </p>
+                    <AccountTypeLabel
+                      accountType={account.accountType}
+                      dictionary={dictionary}
+                    />
                     {account.isActive ? (
                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
                         {dictionary.activeBadge}
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-slate-700">
-                    {formatPromptPayPhoneForDisplay(account.phoneNumber)}
-                  </p>
+                  <AccountDetail account={account} />
                 </div>
                 <div className="flex items-center gap-2">
                   <span
