@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
+import { parse } from "promptparse";
 
 import type adminPromptpayDictionary from "@/dictionaries/en/admin-promptpay.json";
 import type { PromptPayAccountRecord } from "@/lib/payments/queries";
@@ -79,9 +80,11 @@ export function PromptPayAccountsClient({
   const [accountType, setAccountType] = useState<AccountType>("anyid");
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [qrRawInput, setQrRawInput] = useState("");
   const [billerId, setBillerId] = useState("");
   const [ref1, setRef1] = useState("");
   const [ref2, setRef2] = useState("");
+  const [qrParsed, setQrParsed] = useState(false);
   const [activate, setActivate] = useState(initialAccounts.length === 0);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [isSaving, startSaving] = useTransition();
@@ -94,10 +97,60 @@ export function PromptPayAccountsClient({
   const resetForm = () => {
     setName("");
     setPhoneNumber("");
+    setQrRawInput("");
     setBillerId("");
     setRef1("");
     setRef2("");
+    setQrParsed(false);
     setActivate(false);
+  };
+
+  const handleQrPaste = (raw: string) => {
+    setQrRawInput(raw);
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setBillerId("");
+      setRef1("");
+      setRef2("");
+      setQrParsed(false);
+      return;
+    }
+    try {
+      const data = parse(trimmed);
+      if (!data) {
+        toast.error(dictionary.qrParseError);
+        setQrParsed(false);
+        return;
+      }
+      const tag30raw = data.getTagValue("30");
+      if (!tag30raw) {
+        toast.error(dictionary.qrParseNoTag30);
+        setQrParsed(false);
+        return;
+      }
+      const tag30 = parse(tag30raw);
+      if (!tag30) {
+        toast.error(dictionary.qrParseError);
+        setQrParsed(false);
+        return;
+      }
+      const parsedBillerId = tag30.getTagValue("01") ?? "";
+      const parsedRef1 = tag30.getTagValue("02") ?? "";
+      const parsedRef2 = tag30.getTagValue("03") ?? "";
+      if (!parsedBillerId || !parsedRef1) {
+        toast.error(dictionary.qrParseMissingFields);
+        setQrParsed(false);
+        return;
+      }
+      setBillerId(parsedBillerId);
+      setRef1(parsedRef1);
+      setRef2(parsedRef2);
+      setQrParsed(true);
+      toast.success(dictionary.qrParseSuccess);
+    } catch {
+      toast.error(dictionary.qrParseError);
+      setQrParsed(false);
+    }
   };
 
   const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
@@ -273,53 +326,49 @@ export function PromptPayAccountsClient({
                 maxLength={14}
               />
             </label>
-          ) : (
-            /* Conditional: Biller ID (Bill Payment) */
-            <label className="space-y-1">
-              <span className="block text-sm font-semibold text-slate-700">
-                {dictionary.billerIdLabel}
-              </span>
-              <input
-                type="text"
-                value={billerId}
-                onChange={(event) => setBillerId(event.target.value)}
-                required
-                className={inputClass}
-                placeholder="010753600107930"
-                maxLength={15}
-              />
-            </label>
-          )}
+          ) : null}
         </div>
 
-        {/* Bill Payment: ref1 + ref2 */}
+        {/* Bill Payment: paste QR data to auto-fill */}
         {accountType === "billpayment" ? (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 space-y-4">
             <label className="space-y-1">
               <span className="block text-sm font-semibold text-slate-700">
-                {dictionary.ref1Label}
+                {dictionary.qrDataLabel}
               </span>
-              <input
-                type="text"
-                value={ref1}
-                onChange={(event) => setRef1(event.target.value)}
-                required
-                className={inputClass}
-                placeholder="070000603025218"
+              <p className="text-xs text-slate-500">{dictionary.qrDataHint}</p>
+              <textarea
+                value={qrRawInput}
+                onChange={(event) => handleQrPaste(event.target.value)}
+                className={clsx(inputClass, "min-h-[60px] font-mono text-xs")}
+                placeholder="00020101021130700016A000000677..."
+                rows={2}
               />
             </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-semibold text-slate-700">
-                {dictionary.ref2Label}
-              </span>
-              <input
-                type="text"
-                value={ref2}
-                onChange={(event) => setRef2(event.target.value)}
-                className={inputClass}
-                placeholder="33036780"
-              />
-            </label>
+
+            {qrParsed ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-emerald-800">
+                  {dictionary.qrParseSuccess}
+                </p>
+                <div className="grid gap-2 text-sm sm:grid-cols-3">
+                  <div>
+                    <span className="text-xs text-emerald-700">{dictionary.billerIdLabel}</span>
+                    <p className="font-mono text-slate-900">{billerId}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-emerald-700">{dictionary.ref1Label}</span>
+                    <p className="font-mono text-slate-900">{ref1}</p>
+                  </div>
+                  {ref2 ? (
+                    <div>
+                      <span className="text-xs text-emerald-700">{dictionary.ref2Label}</span>
+                      <p className="font-mono text-slate-900">{ref2}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
