@@ -24,10 +24,10 @@ export async function DELETE(
   }
 
   try {
-    const result = await deletePromptPayAccount(accountId);
+    const deleteResult = await deletePromptPayAccount(accountId);
     return NextResponse.json({
-      account: result.deletedAccount,
-      activeAccount: result.activeAccount,
+      account: deleteResult.deletedAccount,
+      activeAccount: deleteResult.activeAccount,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to delete account";
