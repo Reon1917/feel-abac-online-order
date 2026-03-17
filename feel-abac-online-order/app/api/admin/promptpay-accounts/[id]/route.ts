@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
 
 import { requirePromptPayAccess } from "@/lib/api/admin-guard";
-import { db } from "@/src/db/client";
-import { promptpayAccounts } from "@/src/db/schema";
+import { deletePromptPayAccount } from "@/lib/payments/queries";
 
 type Params = {
   id: string;
@@ -26,18 +24,14 @@ export async function DELETE(
   }
 
   try {
-    const [account] = await db
-      .delete(promptpayAccounts)
-      .where(eq(promptpayAccounts.id, accountId))
-      .returning();
-
-    if (!account) {
-      return NextResponse.json({ error: "Account not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ account });
+    const result = await deletePromptPayAccount(accountId);
+    return NextResponse.json({
+      account: result.deletedAccount,
+      activeAccount: result.activeAccount,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to delete account";
-    return NextResponse.json({ error: message }, { status: 400 });
+    const status = message === "Account not found" ? 404 : 400;
+    return NextResponse.json({ error: message }, { status });
   }
 }

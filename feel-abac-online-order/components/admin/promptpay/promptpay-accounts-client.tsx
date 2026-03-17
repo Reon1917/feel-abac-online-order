@@ -271,7 +271,21 @@ export function PromptPayAccountsClient({
         throw new Error(payload?.error ?? dictionary.deleteFailed);
       }
 
-      setAccounts((prev) => prev.filter((account) => account.id !== deleteTarget.id));
+      const nextActiveId =
+        typeof payload?.activeAccount?.id === "string"
+          ? payload.activeAccount.id
+          : null;
+
+      setAccounts((prev) =>
+        sortAccounts(
+          prev
+            .filter((account) => account.id !== deleteTarget.id)
+            .map((account) => ({
+              ...account,
+              isActive: nextActiveId !== null && account.id === nextActiveId,
+            }))
+        )
+      );
       setDeleteTarget(null);
       toast.success(dictionary.toastDeleted);
     } catch (error) {

@@ -1,6 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, ne } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
+import { dbTx } from "@/src/db/tx-client";
 import { promptpayAccounts } from "@/src/db/schema";
 import { normalizePromptPayPhone } from "./promptpay";
 
@@ -15,6 +16,11 @@ export type PromptPayAccountRecord = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DeletePromptPayAccountResult = {
+  deletedAccount: PromptPayAccountRecord;
+  activeAccount: PromptPayAccountRecord | null;
 };
 
 function mapPromptPayAccount(
@@ -152,4 +158,80 @@ export async function activatePromptPayAccount(accountId: string): Promise<Promp
     .returning();
 
   return mapPromptPayAccount(activated);
+}
+
+export async function deletePromptPayAccount(
+  accountId: string
+): Promise<DeletePromptPayAccountResult> {
+  const trimmedId = accountId.trim();
+  if (!trimmedId) {
+    throw new Error("Account ID is required");
+  }
+
+  return dbTx.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(promptpayAccounts)
+      .where(eq(promptpayAccounts.id, trimmedId))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error("Account not found");
+    }
+
+    let replacementId: string | null = null;
+    if (existing.isActive) {
+      const [replacement] = await tx
+        .select()
+        .from(promptpayAccounts)
+        .where(ne(promptpayAccounts.id, trimmedId))
+        .orderBy(desc(promptpayAccounts.createdAt))
+        .limit(1);
+
+      if (!replacement) {
+        throw new Error(
+          "Create another PromptPay account before deleting the active one"
+        );
+      }
+
+      replacementId = replacement.id;
+    }
+
+    const [deleted] = await tx
+      .delete(promptpayAccounts)
+      .where(eq(promptpayAccounts.id, trimmedId))
+      .returning();
+
+    if (!deleted) {
+      throw new Error("Account not found");
+    }
+
+    let activeAfterDelete: typeof promptpayAccounts.$inferSelect | null = null;
+
+    if (replacementId) {
+      const [activated] = await tx
+        .update(promptpayAccounts)
+        .set({ isActive: true })
+        .where(eq(promptpayAccounts.id, replacementId))
+        .returning();
+
+      activeAfterDelete = activated ?? null;
+    } else {
+      const [currentActive] = await tx
+        .select()
+        .from(promptpayAccounts)
+        .where(eq(promptpayAccounts.isActive, true))
+        .orderBy(desc(promptpayAccounts.updatedAt))
+        .limit(1);
+
+      activeAfterDelete = currentActive ?? null;
+    }
+
+    return {
+      deletedAccount: mapPromptPayAccount(deleted),
+      activeAccount: activeAfterDelete
+        ? mapPromptPayAccount(activeAfterDelete)
+        : null,
+    };
+  });
 }

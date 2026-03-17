@@ -32,6 +32,7 @@ import {
 } from "@/lib/orders/events";
 import type { OrderStatus } from "@/lib/orders/types";
 import type { OrderAdminSummary, OrderRecord, OrderPaymentRecord } from "@/lib/orders/types";
+import { countCompletedAdminOrders } from "@/lib/orders/admin-stats";
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
@@ -236,7 +237,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
     const received = ordersByTab.received.length;
     const payment = ordersByTab.waitForPayment.length;
     const active = ordersByTab.paid.length + ordersByTab.handToDelivery.length;
-    const completed = ordersByTab.delivered.length + ordersByTab.closed.length;
+    const completed = countCompletedAdminOrders(orders);
 
     return {
       received,
@@ -244,7 +245,7 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
       active,
       completed,
     };
-  }, [ordersByTab]);
+  }, [orders, ordersByTab]);
 
   // Get tab label from dictionary
   const getTabLabel = (key: TabKey) => {
