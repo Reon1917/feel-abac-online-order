@@ -20,6 +20,7 @@
     "confirmTitle": "Ready to send your order?",
     "confirmDeliveryFeeNote": "The price shown is for food only. Delivery fee will be added after the shop accepts your order.",
     "confirmWaitNote": "Once you send, the shop will review and accept your order. You'll be notified when it's confirmed!",
+    "confirmPhoneNote": "Double-check this phone number before sending. If it is wrong, the shop will not be able to contact you about your order.",
     "confirmCta": "Confirm & Send",
     "confirmCancel": "Go back",
     "empty": "Your cart is empty",
