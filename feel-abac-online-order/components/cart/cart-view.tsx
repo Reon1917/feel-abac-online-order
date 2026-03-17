@@ -627,6 +627,8 @@ export function CartView({
     "Tip: Swipe left on an item card to remove it quickly.";
   const unavailableBadge =
     dictionary.stockGuard?.itemBadge ?? "Out of stock";
+  const confirmationPhoneLabel =
+    phoneValue.trim().length > 0 ? phoneValue.trim() : contactDictionary.notSet;
   const hasCurrentPhone = currentPhone.trim().length > 0;
   const phoneDisplayLabel = hasCurrentPhone
     ? currentPhone
@@ -1172,6 +1174,20 @@ export function CartView({
               <div className="flex items-start gap-2.5 rounded-xl bg-blue-50 px-3 py-2.5 text-sm leading-snug text-blue-800 ring-1 ring-blue-200">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                 <span>{dictionary.summary.confirmWaitNote ?? "After sending, please wait for the shop to accept your order before proceeding to payment."}</span>
+              </div>
+              <div className="flex items-start gap-2.5 rounded-xl bg-rose-50 px-3 py-2.5 text-sm leading-snug text-rose-800 ring-1 ring-rose-200">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">
+                    {contactDictionary.label}
+                  </p>
+                  <p className="font-semibold text-rose-950">
+                    {confirmationPhoneLabel}
+                  </p>
+                  <p>
+                    {dictionary.summary.confirmPhoneNote ?? "Double-check this phone number before sending. If it is wrong, the shop will not be able to contact you about your order."}
+                  </p>
+                </div>
               </div>
             </div>
 

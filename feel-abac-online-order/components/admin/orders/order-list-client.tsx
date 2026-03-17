@@ -32,6 +32,7 @@ import {
 } from "@/lib/orders/events";
 import type { OrderStatus } from "@/lib/orders/types";
 import type { OrderAdminSummary, OrderRecord, OrderPaymentRecord } from "@/lib/orders/types";
+import { countCompletedAdminOrders } from "@/lib/orders/admin-stats";
 import { formatBangkokTimestamp } from "@/lib/timezone";
 import { OrderDetailModal } from "./order-detail-modal";
 import { statusBadgeClass, statusLabel } from "@/lib/orders/format";
@@ -49,6 +50,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
 
 type AdminOrdersDictionary = typeof adminOrdersDictionary;
 
@@ -230,6 +232,20 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
     return grouped;
   }, [orders]);
+
+  const workflowSummary = useMemo(() => {
+    const received = ordersByTab.received.length;
+    const payment = ordersByTab.waitForPayment.length;
+    const active = ordersByTab.paid.length + ordersByTab.handToDelivery.length;
+    const completed = countCompletedAdminOrders(orders);
+
+    return {
+      received,
+      payment,
+      active,
+      completed,
+    };
+  }, [orders, ordersByTab]);
 
   // Get tab label from dictionary
   const getTabLabel = (key: TabKey) => {
@@ -1205,6 +1221,33 @@ export function OrderListClient({ initialOrders, dictionary }: Props) {
 
   return (
     <div className="space-y-4">
+      <StatsGrid columns={4}>
+        <StatsCard
+          title="Received"
+          value={workflowSummary.received}
+          subtitle="New orders"
+          variant={workflowSummary.received > 0 ? "warning" : "default"}
+        />
+        <StatsCard
+          title="Payment"
+          value={workflowSummary.payment}
+          subtitle="Awaiting payment"
+          variant={workflowSummary.payment > 0 ? "info" : "default"}
+        />
+        <StatsCard
+          title="Active"
+          value={workflowSummary.active}
+          subtitle="Preparing / delivering"
+          variant="info"
+        />
+        <StatsCard
+          title="Completed"
+          value={workflowSummary.completed}
+          subtitle="Delivered today"
+          variant="success"
+        />
+      </StatsGrid>
+
       {/* Tab Navigation */}
       <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl">
         {WORKFLOW_TABS.map((tab) => {

@@ -11,6 +11,7 @@ import { SUPPORTED_LOCALES, DEFAULT_LOCALE, type Locale } from "@/lib/i18n/confi
 import { getActivePromptPayAccount } from "@/lib/payments/queries";
 import { formatPromptPayPhoneForDisplay } from "@/lib/payments/promptpay";
 import { getTodayOrdersForAdmin } from "@/lib/orders/queries";
+import { countCompletedAdminOrders, countLiveAdminOrders } from "@/lib/orders/admin-stats";
 import { AdminLayoutShell } from "@/components/admin/admin-layout-shell";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { StatsCard, StatsGrid } from "@/components/admin/stats-card";
@@ -58,10 +59,8 @@ export default async function AdminDashboard({ params }: PageProps) {
 
   // Calculate stats
   const adminCount = await db.select({ id: admins.id }).from(admins);
-  const liveOrders = orders.filter(
-    (o) => !["delivered", "cancelled"].includes(o.status)
-  ).length;
-  const completedToday = orders.filter((o) => o.status === "delivered").length;
+  const liveOrders = countLiveAdminOrders(orders);
+  const completedToday = countCompletedAdminOrders(orders);
 
   // Quick action cards data - filtered by role
   const allQuickActions = [

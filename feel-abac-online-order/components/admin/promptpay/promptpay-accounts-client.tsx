@@ -5,6 +5,14 @@ import clsx from "clsx";
 import { toast } from "sonner";
 import { parse } from "promptparse";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type adminPromptpayDictionary from "@/dictionaries/en/admin-promptpay.json";
 import type { PromptPayAccountRecord } from "@/lib/payments/queries";
 import {
@@ -87,6 +95,8 @@ export function PromptPayAccountsClient({
   const [qrParsed, setQrParsed] = useState(false);
   const [activate, setActivate] = useState(initialAccounts.length === 0);
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PromptPayAccountRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, startSaving] = useTransition();
 
   const hasActiveAccount = useMemo(
@@ -242,6 +252,48 @@ export function PromptPayAccountsClient({
       );
     } finally {
       setActivatingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `/api/admin/promptpay-accounts/${deleteTarget.id}`,
+        { method: "DELETE" }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? dictionary.deleteFailed);
+      }
+
+      const nextActiveId =
+        typeof payload?.activeAccount?.id === "string"
+          ? payload.activeAccount.id
+          : null;
+
+      setAccounts((prev) =>
+        sortAccounts(
+          prev
+            .filter((account) => account.id !== deleteTarget.id)
+            .map((account) => ({
+              ...account,
+              isActive: nextActiveId !== null && account.id === nextActiveId,
+            }))
+        )
+      );
+      setDeleteTarget(null);
+      toast.success(dictionary.toastDeleted);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : dictionary.deleteFailed
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -455,12 +507,69 @@ export function PromptPayAccountsClient({
                         ? "..."
                         : dictionary.setActive}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(account)}
+                    disabled={activatingId === account.id || isDeleting}
+                    className="inline-flex items-center rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {dictionary.deleteAccount}
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">
+              {dictionary.deleteConfirmTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {(dictionary.deleteConfirmDescription ?? "")
+                .replace("{{name}}", deleteTarget?.name ?? "")}
+            </DialogDescription>
+          </DialogHeader>
+          {deleteTarget ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <p className="text-sm font-semibold text-slate-900">
+                {deleteTarget.name}
+              </p>
+              <div className="mt-1">
+                <AccountDetail account={deleteTarget} />
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter className="flex-row justify-end gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {dictionary.deleteConfirmCancel}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={isDeleting}
+              className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? dictionary.deletePending : dictionary.deleteAccount}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
